@@ -1,0 +1,44 @@
+[
+ {
+  "name": "close",
+  "cls": "SyncCsvWriter",
+  "file": "gitnexus/src/core/lbug/sync-csv-writer.ts",
+  "line": 97,
+  "newName": "closeWriter"
+ },
+ {
+  "name": "resolve",
+  "cls": "ScopeTreeHarvester",
+  "file": "gitnexus/src/core/ingestion/cfg/visitors/scope-tree-harvest.ts",
+  "line": 123,
+  "newName": "resolveBinding"
+ },
+ {
+  "name": "declare",
+  "cls": "ScopeTreeHarvester",
+  "file": "gitnexus/src/core/ingestion/cfg/visitors/scope-tree-harvest.ts",
+  "line": 102,
+  "newName": "declareBinding"
+ },
+ {
+  "name": "drainFinalizerPending",
+  "cls": null,
+  "file": "gitnexus/src/core/ingestion/cfg/control-flow-context.ts",
+  "line": 220,
+  "newName": "flushFinalizerPending"
+ },
+ {
+  "name": "getPhaseOutput",
+  "cls": null,
+  "file": "gitnexus/src/core/ingestion/pipeline-phases/types.ts",
+  "line": 99,
+  "newName": "readPhaseOutput"
+ },
+ {
+  "name": "facts",
+  "cls": "JavaHarvester",
+  "file": "gitnexus/src/core/ingestion/cfg/visitors/java-harvest.ts",
+  "line": 186,
+  "newName": "collectFacts"
+ }
+]

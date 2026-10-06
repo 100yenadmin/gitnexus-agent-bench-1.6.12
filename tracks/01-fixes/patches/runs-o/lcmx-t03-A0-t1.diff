@@ -1,0 +1,166 @@
+diff --git a/command.py b/command.py
+index a012a1c..e969c76 100644
+--- a/command.py
++++ b/command.py
+@@ -2849,6 +2849,23 @@ def _embedding_current_profile(conn: sqlite3.Connection) -> sqlite3.Row | None:
+         raise
+ 
+ 
++def _summary_text_is_embeddable(value: object) -> int:
++    """SQL predicate: 1 when a summary has non-whitespace text, else 0.
++
++    SQLite's TRIM only strips ASCII spaces, so blank detection uses Python's
++    ``str.strip()`` definition of whitespace (e.g. ``"\\v\\f"`` is blank).
++    """
++    if isinstance(value, bytes):
++        value = value.decode("utf-8", errors="replace")
++    return 1 if isinstance(value, str) and value.strip() else 0
++
++
++def _register_embeddable_text_function(conn: sqlite3.Connection) -> None:
++    conn.create_function(
++        "lcm_summary_has_text", 1, _summary_text_is_embeddable, deterministic=True
++    )
++
++
+ def _embedding_pending_rows(
+     conn: sqlite3.Connection,
+     identity_hash: str,
+@@ -2857,7 +2874,10 @@ def _embedding_pending_rows(
+     # Discovery excludes both recorded rows and every durable in-flight state.
+     # A dispatched/uncertain row may already have been accepted remotely, so it
+     # must never be silently resent; only explicit --retry-uncertain operator
+-    # authorization can return it to discovery.
++    # authorization can return it to discovery. Blank summaries are never
++    # embeddable (one blank input fails a whole provider batch), so they are
++    # excluded from both the pending count and the selection.
++    _register_embeddable_text_function(conn)
+     inflight_exists = conn.execute(
+         "SELECT 1 FROM sqlite_master WHERE type='table' "
+         "AND name='lcm_embedding_backfill_inflight'"
+@@ -2875,6 +2895,7 @@ def _embedding_pending_rows(
+     )
+     where = """
+         n.depth = 0
++        AND lcm_summary_has_text(n.summary) = 1
+         AND NOT EXISTS (
+             SELECT 1
+             FROM lcm_embedding_meta AS m
+@@ -2908,11 +2929,16 @@ def _embedding_authorized_uncertain_rows(
+     identity_hash: str,
+     limit: int,
+ ) -> tuple[int, list[sqlite3.Row]]:
+-    """Select exact uncertain rows without consuming their durable markers."""
++    """Select exact uncertain rows without consuming their durable markers.
++
++    Blank summaries are never selected; their uncertain markers stay as-is.
++    """
++    _register_embeddable_text_function(conn)
+     where = """
+         f.identity_hash = ?
+         AND f.state = 'uncertain'
+         AND n.depth = 0
++        AND lcm_summary_has_text(n.summary) = 1
+         AND NOT EXISTS (
+             SELECT 1
+             FROM lcm_embedding_meta AS m
+diff --git a/tests/test_embedding_backfill.py b/tests/test_embedding_backfill.py
+index 673dbdd..2af2fb5 100644
+--- a/tests/test_embedding_backfill.py
++++ b/tests/test_embedding_backfill.py
+@@ -247,6 +247,95 @@ def test_apply_limit_embeds_newest_rows_first(monkeypatch, tmp_path):
+     assert _meta_ids(engine) == [str(node_ids[-2]), str(node_ids[-1])]
+ 
+ 
++_BLANK_SUMMARIES = ("", "   ", "\n\t ", "\v\f", "  　")
++
++
++def _blank_out(engine, node_ids: list[int], texts=_BLANK_SUMMARIES) -> None:
++    conn = sqlite3.connect(engine._store.db_path)
++    try:
++        conn.executemany(
++            "UPDATE summary_nodes SET summary = ? WHERE node_id = ?",
++            list(zip(texts, node_ids)),
++        )
++        conn.commit()
++    finally:
++        conn.close()
++
++
++@pytest.mark.parametrize(
++    ("value", "expected"),
++    [
++        (None, 0),
++        ("", 0),
++        ("  \t\n", 0),
++        ("\v\f", 0),
++        ("  　 ", 0),
++        (b" \x0b\x0c", 0),
++        ("x", 1),
++        ("  real summary \v", 1),
++        (b"real", 1),
++    ],
++)
++def test_summary_embeddable_predicate_uses_python_whitespace(value, expected):
++    assert command_mod._summary_text_is_embeddable(value) == expected
++
++
++def test_blank_leaf_summaries_are_excluded_from_preview_and_apply(
++    monkeypatch, tmp_path
++):
++    engine = _engine(tmp_path)
++    node_ids = _seed(engine, 8)
++    blank_ids = node_ids[:len(_BLANK_SUMMARIES)]
++    real_ids = node_ids[len(_BLANK_SUMMARIES):]
++    _blank_out(engine, blank_ids)
++    provider = FakeProvider()
++    monkeypatch.setattr(command_mod, "resolve_provider", lambda _config, **_kw: provider)
++
++    preview = handle_lcm_command("embed backfill", engine)
++
++    assert f"pending: {len(real_ids)}" in preview
++    assert f"selected: {len(real_ids)}" in preview
++    assert provider.calls == []
++
++    applied = handle_lcm_command("embed backfill --apply", engine)
++
++    assert "status: complete" in applied
++    assert f"embedded: {len(real_ids)}" in applied
++    assert "remaining: 0" in applied
++    sent = [text for batch in provider.calls for text in batch]
++    assert sorted(sent) == sorted(f"summary-{index}" for index in range(5, 8))
++    assert all(text.strip() for text in sent)
++    assert _meta_ids(engine) == [str(node_id) for node_id in real_ids]
++    assert _inflight_rows(engine) == []
++
++
++def test_retry_uncertain_never_resends_blank_summary_and_keeps_its_marker(
++    monkeypatch, tmp_path
++):
++    engine = _engine(tmp_path)
++    node_ids = _seed(engine, 2)
++    _blank_out(engine, [node_ids[0]], ["\v\f"])
++    _mark_uncertain(engine, node_ids)
++    provider = FakeProvider()
++    monkeypatch.setattr(command_mod, "resolve_provider", lambda _config, **_kw: provider)
++
++    result = handle_lcm_command(
++        "embed backfill --apply --retry-uncertain", engine
++    )
++
++    assert "selected: 1" in result
++    assert "embedded: 1" in result
++    assert provider.calls == [["summary-1"]]
++    assert _meta_ids(engine) == [str(node_ids[1])]
++    assert _inflight_rows(engine) == [(str(node_ids[0]), "uncertain")]
++
++    again = handle_lcm_command("embed backfill --apply --retry-uncertain", engine)
++
++    assert "selected: 0" in again
++    assert provider.calls == [["summary-1"]]
++    assert _inflight_rows(engine) == [(str(node_ids[0]), "uncertain")]
++
++
+ def test_accepted_then_local_publish_failure_becomes_uncertain(
+     monkeypatch, tmp_path
+ ):

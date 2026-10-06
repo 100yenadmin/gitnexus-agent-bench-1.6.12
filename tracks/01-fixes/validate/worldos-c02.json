@@ -1,0 +1,48 @@
+{
+ "id": "worldos-c02",
+ "pr": 1273,
+ "base": "9c6a55468f745c37123c4921cb869a23f09b720d",
+ "fix": "b0412127c2060a20001b962631ad8b23d07e1f6a",
+ "tests": [
+  "qa/test_assert_behavioral.py",
+  "servers/engine/tests/test_action_economy.py"
+ ],
+ "oracle_files": [
+  "qa/test_assert_behavioral.py",
+  "servers/engine/tests/test_action_economy.py"
+ ],
+ "oracle_cmd": "uv run -q --directory servers/engine --group dev pytest -q -p no:cacheprovider ../../qa/test_assert_behavioral.py tests/test_action_economy.py",
+ "regression_cmd": "uv run -q --directory servers/engine --group dev pytest -q -p no:cacheprovider",
+ "setup_cmd": "uv sync -q --directory servers/engine --group dev",
+ "setup_rc": 0,
+ "base_rc": 1,
+ "base_secs": 9.6,
+ "base_tail": [
+  "FAILED ::test_unresolved_spell_attack_warns_when_no_followup_attack - Asserti...",
+  "FAILED tests/test_action_economy.py::test_old_snapshot_without_action_purpose_defaults_empty",
+  "FAILED tests/test_action_economy.py::test_guiding_bolt_then_attack_resolves_and_rearms",
+  "FAILED tests/test_action_economy.py::test_guiding_bolt_then_independent_attack_still_refused",
+  "FAILED tests/test_action_economy.py::test_guiding_bolt_leg_cleared_on_next_turn",
+  "FAILED tests/test_action_economy.py::test_pending_riders_and_leg_cleared_on_target_death",
+  "FAILED tests/test_action_economy.py::test_pending_riders_cleared_on_remove_combatant",
+  "7 failed, 104 passed in 8.12s"
+ ],
+ "base_import_err": true,
+ "fix_rc1": 0,
+ "fix_secs1": 10.2,
+ "fix_tail1": [
+  "111 passed in 6.81s"
+ ],
+ "fix_rc2": 0,
+ "fix_secs2": 8.9,
+ "fix_tail2": [
+  "111 passed in 8.45s"
+ ],
+ "reg_rc": 0,
+ "reg_secs": 349.4,
+ "reg_tail": [
+  "3351 passed in 348.47s (0:05:48)"
+ ],
+ "mismatch": [],
+ "final_status": "* (HEAD detached at 9c6a5546)\n  main\n  remotes/origin/HEAD -> origin/main\n  remotes/origin/main"
+}

@@ -1,0 +1,72 @@
+diff --git a/escalation.py b/escalation.py
+index 4ed75710..71ac1f96 100644
+--- a/escalation.py
++++ b/escalation.py
+@@ -276,11 +276,18 @@ def _unwrap_summary_contract(content: str, nonce: str, max_tokens: int) -> str:
+     opening_tag = f'<lcm-summary nonce="{nonce}">'
+     closing_tag = "</lcm-summary>"
+     stripped = content.strip()
++    # No count check on the closing tag. The body is extracted by slicing from
++    # both ends, so an interior `</lcm-summary>` cannot affect what is extracted
++    # -- it only ever caused a valid summary to be discarded. And unlike the
++    # opening tag, the closing tag carries no nonce, so ANY prior summary quoted
++    # in the transcript contains it verbatim: a session that has discussed the
++    # envelope contract could never be summarized again. The opening-tag count
++    # is kept because it is nonce-bearing, so a second occurrence is genuinely
++    # anomalous rather than ordinary transcript content.
+     if (
+         not stripped.startswith(opening_tag)
+         or not stripped.endswith(closing_tag)
+         or stripped.count(opening_tag) != 1
+-        or stripped.count(closing_tag) != 1
+     ):
+         return ""
+     body = stripped[len(opening_tag) : -len(closing_tag)].strip()
+diff --git a/tests/test_lcm_core.py b/tests/test_lcm_core.py
+index b4752969..1a003201 100644
+--- a/tests/test_lcm_core.py
++++ b/tests/test_lcm_core.py
+@@ -414,6 +414,43 @@ class TestProviderPrefixedAuxiliaryCalls:
+         assert "nonce=" not in result
+         assert [message["role"] for message in seen["messages"]] == ["system", "user"]
+ 
++    def test_summary_body_may_quote_the_closing_tag(self, monkeypatch):
++        """A summary that quotes `</lcm-summary>` in its body must be accepted.
++
++        The closing tag carries no nonce, so any transcript that has discussed
++        the envelope contract contains it verbatim -- and a summarizer
++        faithfully reporting that discussion reproduces it. Rejecting on a
++        second occurrence meant such a session could never be summarized again,
++        and the rejection is silent: the caller receives "".
++
++        Extraction is unaffected because the body is sliced from both ends.
++        """
++        from hermes_lcm.escalation import _build_l1_prompt, _call_llm_for_summary
++
++        body = (
++            "- Decision: the summarizer wraps output in `</lcm-summary>` as the envelope's end.\n"
++            "- Current state: that literal tag appears in this transcript as quoted content.\n"
++            "Expand for details about: the summary envelope contract"
++        )
++
++        def fake_call_llm(**kwargs):
++            system_content = kwargs["messages"][0]["content"]
++            match = re.search(r'<lcm-summary nonce="([0-9a-f]{32})">', system_content)
++            assert match is not None
++            nonce = match.group(1)
++            return self._fake_response(
++                f'<lcm-summary nonce="{nonce}">\n{body}\n</lcm-summary>'
++            )
++
++        self._install_fake_auxiliary_client(monkeypatch, fake_call_llm)
++
++        result = _call_llm_for_summary(
++            _build_l1_prompt("transcript discussing the envelope " * 30, token_budget=80, depth=0),
++            160,
++        )
++
++        assert result == body
++
+     @pytest.mark.parametrize("variant", ["wrong_nonce", "outside_text", "missing_footer"])
+     def test_summary_call_rejects_malformed_integrity_contract(self, monkeypatch, variant):
+         from hermes_lcm.escalation import _build_l1_prompt, _call_llm_for_summary

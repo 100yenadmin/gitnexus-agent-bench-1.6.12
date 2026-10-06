@@ -1,0 +1,221 @@
+diff --git a/compaction.py b/compaction.py
+index 9f319c4..93669c9 100644
+--- a/compaction.py
++++ b/compaction.py
+@@ -23,6 +23,7 @@ from collections import Counter
+ from typing import Any, Dict, List, Optional
+ 
+ from .dag import SummaryNode
++from .fresh_tail import tool_group_safe_end
+ from .lifecycle_state import LifecycleBindingChangedError, LifecyclePublicationConflictError
+ from .message_analysis import _matched_tool_call_ids
+ from .message_content import text_content_for_pattern_matching
+@@ -529,7 +530,9 @@ class CompactionMixin:
+                 break
+             selected.append(msg)
+             used += msg_tokens
+-        return selected
++        # Never leave a leaf chunk ending inside an assistant/tool-result
++        # group: the orphaned remainder can never be covered later (#559).
++        return list(candidate_raw[: tool_group_safe_end(candidate_raw, len(selected))])
+ 
+     def compress(self, messages: List[Dict[str, Any]],
+                  current_tokens: int = None,
+diff --git a/engine.py b/engine.py
+index c659a44..8a5e629 100644
+--- a/engine.py
++++ b/engine.py
+@@ -128,7 +128,11 @@ from .message_analysis import (
+     _merge_adjacent_assistant_messages,
+     _tool_call_id,
+ )
+-from .fresh_tail import FreshTailBoundary, resolve_fresh_tail_boundary
++from .fresh_tail import (
++    FreshTailBoundary,
++    resolve_fresh_tail_boundary,
++    tool_group_safe_end,
++)
+ from .message_patterns import compile_message_patterns, matches_message_pattern
+ from .aux_session import AuxiliarySessionMixin
+ from .placeholder_ledger import PlaceholderLedgerMixin
+@@ -1828,7 +1832,11 @@ class LCMEngine(
+             if smaller and len(smaller) < len(current_chunk):
+                 return smaller
+ 
+-        return current_chunk[:-1]
++        # Drop the newest row, but never cut inside an assistant/tool group.
++        end = tool_group_safe_end(current_chunk, len(current_chunk) - 1)
++        if end <= 0 or end >= len(current_chunk):
++            return []
++        return current_chunk[:end]
+ 
+     def _summarize_leaf_chunk_with_rescue(
+         self,
+diff --git a/fresh_tail.py b/fresh_tail.py
+index f9ae35c..8dd5905 100644
+--- a/fresh_tail.py
++++ b/fresh_tail.py
+@@ -50,6 +50,56 @@ def _assistant_group_start(messages: Sequence[Dict[str, Any]], start: int) -> in
+     return start
+ 
+ 
++def tool_group_safe_end(messages: Sequence[Dict[str, Any]], end: int) -> int:
++    """Move a prefix cut ``messages[:end]`` off any assistant/tool-result group.
++
++    When the cut falls after an assistant row with ``tool_calls`` or between
++    its sibling results, return the index of that assistant so the whole group
++    stays on the far side.  When the group starts at index 0 (retreating would
++    empty the prefix), extend the cut through the group's declared results
++    instead.  A result without a ``tool_call_id``, or with an id the assistant
++    did not declare, is not treated as part of a group and leaves ``end``
++    unchanged, as does a cut outside any group.
++    """
++    if end <= 0 or end >= len(messages):
++        return end
++    if messages[end].get("role") != "tool":
++        return end
++
++    # Walk back over the results already inside the prefix to the opener.
++    result_ids: list[str] = []
++    index = end
++    while index >= 0 and messages[index].get("role") == "tool":
++        result_id = str(messages[index].get("tool_call_id") or "").strip()
++        if not result_id:
++            return end
++        result_ids.append(result_id)
++        index -= 1
++    if index < 0:
++        return end
++    opener = messages[index]
++    if opener.get("role") != "assistant":
++        return end
++    declared = {
++        call_id
++        for call_id in (_tool_call_id(tool_call) for tool_call in (opener.get("tool_calls") or []))
++        if call_id
++    }
++    if not declared or any(result_id not in declared for result_id in result_ids):
++        return end
++    if index > 0:
++        return index
++
++    # The group opens the sequence: keep it whole by extending forward.
++    extended = end
++    while extended < len(messages) and messages[extended].get("role") == "tool":
++        result_id = str(messages[extended].get("tool_call_id") or "").strip()
++        if not result_id or result_id not in declared:
++            return end
++        extended += 1
++    return extended
++
++
+ def resolve_fresh_tail_boundary(
+     messages: Sequence[Dict[str, Any]],
+     *,
+diff --git a/tests/test_fresh_tail.py b/tests/test_fresh_tail.py
+index 9cf21bd..941492c 100644
+--- a/tests/test_fresh_tail.py
++++ b/tests/test_fresh_tail.py
+@@ -2,7 +2,7 @@
+ 
+ from hermes_lcm.config import LCMConfig
+ from hermes_lcm.engine import LCMEngine
+-from hermes_lcm.fresh_tail import resolve_fresh_tail_boundary
++from hermes_lcm.fresh_tail import resolve_fresh_tail_boundary, tool_group_safe_end
+ from hermes_lcm.tokens import count_message_tokens
+ 
+ 
+@@ -174,3 +174,93 @@ def test_rotate_uses_effective_token_bounded_tail(tmp_path):
+         assert preview["pre_tail_message_count"] == 2
+     finally:
+         engine.shutdown()
++
++
++# -- tool_group_safe_end (#559) ---------------------------------------------
++
++
++def test_safe_end_outside_group_is_unchanged():
++    messages = [_user("u0"), *_tool_group(), _user("u4")]
++    assert tool_group_safe_end(messages, 1) == 1
++    assert tool_group_safe_end(messages, 4) == 4
++    assert tool_group_safe_end(messages, 0) == 0
++    assert tool_group_safe_end(messages, len(messages)) == len(messages)
++
++
++def test_safe_end_after_assistant_retreats_to_assistant():
++    messages = [_user("u0"), *_tool_group(), _user("u4")]
++    assert tool_group_safe_end(messages, 2) == 1
++
++
++def test_safe_end_between_sibling_results_retreats_to_assistant():
++    messages = [_user("u0"), *_tool_group(), _user("u4")]
++    assert tool_group_safe_end(messages, 3) == 1
++
++
++def test_safe_end_extends_through_group_starting_at_zero():
++    messages = [*_tool_group(), _user("u3")]
++    assert tool_group_safe_end(messages, 1) == 3
++    assert tool_group_safe_end(messages, 2) == 3
++
++
++def test_safe_end_result_without_id_is_unchanged():
++    messages = [_user("u0"), *_tool_group(), _user("u4")]
++    messages[3] = {"role": "tool", "content": "no id"}
++    assert tool_group_safe_end(messages, 3) == 3
++
++
++def test_safe_end_undeclared_result_id_is_unchanged():
++    messages = [_user("u0"), *_tool_group(), _user("u4")]
++    messages[2] = {"role": "tool", "tool_call_id": "call-x", "content": "stray"}
++    assert tool_group_safe_end(messages, 2) == 2
++    assert tool_group_safe_end(messages, 3) == 3
++
++    leading = [*_tool_group(), _user("u3")]
++    leading[2] = {"role": "tool", "tool_call_id": "call-x", "content": "stray"}
++    assert tool_group_safe_end(leading, 1) == 1
++
++
++def test_safe_end_orphan_result_without_assistant_is_unchanged():
++    messages = [_user("u0"), {"role": "tool", "tool_call_id": "call-a", "content": "x"}, _user("u2")]
++    assert tool_group_safe_end(messages, 1) == 1
++
++
++def _leaf_engine(tmp_path, **config_kwargs):
++    config = LCMConfig(
++        fresh_tail_count=2,
++        database_path=str(tmp_path / "lcm_leaf_group.db"),
++        **config_kwargs,
++    )
++    return LCMEngine(config=config)
++
++
++def test_select_oldest_leaf_chunk_never_ends_inside_tool_group(tmp_path):
++    engine = _leaf_engine(tmp_path)
++    candidate = [_user("u0"), *_tool_group(payload_a="x" * 400, payload_b="y" * 400), _user("u4")]
++    # Budget fits the user + assistant rows but stops before the first result.
++    budget = count_message_tokens(candidate[0]) + count_message_tokens(candidate[1])
++    chunk = engine._select_oldest_leaf_chunk(candidate, budget)
++    assert chunk == candidate[:1]
++
++    # Budget that would stop between sibling results also retreats.
++    budget += count_message_tokens(candidate[2])
++    chunk = engine._select_oldest_leaf_chunk(candidate, budget)
++    assert chunk == candidate[:1]
++
++
++def test_select_oldest_leaf_chunk_extends_leading_group(tmp_path):
++    engine = _leaf_engine(tmp_path)
++    candidate = [*_tool_group(payload_a="x" * 400, payload_b="y" * 400), _user("u3")]
++    chunk = engine._select_oldest_leaf_chunk(candidate, 1)
++    assert chunk == candidate[:3]
++
++
++def test_leaf_rescue_last_row_fallback_does_not_split_group(tmp_path):
++    engine = _leaf_engine(tmp_path, leaf_chunk_tokens=10_000_000)
++    chunk = [_user("u0"), *_tool_group()]
++    tokens = sum(count_message_tokens(message) for message in chunk)
++    assert engine._next_leaf_rescue_chunk(chunk, tokens) == chunk[:1]
++
++    leading = _tool_group()
++    tokens = sum(count_message_tokens(message) for message in leading)
++    assert engine._next_leaf_rescue_chunk(leading, tokens) == []

@@ -1,0 +1,21 @@
+{
+ "tools": [
+  "api_impact",
+  "check",
+  "context",
+  "cypher",
+  "detect_changes",
+  "explain",
+  "group_list",
+  "group_sync",
+  "impact",
+  "list_repos",
+  "pdg_query",
+  "query",
+  "rename",
+  "route_map",
+  "shape_check",
+  "tool_map",
+  "trace"
+ ]
+}

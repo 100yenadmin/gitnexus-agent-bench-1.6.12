@@ -1,0 +1,159 @@
+diff --git a/servers/engine/combat_ai.py b/servers/engine/combat_ai.py
+index de6e1bc..5cb5cd0 100644
+--- a/servers/engine/combat_ai.py
++++ b/servers/engine/combat_ai.py
+@@ -425,6 +425,10 @@ def _step_toward(view: CombatView, target: CombatantView, reach_ft: int) -> Opti
+     if budget <= 0:
+         return None
+     occupied = _occupied_cells(view) - {view.actor_cell}
++    if view.blocking or view.difficult:
++        return _terrain_step_toward(
++            view, target, reach_ft, occupied, set(view.blocking), set(view.difficult)
++        )
+     reach = combat_grid.reachable(view.actor_cell, budget, occupied, view.grid_width, view.grid_height)
+     if not reach:
+         return None
+@@ -1027,9 +1031,8 @@ def _pick_action_tactical(actor: "Character", view: CombatView) -> Optional[Inte
+                     note=f"tactical-v2 flank move to {cell} on {target.name} (completes a flank)",
+                 )
+ 
+-    # T4 — Terrain-aware close-the-distance. When walls/difficult terrain are present, greedy's
+-    # _step_toward (which routes on OPEN floor only) can pick a cell it must cross a wall/difficult
+-    # ground to reach. Here we route with the SAME impassable/difficult Dijkstra the engine uses:
++    # T4 — Terrain-aware close-the-distance, shared with greedy-v1's _step_toward.
++    # Route with the SAME impassable/difficult Dijkstra the engine uses:
+     # among reachable cells, minimize (distance-to-target, ROUTED move cost, cell) — so a same-distance
+     # CLEAR route beats one through difficult terrain, and no wall is crossed. We only OVERRIDE greedy
+     # when terrain actually exists (blocking or difficult non-empty); on open floor we return None and
+@@ -1124,7 +1127,8 @@ def pick_action(
+     read-only CombatView). Returns an Intent; the loop is the sole writer that applies it.
+ 
+     `policy` selects the decision layer (additive; an unknown policy falls back to greedy-v1):
+-      * "greedy-v1" (default) — the EV policy above, byte-identical to today.
++      * "greedy-v1" (default) — the EV policy above, with terrain-aware movement;
++        open-floor movement retains its original tie-breaks.
+       * "tactical-v2" (#1255 / grid-461 PR-D) — when the fight is ON THE GRID, a positioning pass
+         (_pick_action_tactical) runs FIRST for OFFENCE only: prefer an AoE catching ≥2 foes and no
+         allies; respect cover (skip total-cover, discount partial); seek a flank when moving to melee;
+@@ -1155,14 +1159,30 @@ def pick_action(
+             if threat is not None and view.grid_enabled and view.actor_cell is not None:
+                 budget = combat_grid.movement_budget_cells(view.speed, view.cell_size, view.dashed)
+                 occupied = _occupied_cells(view) - {view.actor_cell}
++                blocking, difficult = set(view.blocking), set(view.difficult)
+                 reach = combat_grid.reachable(
+-                    view.actor_cell, budget, occupied, view.grid_width, view.grid_height
++                    view.actor_cell, budget, occupied, view.grid_width, view.grid_height,
++                    impassable=blocking, difficult=difficult,
+                 )
+                 if reach and threat.cell is not None:
++                    def _flee_cost(cell: tuple[int, int]) -> int:
++                        # Preserve the original open-floor tie-break; on terrain, prefer
++                        # the cheaper route among equally distant retreat destinations.
++                        if not (blocking or difficult):
++                            return 0
++                        route = combat_grid.shortest_path(
++                            view.actor_cell, cell, occupied, view.grid_width, view.grid_height,
++                            impassable=blocking, difficult=difficult,
++                        )
++                        return combat_grid.path_cost_cells(
++                            view.actor_cell, cell, route, difficult=difficult
++                        )
++
+                     flee_cell = max(
+                         reach,
+                         key=lambda cell: (
+-                            combat_grid.distance_ft(cell, threat.cell, view.cell_size), cell
++                            combat_grid.distance_ft(cell, threat.cell, view.cell_size),
++                            -_flee_cost(cell), cell,
+                         ),
+                     )
+                     return Intent(
+diff --git a/servers/engine/tests/test_combat_tactical.py b/servers/engine/tests/test_combat_tactical.py
+index d52b4ba..369e15e 100644
+--- a/servers/engine/tests/test_combat_tactical.py
++++ b/servers/engine/tests/test_combat_tactical.py
+@@ -11,6 +11,9 @@ Pure + LLM-free: build a CombatView, assert the Intent. No campaign, no lock, no
+ from __future__ import annotations
+ 
+ import combat_ai
++import combat_grid
++import pytest
++from types import SimpleNamespace
+ from combat_ai import (
+     AoeSpellOption,
+     AttackOption,
+@@ -66,6 +69,74 @@ def _greedy(view) -> Intent:
+     return combat_ai.pick_action(actor=object(), combat_state=view, policy="greedy-v1")
+ 
+ 
++# Greedy movement must use the same terrain rules as the engine (#1269).
++@pytest.mark.parametrize("policy", ["greedy-v1", "unknown-policy"])
++@pytest.mark.parametrize("wall_rows", [range(1, 12), range(12), range(4, 7)])
++def test_greedy_approach_stays_reachable_with_wall(policy, wall_rows):
++    wall = {(5, y) for y in wall_rows}
++    v = _view([AttackOption(name="Claw", to_hit=5, damage_expr="1d6")],
++              [_foe("t", cell=(8, 5))], actor_cell=(2, 5), blocking=wall)
++    intent = combat_ai.pick_action(object(), v, policy=policy)
++    assert intent.kind == "move"
++    route = combat_grid.shortest_path((2, 5), intent.to_cell, {(8, 5)}, 12, 12,
++                                     impassable=wall)
++    assert route is not None
++    assert not wall.intersection(route)
++    assert combat_grid.path_cost_cells((2, 5), intent.to_cell, route) <= 6
++    if len(wall) > 3:
++        assert intent.to_cell[0] < 5
++    else:
++        assert intent.to_cell[0] > 5  # a short wall can be routed around this turn
++
++
++def test_greedy_approach_prefers_cheaper_equal_distance_cell():
++    v = _view([AttackOption(name="Claw", to_hit=5, damage_expr="1d6")],
++              [_foe("t", cell=(5, 0))], actor_cell=(0, 0),
++              difficult=[(4, 0)])
++    # (4, 0) is also within budget, but costs 5 cells rather than 4.
++    assert _greedy(v).to_cell == (4, 1)
++
++
++def test_greedy_approach_dodges_when_enclosed():
++    wall = {(x, y) for x in range(1, 4) for y in range(4, 7)} - {(2, 5)}
++    v = _view([AttackOption(name="Claw", to_hit=5, damage_expr="1d6")],
++              [_foe("t", cell=(8, 5))], actor_cell=(2, 5), blocking=wall)
++    assert _greedy(v).kind == "dodge"
++
++
++def test_greedy_retreat_stays_reachable_with_wall(monkeypatch):
++    monkeypatch.setattr(combat_ai, "RETREAT_FRACTION", 0.5)
++    wall = {(5, y) for y in range(12)}
++    v = _view([], [_foe("t", cell=(0, 5))], actor_cell=(2, 5), blocking=wall)
++    intent = combat_ai.pick_action(SimpleNamespace(max_hp=20, current_hp=1), v)
++    assert intent.kind == "disengage"
++    route = combat_grid.shortest_path((2, 5), intent.to_cell, {(0, 5)}, 12, 12,
++                                     impassable=wall)
++    assert route is not None
++    assert not wall.intersection(route)
++    assert combat_grid.path_cost_cells((2, 5), intent.to_cell, route) <= 6
++    assert intent.to_cell[0] < 5
++
++
++def test_greedy_retreat_prefers_cheaper_equal_distance_cell(monkeypatch):
++    monkeypatch.setattr(combat_ai, "RETREAT_FRACTION", 0.5)
++    v = _view([], [_foe("t", cell=(0, 0))], actor_cell=(1, 0), speed=15,
++              w=4, h=3, difficult=[(3, 2)])
++    intent = combat_ai.pick_action(SimpleNamespace(max_hp=20, current_hp=1), v)
++    assert intent.kind == "disengage"
++    # (3, 2) is also within budget, but costs 3 cells rather than 2.
++    assert intent.to_cell == (3, 1)
++
++
++def test_greedy_open_floor_picks_preserved(monkeypatch):
++    v = _view([AttackOption(name="Claw", to_hit=5, damage_expr="1d6")],
++              [_foe("t", cell=(8, 5))], actor_cell=(2, 5))
++    assert _greedy(v).to_cell == (7, 4)
++    monkeypatch.setattr(combat_ai, "RETREAT_FRACTION", 0.5)
++    intent = combat_ai.pick_action(SimpleNamespace(max_hp=20, current_hp=1), v)
++    assert intent.to_cell == (0, 11)
++
++
+ # ── T1: AoE placement ────────────────────────────────────────────────────────────────
+ 
+ def test_aoe_preferred_when_two_foes_clump_no_ally_caught():

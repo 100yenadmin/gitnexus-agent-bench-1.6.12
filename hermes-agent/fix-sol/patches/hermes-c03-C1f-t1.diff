@@ -1,0 +1,198 @@
+diff --git a/gateway/run_adapters.py b/gateway/run_adapters.py
+index f280172e..509d91f8 100644
+--- a/gateway/run_adapters.py
++++ b/gateway/run_adapters.py
+@@ -822,7 +822,10 @@ class GatewayAdapterLifecycleMixin:
+                     )
+                     self._drop_from_reconnect_queue(platform, "adapter creation returned None")
+                     return
+-                # Unregistered plugin: keep it queued so it heals once the plugin registers.
++                # A failed load disposed its registry lease. Re-arm it explicitly at the watcher
++                # cadence; the next attempt's lookup imports it under the current profile's manager.
++                from hermes_cli.plugins import get_plugin_manager
++                get_plugin_manager().rearm_failed_platform(platform.value)
+                 backoff = self._bump_reconnect_backoff(
+                     platform, info, attempt, "adapter_unavailable", _adapter_unavailable_message(platform),
+                 )
+diff --git a/hermes_cli/plugins_loader.py b/hermes_cli/plugins_loader.py
+index a0d4422f..35109bed 100644
+--- a/hermes_cli/plugins_loader.py
++++ b/hermes_cli/plugins_loader.py
+@@ -265,6 +265,31 @@ class PluginLoaderMixin:
+             return
+         self._register_deferred_platform_tools(manifest, loaded)
+ 
++    def rearm_failed_platform(self, platform_name: str) -> bool:
++        """Re-publish a failed platform's loader; its next registry lookup retries the load.
++
++        Ordinary lookups remain one-shot. The reconnect watcher explicitly re-arms failures at
++        its backoff cadence, using this manager's immutable profile scope and ownership ledger.
++        """
++        from gateway.platform_registry import platform_registry
++
++        with self._discovery_lock, replacement_coordinator.transaction():
++            for plugin_key, loaded in self._plugins.items():
++                manifest = loaded.manifest
++                if (manifest.kind != "platform" or loaded.error is None or loaded.deferred
++                        or self._platform_name_from_manifest(manifest) != platform_name):
++                    continue
++                # Never displace another registration or re-arm an already pending loader.
++                if platform_registry.snapshot_registration(platform_name, scope=self.scope_key) != (None, None):
++                    return False
++                if not self._lease_deferred_platform(manifest, plugin_key):
++                    return False
++                loaded.error = None
++                loaded.enabled = True
++                loaded.deferred = True
++                return True
++        return False
++
+     @_serialized_replacement
+     def _lease_deferred_platform(self, manifest: PluginManifest, lookup_key: str) -> bool:
+         """Publish the deferred loader as a ledger-owned lease; False when the registry refused it."""
+diff --git a/tests/gateway/test_startup_failed_platform_reports_degraded.py b/tests/gateway/test_startup_failed_platform_reports_degraded.py
+index 39caf8db..5cd13ed7 100644
+--- a/tests/gateway/test_startup_failed_platform_reports_degraded.py
++++ b/tests/gateway/test_startup_failed_platform_reports_degraded.py
+@@ -9,6 +9,7 @@ the same way.
+ """
+ import logging
+ import time
++from unittest.mock import Mock
+ 
+ import pytest
+ 
+@@ -220,3 +221,42 @@ async def test_adapterless_platform_heals_once_its_adapter_appears(monkeypatch,
+         assert "Retrying" not in status["error_message"]
+     finally:
+         await runner.stop()
++
++
++@pytest.mark.asyncio
++async def test_adapterless_platform_rearms_failed_plugin_on_each_retry(monkeypatch, tmp_path):
++    platform = Platform.DISCORD
++    adapters = {}
++    runner = _runner(
++        monkeypatch, tmp_path, {platform: PlatformConfig(enabled=True, token="***")},
++        lambda platform, platform_config: adapters.get(platform),
++    )
++    manager = Mock()
++    get_manager = Mock(return_value=manager)
++    try:
++        assert await runner.start() is True
++        # Patch after startup: the watcher must resolve the module attribute when it runs.
++        monkeypatch.setattr("hermes_cli.plugins.get_plugin_manager", get_manager)
++        await runner._reconnect_failed_platform(platform, time.monotonic() + 60)
++        manager.rearm_failed_platform.assert_called_once_with(platform.value)
++        get_manager.assert_called_once_with()
++        assert platform in runner._failed_platforms
++
++        healthy = _HealthyAdapter()
++        healthy.platform = platform
++
++        def rearm(name):
++            adapters[platform] = healthy
++            return True
++
++        manager.rearm_failed_platform.side_effect = rearm
++        await runner._reconnect_failed_platform(platform, time.monotonic() + 3600)
++        assert manager.rearm_failed_platform.call_count == 2
++        assert platform in runner._failed_platforms
++        assert platform not in runner.adapters
++        await runner._reconnect_failed_platform(platform, time.monotonic() + 7200)
++        assert runner.adapters[platform] is healthy
++        assert runner._failed_platforms == {}
++        assert manager.rearm_failed_platform.call_count == 2
++    finally:
++        await runner.stop()
+diff --git a/tests/hermes_cli/test_failed_platform_rearm.py b/tests/hermes_cli/test_failed_platform_rearm.py
+new file mode 100644
+index 00000000..89dc8dd1
+--- /dev/null
++++ b/tests/hermes_cli/test_failed_platform_rearm.py
+@@ -0,0 +1,85 @@
++"""Failed deferred platform imports retry only after an explicit re-arm."""
++
++import sys
++import threading
++import types
++
++import pytest
++
++from gateway.platform_registry import platform_registry
++from hermes_cli.plugins import PluginManager, PluginManifest
++from hermes_constants import reset_hermes_home_override, set_hermes_home_override
++
++
++@pytest.mark.parametrize("failure", ["exception", "deadline"])
++def test_failed_platform_rearms_once_and_loads_on_next_lookup(tmp_path, monkeypatch, failure):
++    probe = types.ModuleType("_platform_retry_probe")
++    probe.attempts = 0
++    probe.release = threading.Event()
++    probe.finished = threading.Event()
++    probe.failure = failure
++    monkeypatch.setitem(sys.modules, probe.__name__, probe)
++    monkeypatch.setattr("hermes_cli.plugins_loader._resolve_plugin_load_timeout", lambda: 2.0)
++    plugin_dir = tmp_path / "retryplat"
++    plugin_dir.mkdir()
++    (plugin_dir / "__init__.py").write_text(
++        "import _platform_retry_probe as probe\n"
++        "def register(ctx):\n"
++        "    probe.attempts += 1\n"
++        "    if probe.attempts == 1:\n"
++        "        if probe.failure == 'exception':\n"
++        "            raise TimeoutError()\n"
++        "        try:\n"
++        "            probe.release.wait()\n"
++        "            ctx.register_platform(name='retryplat', label='Abandoned',\n"
++        "                adapter_factory=lambda config: object(), check_fn=lambda: True)\n"
++        "        finally:\n"
++        "            probe.finished.set()\n"
++        "        return\n"
++        "    ctx.register_platform(name='retryplat', label='Recovered',\n"
++        "        adapter_factory=lambda config: object(), check_fn=lambda: True)\n",
++        encoding="utf-8",
++    )
++    manifest = PluginManifest(
++        name="retryplat-platform", key="platforms/retryplat", kind="platform",
++        source="bundled", path=str(plugin_dir),
++    )
++    manager = PluginManager()
++    try:
++        assert manager.rearm_failed_platform("missing") is False
++        manager._register_deferred_platform(manifest)
++        assert manager.rearm_failed_platform("retryplat") is False
++        assert platform_registry.get("retryplat") is None
++        assert manager._plugins[manifest.key].error is not None
++        assert platform_registry.get("retryplat") is None
++        assert probe.attempts == 1
++
++        other_home = tmp_path / "other-profile"
++        assert PluginManager(scope_key=str(other_home)).rearm_failed_platform("retryplat") is False
++        token = set_hermes_home_override(other_home)
++        try:
++            assert manager.rearm_failed_platform("retryplat") is True
++            assert platform_registry.get("retryplat") is None  # no registration leaked to this profile
++        finally:
++            reset_hermes_home_override(token)
++        assert probe.attempts == 1  # re-arming does not run plugin code
++        assert manager.rearm_failed_platform("retryplat") is False
++        entry = platform_registry.get("retryplat")
++        assert entry is not None and entry.label == "Recovered"
++        assert probe.attempts == 2
++        assert manager.rearm_failed_platform("retryplat") is False
++        assert platform_registry.get("retryplat") is entry
++
++        # An abandoned deadline worker cannot overwrite the recovered registration.
++        if failure == "deadline":
++            probe.release.set()
++            assert probe.finished.wait(2)
++            assert platform_registry.get("retryplat") is entry
++        manager.unload(manifest)
++        assert platform_registry.get("retryplat") is None
++        assert manager.rearm_failed_platform("retryplat") is False
++    finally:
++        probe.release.set()
++        if failure == "deadline" and probe.attempts:
++            probe.finished.wait(2)
++        manager.unload(manifest)

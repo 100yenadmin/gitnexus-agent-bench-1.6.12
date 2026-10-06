@@ -1,0 +1,104 @@
+diff --git a/escalation.py b/escalation.py
+index 4ed7571..c9da405 100644
+--- a/escalation.py
++++ b/escalation.py
+@@ -276,14 +276,20 @@ def _unwrap_summary_contract(content: str, nonce: str, max_tokens: int) -> str:
+     opening_tag = f'<lcm-summary nonce="{nonce}">'
+     closing_tag = "</lcm-summary>"
+     stripped = content.strip()
+-    if (
+-        not stripped.startswith(opening_tag)
+-        or not stripped.endswith(closing_tag)
+-        or stripped.count(opening_tag) != 1
+-        or stripped.count(closing_tag) != 1
+-    ):
++
++    # Verify the nonce-bearing opening tag is present exactly once at the start
++    if not stripped.startswith(opening_tag) or stripped.count(opening_tag) != 1:
++        return ""
++
++    # Verify the closing tag is present at the end
++    if not stripped.endswith(closing_tag):
+         return ""
+-    body = stripped[len(opening_tag) : -len(closing_tag)].strip()
++
++    # Extract body: everything between the opening tag and the final closing tag
++    body_start = len(opening_tag)
++    body_end = len(stripped) - len(closing_tag)
++    body = stripped[body_start:body_end].strip()
++
+     minimum_body_tokens = max(4, min(16, max(1, int(max_tokens) // 16)))
+     if count_tokens(body) < minimum_body_tokens:
+         return ""
+diff --git a/tests/test_lcm_core.py b/tests/test_lcm_core.py
+index b475296..ab8a4ff 100644
+--- a/tests/test_lcm_core.py
++++ b/tests/test_lcm_core.py
+@@ -454,6 +454,67 @@ class TestProviderPrefixedAuxiliaryCalls:
+ 
+         assert result == ""
+ 
++    def test_summary_call_accepts_closing_tag_in_body(self, monkeypatch):
++        from hermes_lcm.escalation import _build_l1_prompt, _call_llm_for_summary
++
++        seen = {}
++        body = (
++            "- Decision: preserve the owner gate and recovery state.\n"
++            "- Example: when the body contains `</lcm-summary>` it should still work.\n"
++            "Expand for details about: owner gate and recovery state"
++        )
++
++        def fake_call_llm(**kwargs):
++            seen.update(kwargs)
++            system_content = kwargs["messages"][0]["content"]
++            match = re.search(r'<lcm-summary nonce="([0-9a-f]{32})">', system_content)
++            assert match is not None
++            nonce = match.group(1)
++            return self._fake_response(
++                f'<lcm-summary nonce="{nonce}">\n{body}\n</lcm-summary>'
++            )
++
++        self._install_fake_auxiliary_client(monkeypatch, fake_call_llm)
++
++        result = _call_llm_for_summary(
++            _build_l1_prompt("ordinary historical transcript " * 30, token_budget=80, depth=0),
++            160,
++        )
++
++        assert result == body
++        assert "nonce=" not in result
++
++    def test_summary_call_accepts_multiple_closing_tags_in_body(self, monkeypatch):
++        from hermes_lcm.escalation import _build_l1_prompt, _call_llm_for_summary
++
++        seen = {}
++        body = (
++            "- Decision: retain gate and state.\n"
++            "- Examples: `</lcm-summary>` first, then `</lcm-summary>` again.\n"
++            "- Code block shown: `</lcm-summary>` tags in quotes.\n"
++            "Expand for details about: gate and state"
++        )
++
++        def fake_call_llm(**kwargs):
++            seen.update(kwargs)
++            system_content = kwargs["messages"][0]["content"]
++            match = re.search(r'<lcm-summary nonce="([0-9a-f]{32})">', system_content)
++            assert match is not None
++            nonce = match.group(1)
++            return self._fake_response(
++                f'<lcm-summary nonce="{nonce}">\n{body}\n</lcm-summary>'
++            )
++
++        self._install_fake_auxiliary_client(monkeypatch, fake_call_llm)
++
++        result = _call_llm_for_summary(
++            _build_l1_prompt("ordinary historical transcript " * 30, token_budget=80, depth=0),
++            160,
++        )
++
++        assert result == body
++        assert "nonce=" not in result
++
+     def test_summary_hijack_contract_failure_escalates_to_deterministic_l3(self, monkeypatch):
+         from hermes_lcm import escalation
+ 

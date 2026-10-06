@@ -1,0 +1,100 @@
+{
+ "locations": [
+  {
+   "path": "agent/context_references.py",
+   "line": 650
+  },
+  {
+   "path": "agent/curator_backup.py",
+   "line": 492
+  },
+  {
+   "path": "hermes_cli/update_cmd_maint.py",
+   "line": 760
+  },
+  {
+   "path": "hermes_cli/kanban_boards.py",
+   "line": 174
+  },
+  {
+   "path": "tools/checkpoint_maintenance.py",
+   "line": 461
+  },
+  {
+   "path": "hermes_cli/backup.py",
+   "line": 657
+  },
+  {
+   "path": "hermes_cli/backup.py",
+   "line": 658
+  },
+  {
+   "path": "hermes_cli/backup.py",
+   "line": 1253
+  },
+  {
+   "path": "hermes_cli/doctor_platform.py",
+   "line": 97
+  },
+  {
+   "path": "hermes_cli/claw.py",
+   "line": 380
+  },
+  {
+   "path": "hermes_cli/checkpoints.py",
+   "line": 35
+  },
+  {
+   "path": "hermes_cli/checkpoints.py",
+   "line": 36
+  },
+  {
+   "path": "hermes_cli/checkpoints.py",
+   "line": 37
+  },
+  {
+   "path": "hermes_cli/checkpoints.py",
+   "line": 63
+  },
+  {
+   "path": "hermes_cli/checkpoints.py",
+   "line": 117
+  },
+  {
+   "path": "hermes_cli/checkpoints.py",
+   "line": 147
+  },
+  {
+   "path": "hermes_cli/checkpoints.py",
+   "line": 157
+  },
+  {
+   "path": "hermes_cli/checkpoints.py",
+   "line": 173
+  },
+  {
+   "path": "hermes_cli/checkpoints.py",
+   "line": 183
+  },
+  {
+   "path": "hermes_cli/doctor_state.py",
+   "line": 64
+  },
+  {
+   "path": "hermes_cli/doctor_state.py",
+   "line": 67
+  },
+  {
+   "path": "hermes_cli/doctor_state.py",
+   "line": 104
+  },
+  {
+   "path": "hermes_cli/doctor_state.py",
+   "line": 263
+  },
+  {
+   "path": "hermes_cli/doctor_state.py",
+   "line": 267
+  }
+ ]
+}

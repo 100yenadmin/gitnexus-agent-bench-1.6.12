@@ -1,0 +1,1150 @@
+[
+ {
+  "name": "close",
+  "cls": "SyncCsvWriter",
+  "file": "gitnexus/src/core/lbug/sync-csv-writer.ts",
+  "line": 97,
+  "newName": "closeWriter",
+  "baseline_errors": 1144,
+  "refs": 6,
+  "v2_target_idents": 7,
+  "v2_namesake_idents": 356,
+  "rename_locations": 7,
+  "rename_code_locations": 7,
+  "jsdoc_locations": 0,
+  "aliased_locations": 0,
+  "old_idents": 363,
+  "namesake_idents": 356,
+  "new_idents_at_base": 0,
+  "files": 3,
+  "locations": [
+   {
+    "file": "gitnexus/src/core/lbug/sync-csv-writer.ts",
+    "line": 97,
+    "key": "gitnexus/src/core/lbug/sync-csv-writer.ts:4133",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/lbug/pdg-emit-sink.ts",
+    "line": 222,
+    "key": "gitnexus/src/core/lbug/pdg-emit-sink.ts:10170",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/lbug/pdg-emit-sink.ts",
+    "line": 232,
+    "key": "gitnexus/src/core/lbug/pdg-emit-sink.ts:10549",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/lbug/pdg-emit-sink.ts",
+    "line": 262,
+    "key": "gitnexus/src/core/lbug/pdg-emit-sink.ts:11624",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/lbug/pdg-emit-sink.ts",
+    "line": 268,
+    "key": "gitnexus/src/core/lbug/pdg-emit-sink.ts:11757",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/lbug/graph-emit-sink.ts",
+    "line": 516,
+    "key": "gitnexus/src/core/lbug/graph-emit-sink.ts:23850",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/lbug/graph-emit-sink.ts",
+    "line": 544,
+    "key": "gitnexus/src/core/lbug/graph-emit-sink.ts:24941",
+    "prefix": "",
+    "suffix": ""
+   }
+  ]
+ },
+ {
+  "name": "resolve",
+  "cls": "ScopeTreeHarvester",
+  "file": "gitnexus/src/core/ingestion/cfg/visitors/scope-tree-harvest.ts",
+  "line": 123,
+  "newName": "resolveBinding",
+  "baseline_errors": 1144,
+  "refs": 15,
+  "v2_target_idents": 16,
+  "v2_namesake_idents": 1148,
+  "rename_locations": 16,
+  "rename_code_locations": 16,
+  "jsdoc_locations": 0,
+  "aliased_locations": 0,
+  "old_idents": 1164,
+  "namesake_idents": 1148,
+  "new_idents_at_base": 0,
+  "files": 5,
+  "locations": [
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/scope-tree-harvest.ts",
+    "line": 123,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/scope-tree-harvest.ts:5302",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/scope-tree-harvest.ts",
+    "line": 154,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/scope-tree-harvest.ts:6380",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/scope-tree-harvest.ts",
+    "line": 155,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/scope-tree-harvest.ts:6425",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/scope-tree-harvest.ts",
+    "line": 159,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/scope-tree-harvest.ts:6538",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/java-harvest.ts",
+    "line": 437,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/java-harvest.ts:18588",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/java-harvest.ts",
+    "line": 511,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/java-harvest.ts:21494",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/go-harvest.ts",
+    "line": 350,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/go-harvest.ts:14552",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/go-harvest.ts",
+    "line": 351,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/go-harvest.ts:14597",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/go-harvest.ts",
+    "line": 357,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/go-harvest.ts:14827",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/go-harvest.ts",
+    "line": 560,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/go-harvest.ts:23093",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/go-harvest.ts",
+    "line": 585,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/go-harvest.ts:24133",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/go-harvest.ts",
+    "line": 650,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/go-harvest.ts:26780",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/csharp-harvest.ts",
+    "line": 480,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/csharp-harvest.ts:20416",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/csharp-harvest.ts",
+    "line": 557,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/csharp-harvest.ts:23580",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/c-cpp-harvest.ts",
+    "line": 474,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/c-cpp-harvest.ts:20423",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/c-cpp-harvest.ts",
+    "line": 537,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/c-cpp-harvest.ts:22979",
+    "prefix": "",
+    "suffix": ""
+   }
+  ]
+ },
+ {
+  "name": "declare",
+  "cls": "ScopeTreeHarvester",
+  "file": "gitnexus/src/core/ingestion/cfg/visitors/scope-tree-harvest.ts",
+  "line": 102,
+  "newName": "declareBinding",
+  "baseline_errors": 1144,
+  "refs": 26,
+  "v2_target_idents": 27,
+  "v2_namesake_idents": 68,
+  "rename_locations": 27,
+  "rename_code_locations": 27,
+  "jsdoc_locations": 0,
+  "aliased_locations": 0,
+  "old_idents": 95,
+  "namesake_idents": 68,
+  "new_idents_at_base": 0,
+  "files": 5,
+  "locations": [
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/scope-tree-harvest.ts",
+    "line": 102,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/scope-tree-harvest.ts:4535",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/java-harvest.ts",
+    "line": 101,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/java-harvest.ts:4824",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/java-harvest.ts",
+    "line": 108,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/java-harvest.ts:5189",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/java-harvest.ts",
+    "line": 117,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/java-harvest.ts:5497",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/java-harvest.ts",
+    "line": 148,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/java-harvest.ts:6666",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/java-harvest.ts",
+    "line": 154,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/java-harvest.ts:6897",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/java-harvest.ts",
+    "line": 160,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/java-harvest.ts:7152",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/java-harvest.ts",
+    "line": 179,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/java-harvest.ts:7777",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/csharp-harvest.ts",
+    "line": 105,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/csharp-harvest.ts:4889",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/csharp-harvest.ts",
+    "line": 112,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/csharp-harvest.ts:5153",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/csharp-harvest.ts",
+    "line": 149,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/csharp-harvest.ts:6629",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/csharp-harvest.ts",
+    "line": 155,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/csharp-harvest.ts:6873",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/csharp-harvest.ts",
+    "line": 163,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/csharp-harvest.ts:7261",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/csharp-harvest.ts",
+    "line": 183,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/csharp-harvest.ts:7888",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/csharp-harvest.ts",
+    "line": 197,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/csharp-harvest.ts:8488",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/csharp-harvest.ts",
+    "line": 203,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/csharp-harvest.ts:8747",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/c-cpp-harvest.ts",
+    "line": 133,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/c-cpp-harvest.ts:6254",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/c-cpp-harvest.ts",
+    "line": 168,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/c-cpp-harvest.ts:7415",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/c-cpp-harvest.ts",
+    "line": 178,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/c-cpp-harvest.ts:7868",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/c-cpp-harvest.ts",
+    "line": 228,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/c-cpp-harvest.ts:9687",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/c-cpp-harvest.ts",
+    "line": 231,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/c-cpp-harvest.ts:9820",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/c-cpp-harvest.ts",
+    "line": 243,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/c-cpp-harvest.ts:10333",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/go-harvest.ts",
+    "line": 115,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/go-harvest.ts:5883",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/go-harvest.ts",
+    "line": 135,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/go-harvest.ts:6720",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/go-harvest.ts",
+    "line": 150,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/go-harvest.ts:7327",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/go-harvest.ts",
+    "line": 214,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/go-harvest.ts:9548",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/go-harvest.ts",
+    "line": 226,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/go-harvest.ts:10099",
+    "prefix": "",
+    "suffix": ""
+   }
+  ]
+ },
+ {
+  "name": "drainFinalizerPending",
+  "cls": null,
+  "file": "gitnexus/src/core/ingestion/cfg/control-flow-context.ts",
+  "line": 220,
+  "newName": "flushFinalizerPending",
+  "baseline_errors": 1144,
+  "refs": 27,
+  "v2_target_idents": 26,
+  "v2_namesake_idents": 0,
+  "rename_locations": 28,
+  "rename_code_locations": 26,
+  "jsdoc_locations": 2,
+  "aliased_locations": 0,
+  "old_idents": 26,
+  "namesake_idents": 0,
+  "new_idents_at_base": 0,
+  "files": 11,
+  "locations": [
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/control-flow-context.ts",
+    "line": 189,
+    "key": "gitnexus/src/core/ingestion/cfg/control-flow-context.ts:7436",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/control-flow-context.ts",
+    "line": 220,
+    "key": "gitnexus/src/core/ingestion/cfg/control-flow-context.ts:8576",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/typescript.ts",
+    "line": 64,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/typescript.ts:3971",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/typescript.ts",
+    "line": 684,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/typescript.ts:28524",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/python.ts",
+    "line": 101,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/python.ts:6408",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/python.ts",
+    "line": 516,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/python.ts:21455",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/python.ts",
+    "line": 632,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/python.ts:26629",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/java.ts",
+    "line": 99,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/java.ts:6021",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/java.ts",
+    "line": 963,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/java.ts:39402",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/java.ts",
+    "line": 967,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/java.ts:39544",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/java.ts",
+    "line": 1029,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/java.ts:41715",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/kotlin.ts",
+    "line": 119,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/kotlin.ts:7561",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/kotlin.ts",
+    "line": 939,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/kotlin.ts:40398",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/go.ts",
+    "line": 106,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/go.ts:6846",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/go.ts",
+    "line": 459,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/go.ts:20446",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/go.ts",
+    "line": 472,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/go.ts:21280",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/csharp.ts",
+    "line": 85,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/csharp.ts:5152",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/csharp.ts",
+    "line": 916,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/csharp.ts:37465",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/csharp.ts",
+    "line": 991,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/csharp.ts:40478",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/csharp.ts",
+    "line": 1055,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/csharp.ts:42647",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/php.ts",
+    "line": 94,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/php.ts:5940",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/php.ts",
+    "line": 900,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/php.ts:36161",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/ruby.ts",
+    "line": 110,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/ruby.ts:7263",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/ruby.ts",
+    "line": 904,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/ruby.ts:37726",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/swift.ts",
+    "line": 113,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/swift.ts:7634",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/swift.ts",
+    "line": 947,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/swift.ts:40876",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/dart.ts",
+    "line": 117,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/dart.ts:7748",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/dart.ts",
+    "line": 947,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/dart.ts:41338",
+    "prefix": "",
+    "suffix": ""
+   }
+  ]
+ },
+ {
+  "name": "getPhaseOutput",
+  "cls": null,
+  "file": "gitnexus/src/core/ingestion/pipeline-phases/types.ts",
+  "line": 99,
+  "newName": "readPhaseOutput",
+  "baseline_errors": 1144,
+  "refs": 57,
+  "v2_target_idents": 58,
+  "v2_namesake_idents": 0,
+  "rename_locations": 51,
+  "rename_code_locations": 51,
+  "jsdoc_locations": 0,
+  "aliased_locations": 1,
+  "old_idents": 58,
+  "namesake_idents": 7,
+  "new_idents_at_base": 0,
+  "files": 20,
+  "locations": [
+   {
+    "file": "gitnexus/src/core/ingestion/pipeline-phases/types.ts",
+    "line": 99,
+    "key": "gitnexus/src/core/ingestion/pipeline-phases/types.ts:3978",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/pipeline-phases/structure.ts",
+    "line": 12,
+    "key": "gitnexus/src/core/ingestion/pipeline-phases/structure.ts:300",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/pipeline-phases/structure.ts",
+    "line": 38,
+    "key": "gitnexus/src/core/ingestion/pipeline-phases/structure.ts:1263",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/pipeline-phases/markdown.ts",
+    "line": 12,
+    "key": "gitnexus/src/core/ingestion/pipeline-phases/markdown.ts:333",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/pipeline-phases/markdown.ts",
+    "line": 34,
+    "key": "gitnexus/src/core/ingestion/pipeline-phases/markdown.ts:1064",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/pipeline-phases/cobol.ts",
+    "line": 12,
+    "key": "gitnexus/src/core/ingestion/pipeline-phases/cobol.ts:349",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/pipeline-phases/cobol.ts",
+    "line": 33,
+    "key": "gitnexus/src/core/ingestion/pipeline-phases/cobol.ts:1020",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/pipeline-phases/parse.ts",
+    "line": 20,
+    "key": "gitnexus/src/core/ingestion/pipeline-phases/parse.ts:865",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/pipeline-phases/parse.ts",
+    "line": 128,
+    "key": "gitnexus/src/core/ingestion/pipeline-phases/parse.ts:6200",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/pipeline-phases/routes.ts",
+    "line": 15,
+    "key": "gitnexus/src/core/ingestion/pipeline-phases/routes.ts:533",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/pipeline-phases/routes.ts",
+    "line": 192,
+    "key": "gitnexus/src/core/ingestion/pipeline-phases/routes.ts:6543",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/pipeline-phases/tools.ts",
+    "line": 13,
+    "key": "gitnexus/src/core/ingestion/pipeline-phases/tools.ts:328",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/pipeline-phases/tools.ts",
+    "line": 39,
+    "key": "gitnexus/src/core/ingestion/pipeline-phases/tools.ts:1034",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/pipeline-phases/orm.ts",
+    "line": 12,
+    "key": "gitnexus/src/core/ingestion/pipeline-phases/orm.ts:299",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/pipeline-phases/orm.ts",
+    "line": 33,
+    "key": "gitnexus/src/core/ingestion/pipeline-phases/orm.ts:964",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/pipeline-phases/cross-file.ts",
+    "line": 35,
+    "key": "gitnexus/src/core/ingestion/pipeline-phases/cross-file.ts:1813",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/pipeline-phases/cross-file.ts",
+    "line": 53,
+    "key": "gitnexus/src/core/ingestion/pipeline-phases/cross-file.ts:2421",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/scope-resolution/pipeline/phase.ts",
+    "line": 28,
+    "key": "gitnexus/src/core/ingestion/scope-resolution/pipeline/phase.ts:1145",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/scope-resolution/pipeline/phase.ts",
+    "line": 179,
+    "key": "gitnexus/src/core/ingestion/scope-resolution/pipeline/phase.ts:8334",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/scope-resolution/pipeline/phase.ts",
+    "line": 180,
+    "key": "gitnexus/src/core/ingestion/scope-resolution/pipeline/phase.ts:8410",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/pipeline-phases/spring-config.ts",
+    "line": 22,
+    "key": "gitnexus/src/core/ingestion/pipeline-phases/spring-config.ts:901",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/pipeline-phases/spring-config.ts",
+    "line": 519,
+    "key": "gitnexus/src/core/ingestion/pipeline-phases/spring-config.ts:17824",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/pipeline-phases/spring-destinations.ts",
+    "line": 97,
+    "key": "gitnexus/src/core/ingestion/pipeline-phases/spring-destinations.ts:5236",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/pipeline-phases/spring-destinations.ts",
+    "line": 530,
+    "key": "gitnexus/src/core/ingestion/pipeline-phases/spring-destinations.ts:24763",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/pipeline-phases/spring-auto-configuration.ts",
+    "line": 32,
+    "key": "gitnexus/src/core/ingestion/pipeline-phases/spring-auto-configuration.ts:1231",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/pipeline-phases/spring-auto-configuration.ts",
+    "line": 243,
+    "key": "gitnexus/src/core/ingestion/pipeline-phases/spring-auto-configuration.ts:8969",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/pipeline-phases/taint-summaries.ts",
+    "line": 21,
+    "key": "gitnexus/src/core/ingestion/pipeline-phases/taint-summaries.ts:905",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/pipeline-phases/taint-summaries.ts",
+    "line": 59,
+    "key": "gitnexus/src/core/ingestion/pipeline-phases/taint-summaries.ts:2166",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/pipeline-phases/call-summaries.ts",
+    "line": 21,
+    "key": "gitnexus/src/core/ingestion/pipeline-phases/call-summaries.ts:979",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/pipeline-phases/call-summaries.ts",
+    "line": 46,
+    "key": "gitnexus/src/core/ingestion/pipeline-phases/call-summaries.ts:1792",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/pipeline-phases/mro.ts",
+    "line": 13,
+    "key": "gitnexus/src/core/ingestion/pipeline-phases/mro.ts:388",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/pipeline-phases/mro.ts",
+    "line": 34,
+    "key": "gitnexus/src/core/ingestion/pipeline-phases/mro.ts:1041",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/pipeline-phases/communities.ts",
+    "line": 13,
+    "key": "gitnexus/src/core/ingestion/pipeline-phases/communities.ts:360",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/pipeline-phases/communities.ts",
+    "line": 34,
+    "key": "gitnexus/src/core/ingestion/pipeline-phases/communities.ts:1218",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/pipeline-phases/processes.ts",
+    "line": 15,
+    "key": "gitnexus/src/core/ingestion/pipeline-phases/processes.ts:609",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/pipeline-phases/processes.ts",
+    "line": 70,
+    "key": "gitnexus/src/core/ingestion/pipeline-phases/processes.ts:2883",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/pipeline-phases/processes.ts",
+    "line": 71,
+    "key": "gitnexus/src/core/ingestion/pipeline-phases/processes.ts:2967",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/pipeline-phases/processes.ts",
+    "line": 72,
+    "key": "gitnexus/src/core/ingestion/pipeline-phases/processes.ts:3053",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/pipeline-phases/processes.ts",
+    "line": 73,
+    "key": "gitnexus/src/core/ingestion/pipeline-phases/processes.ts:3124",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/pipeline-phases/processes.ts",
+    "line": 103,
+    "key": "gitnexus/src/core/ingestion/pipeline-phases/processes.ts:4496",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/pipeline-phases/index.ts",
+    "line": 47,
+    "key": "gitnexus/src/core/ingestion/pipeline-phases/index.ts:2095",
+    "prefix": "",
+    "suffix": " as getPhaseOutput"
+   },
+   {
+    "file": "gitnexus/test/unit/pipeline-runner.test.ts",
+    "line": 8,
+    "key": "gitnexus/test/unit/pipeline-runner.test.ts:263",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/test/unit/pipeline-runner.test.ts",
+    "line": 37,
+    "key": "gitnexus/test/unit/pipeline-runner.test.ts:1009",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/test/unit/pipeline-runner.test.ts",
+    "line": 47,
+    "key": "gitnexus/test/unit/pipeline-runner.test.ts:1243",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/test/unit/pipeline-runner.test.ts",
+    "line": 57,
+    "key": "gitnexus/test/unit/pipeline-runner.test.ts:1482",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/test/unit/pipeline-runner.test.ts",
+    "line": 58,
+    "key": "gitnexus/test/unit/pipeline-runner.test.ts:1535",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/test/unit/pipeline-runner.test.ts",
+    "line": 256,
+    "key": "gitnexus/test/unit/pipeline-runner.test.ts:7766",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/test/unit/pipeline-runner.test.ts",
+    "line": 412,
+    "key": "gitnexus/test/unit/pipeline-runner.test.ts:12282",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/test/unit/pipeline-runner.test.ts",
+    "line": 418,
+    "key": "gitnexus/test/unit/pipeline-runner.test.ts:12455",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/test/unit/pipeline-runner.test.ts",
+    "line": 480,
+    "key": "gitnexus/test/unit/pipeline-runner.test.ts:14378",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/test/unit/pipeline-runner.test.ts",
+    "line": 487,
+    "key": "gitnexus/test/unit/pipeline-runner.test.ts:14586",
+    "prefix": "",
+    "suffix": ""
+   }
+  ]
+ },
+ {
+  "name": "facts",
+  "cls": "JavaHarvester",
+  "file": "gitnexus/src/core/ingestion/cfg/visitors/java-harvest.ts",
+  "line": 186,
+  "newName": "collectFacts",
+  "baseline_errors": 1144,
+  "refs": 16,
+  "v2_target_idents": 16,
+  "v2_namesake_idents": 834,
+  "rename_locations": 17,
+  "rename_code_locations": 16,
+  "jsdoc_locations": 1,
+  "aliased_locations": 0,
+  "old_idents": 850,
+  "namesake_idents": 834,
+  "new_idents_at_base": 0,
+  "files": 2,
+  "locations": [
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/java-harvest.ts",
+    "line": 186,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/java-harvest.ts:7979",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/java-harvest.ts",
+    "line": 203,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/java-harvest.ts:8736",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/java.ts",
+    "line": 215,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/java.ts:10281",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/java.ts",
+    "line": 226,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/java.ts:10646",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/java.ts",
+    "line": 308,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/java.ts:13602",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/java.ts",
+    "line": 331,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/java.ts:14522",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/java.ts",
+    "line": 351,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/java.ts:15048",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/java.ts",
+    "line": 372,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/java.ts:15930",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/java.ts",
+    "line": 466,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/java.ts:19623",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/java.ts",
+    "line": 510,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/java.ts:21112",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/java.ts",
+    "line": 538,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/java.ts:22106",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/java.ts",
+    "line": 564,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/java.ts:23108",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/java.ts",
+    "line": 575,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/java.ts:23418",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/java.ts",
+    "line": 602,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/java.ts:24331",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/java.ts",
+    "line": 652,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/java.ts:26231",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/java.ts",
+    "line": 686,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/java.ts:27589",
+    "prefix": "",
+    "suffix": ""
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/java.ts",
+    "line": 1073,
+    "key": "gitnexus/src/core/ingestion/cfg/visitors/java.ts:43583",
+    "prefix": "",
+    "suffix": ""
+   }
+  ]
+ }
+]

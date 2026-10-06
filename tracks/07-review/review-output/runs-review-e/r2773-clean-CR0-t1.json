@@ -1,0 +1,30 @@
+{
+ "schema_version": 1,
+ "verdict": "request_changes",
+ "findings": [
+  {
+   "id": "fts-availability-global-pool-contamination",
+   "severity": "medium",
+   "path": "gitnexus/src/core/search/bm25-index.ts",
+   "line": 137,
+   "end_line": 138,
+   "category": "correctness",
+   "scenario": "A multi-repository MCP process has a warm pool A with working FTS. A later LOAD attempt for another database B fails, for example after the extension file becomes unavailable. Queries against A now skip all keyword searches even though its already-loaded extension and indexes still work.",
+   "evidence": "getExtensionCapabilities() reads a process-wide singleton, and ExtensionManager.markUnavailable overwrites the same fts entry for every database. pool-adapter.ts retains ftsLoaded per shared Database and reuses unchanged warm pools without reloading. The new guard therefore applies B's failure to A. An in-memory probe using the actual ExtensionManager and searchFTSFromLbug source reproduced a valid keyword result with 20 executor calls at HEAD, versus empty results and zero executor calls with the local diff.",
+   "recommendation": "Gate queries on availability scoped to the target database/pool, or keep executing the target pool's FTS queries and classify its errors. Do not use the last process-wide LOAD outcome to disable other pools.",
+   "blocking": true
+  },
+  {
+   "id": "fts-missing-index-counted-as-success",
+   "severity": "medium",
+   "path": "gitnexus/src/core/lbug/lbug-adapter.ts",
+   "line": 3178,
+   "end_line": 3180,
+   "category": "correctness",
+   "scenario": "FTS is loaded but the configured indexes have not been built. A CLI/core search or HTTP /api/search request without repoId returns no keyword results while reporting FTS as available, hiding the degraded-search warning and repair guidance.",
+   "evidence": "queryFTS now converts the real missing-index Binder error into []. The no-repoId branch of searchFTSFromLbug increments queriesSucceeded for every resolved queryFTS call, so these failures make ftsAvailable true. /api/search only emits its warning when ftsAvailable is false. An in-memory probe of the actual adapter and search source with all queries throwing \"Prepare failed: Binder exception: Table File doesn't have an index with name file_fts.\" returned ftsAvailable:false at HEAD and ftsAvailable:true with the local diff.",
+   "recommendation": "Preserve the missing-index failure signal across queryFTS and its caller, for example by rethrowing and classifying benign missing-index errors in searchFTSFromLbug without incrementing queriesSucceeded. Add coverage that exercises the core adapter catch rather than mocking queryFTS.",
+   "blocking": true
+  }
+ ]
+}

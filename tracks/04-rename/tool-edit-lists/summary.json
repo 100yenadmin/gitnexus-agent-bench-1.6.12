@@ -1,0 +1,13 @@
+{
+ "targets": 6,
+ "ts_locs": 146,
+ "found": 138,
+ "missed": 8,
+ "extra_code": 9,
+ "extra_comment": 38,
+ "tool_edits": 185,
+ "targets_with_miss": 3,
+ "targets_with_comment_edits": 6,
+ "direct_pass": 2,
+ "direct_targets": 6
+}

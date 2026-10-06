@@ -1,0 +1,52 @@
+{
+ "lcmx-t02": {
+  "class": "trivial",
+  "notes": "1 source file (tools.py, 18 lines). Upstream hermes-lcm PR #442 recreated in lcm-x. Base failures are the reported AttributeError symptoms (behavioural), not missing symbols."
+ },
+ "lcmx-t03": {
+  "class": "trivial",
+  "notes": "1 source file (command.py, 14 lines). Oracle drives `/lcm embed backfill` via handle_lcm_command with a fake provider."
+ },
+ "lcmx-t04": {
+  "class": "trivial",
+  "notes": "1 source file (escalation.py, 9 lines). Oracle is the whole tests/test_lcm_core.py (328 tests, ~13s); 1 new test is red at base."
+ },
+ "worldos-t01": {
+  "class": "trivial",
+  "notes": "1 source file (servers/engine/combat_loop.py, 15 lines). Oracle runs from servers/engine via uv."
+ },
+ "worldos-i01": {
+  "class": "investigation",
+  "notes": "Fix is localized to servers/engine/combat_ai.py (51 lines) but needs combat_grid's terrain-aware reachable/route-cost API and _build_view's blocking/difficult sets."
+ },
+ "worldos-i02": {
+  "class": "investigation",
+  "notes": "Fix spans servers/engine/combat_grid.py + server.py (rest_blocked_cells, end_combat write-back). Only 2 of 42 oracle tests are red at base (the rest pin hardening)."
+ },
+ "lcmx-i01": {
+  "class": "investigation",
+  "notes": "Fix spans dag.py (new SummaryDAG.get_session_depths) + engine.py (_assemble_context/_maybe_condense call sites); the symptom is in engine assembly, the cause is the 1000-row default LIMIT in dag.get_session_nodes. Statement specifies the new method's interface because 1 hidden test calls it directly."
+ },
+ "lcmx-i03": {
+  "class": "investigation",
+  "notes": "Fix is two guarded writes in db_bootstrap.py (schema-version stamp) and store.py (legacy ingested_at backfill probe); the failure surfaces in copy.deepcopy(LCMEngine) -> MessageStore init -> versioned migrations. Oracle is the whole tests/test_lcm_core.py (346 tests; ~15s idle, ~70s under heavy machine load); exactly 1 test is red at base (database is locked)."
+ },
+ "worldos-c01": {
+  "class": "cross-module",
+  "notes": "Fix spans servers/engine/models.py, server.py, spells.py (+ qa/combat_smoke.py). Statement specifies the new Combat.action_purpose field and the ValueError message fragments the hidden tests match."
+ },
+ "worldos-c02": {
+  "class": "cross-module",
+  "notes": "Fix spans servers/engine/models.py, server.py, qa/assert_behavioral.py and qa/BEHAVIORAL_GATE_TAXONOMY.json. The regression command adds qa/test_assert_behavioral.py and qa/test_root_cause_analyzer.py (which enforces that every gate check is in the taxonomy JSON - a likely miss for agents). 5 of 7 base failures are AttributeError on the new Combat.pending_spell_attack, which the statement specifies.",
+  "regression_cmd": "uv run -q --directory servers/engine --group dev pytest -q -p no:cacheprovider tests ../../qa/test_assert_behavioral.py ../../qa/test_root_cause_analyzer.py",
+  "regression_log": "fix_regression_qa.log"
+ },
+ "lcmx-c01": {
+  "class": "cross-module",
+  "notes": "Fix spans fresh_tail.py (new tool_group_safe_end), compaction.py (_select_oldest_leaf_chunk) and engine.py (leaf-rescue fallback); small (+25/-3) but three modules. 9 of 14 base failures are ImportError of the new helper, whose name/location/semantics the statement specifies; 5 are behavioural. 6 oracle cases skip without a real Hermes runtime (hermes_cli/agent.agent_runtime_helpers not importable) in both base and fix."
+ },
+ "lcmx-c03": {
+  "class": "cross-module",
+  "notes": "Fix spans host_uid.py (namespaced lineage key), store.py (delete_session_messages purge) and command.py (/lcm doctor clean apply purge); also updates tests/test_host_uid_shadow.py for the tagged key (part of the oracle). Statement specifies the exact key format because hidden tests assert it."
+ }
+}

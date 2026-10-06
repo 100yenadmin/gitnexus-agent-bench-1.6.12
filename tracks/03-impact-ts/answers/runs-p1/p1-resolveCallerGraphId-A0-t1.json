@@ -1,0 +1,56 @@
+{
+ "locations": [
+  {
+   "path": "gitnexus/src/core/ingestion/frameworks/spring/dynamic-lookups.ts",
+   "line": 136
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/frameworks/spring/di-metadata.ts",
+   "line": 265
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/scope-resolution/graph-bridge/references-to-edges.ts",
+   "line": 116
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/scope-resolution/passes/free-call-fallback.ts",
+   "line": 704
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/frameworks/spring/non-http-handlers.ts",
+   "line": 135
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/scope-resolution/passes/callable-value-flow.ts",
+   "line": 1358
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/scope-resolution/graph-bridge/edges.ts",
+   "line": 146
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/scope-resolution/graph-bridge/edges.ts",
+   "line": 229
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/frameworks/spring/aop.ts",
+   "line": 233
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/languages/php/scope-resolver.ts",
+   "line": 329
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/scope-resolution/passes/unique-name-properties.ts",
+   "line": 494
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/scope-resolution/passes/return-shape-members.ts",
+   "line": 479
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/frameworks/spring/conditionals.ts",
+   "line": 245
+  }
+ ]
+}

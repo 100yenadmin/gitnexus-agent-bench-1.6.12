@@ -1,0 +1,367 @@
+diff --git a/command.py b/command.py
+index d1efa8a9..0a69f7d8 100644
+--- a/command.py
++++ b/command.py
+@@ -63,7 +63,7 @@ from .assertion_store import AssertionSchemaUnavailableError, AssertionStore
+ from . import rollup_builder
+ from .rollup_store import RollupStore
+ from .session_patterns import build_session_match_keys, matches_session_pattern
+-from .store import build_message_fts_spec, delete_message_relations
++from .store import build_message_fts_spec, delete_host_uid_bindings, delete_message_relations
+ from .survival_fit import SURVIVAL_FIT_COUNTER_KEY
+ from .host_uid import host_uid_doctor_lines
+ from .chunking import (
+@@ -2053,6 +2053,11 @@ def _delete_clean_candidates_atomically(engine, session_ids: set[str]) -> dict[s
+             f"SELECT 1 FROM {scope_table} AS scope "
+             "WHERE scope.session_id = messages.session_id)"
+         ))
++        delete_host_uid_bindings(conn, (
++            f"SELECT store_id FROM messages WHERE EXISTS ("
++            f"SELECT 1 FROM {scope_table} AS scope "
++            "WHERE scope.session_id = messages.session_id)"
++        ))
+         msg_cur = conn.execute(
+             f"DELETE FROM messages WHERE EXISTS ("
+             f"SELECT 1 FROM {scope_table} AS scope "
+diff --git a/docs/operator-guide.md b/docs/operator-guide.md
+index 45a04cd8..f22ae6b3 100644
+--- a/docs/operator-guide.md
++++ b/docs/operator-guide.md
+@@ -388,7 +388,7 @@ Useful environment variables:
+ | `LCM_CRITICAL_BUDGET_PRESSURE_RATIO` | `0.0` | Disabled at `0.0`; when set, permits critical-pressure bypasses for bounded deferred catch-up and cache-friendly follow-on condensation only |
+ | `LCM_SURVIVAL_FIT` | `true` | When compaction cannot bring the returned list under the model window (a publication failure, a sweep deadline, a lock), drop the oldest whole user turns from live context until it fits; an oversized newest turn gets a bounded projection. Nothing is deleted: the rows stay stored and reachable with `lcm_grep` / `lcm_load_session`. Logs `LCM survival fit applied`, warns the user once, and `/lcm doctor` reports `survival_fit` |
+ | `LCM_SURVIVAL_RESERVE` | `0.15` | Share of the model window the survival fit keeps free for the response and host overhead (the fit target is window x (1 - reserve), minus the observed host overhead) |
+-| `LCM_HOST_MESSAGE_UID` | `shadow` | `shadow`: on a host that sends `message_uid`, records the row each uid was bound to in the droppable `host_uid_bindings` table and counts agreement with the existing identity matching; ingest, replay and emission are unchanged, and `/lcm doctor` reports `host_uid_*` counts only. `off`: no capture, no table writes, no counts and no log line. `on` (reserved) and any unknown value behave as `shadow`; an unknown value also logs one warning |
++| `LCM_HOST_MESSAGE_UID` | `shadow` | `shadow`: on a host that sends `message_uid`, records the row each uid was bound to in the droppable `host_uid_bindings` table and counts agreement with the existing identity matching; ingest, replay and emission are unchanged, and `/lcm doctor` reports `host_uid_*` counts only. `off`: no capture, no table writes, no counts and no log line. `on` (reserved) and any unknown value behave as `shadow`; an unknown value also logs one warning. Bindings are deleted with their messages, and lineage keys are namespaced by Hermes home, so one database shared by several homes keeps them apart |
+ | `LCM_SUMMARY_MODEL` | auxiliary | Override summarization model |
+ | `LCM_SUMMARY_FALLBACK_MODELS` | empty | Comma-separated summarization models tried after `LCM_SUMMARY_MODEL` or the auxiliary task default fails |
+ | `LCM_SUMMARY_CIRCUIT_BREAKER_FAILURE_THRESHOLD` | `2` | Consecutive failed summarization calls before a route is skipped temporarily |
+diff --git a/host_uid.py b/host_uid.py
+index bd6f9ef6..b3131c91 100644
+--- a/host_uid.py
++++ b/host_uid.py
+@@ -3,10 +3,13 @@ each uid-bearing host dict gets one R3-3 class and the row #436 chose goes to th
+ table. Nothing feeds back into ingest, replay, emission or commit; every exception is caught, counted and fails
+ open. Event counter keys are ``[replay.]class.outcome[.reason]``; ``skipped.no_uid`` stays in memory, so a no-uid
+ host writes nothing. The shadow GATE is counted per binding in the table (``first_check`` / ``disagree_seen``),
+-so a replayed prefix never inflates it. ``LCM_HOST_MESSAGE_UID=off`` does nothing; ``on`` runs as ``shadow``."""
++so a replayed prefix never inflates it. ``LCM_HOST_MESSAGE_UID=off`` does nothing; ``on`` runs as ``shadow``.
++From the first release, a persisted lineage key is ``<home_tag>:<root>`` (#836): one database shared by several
++Hermes homes never mixes two profiles' roots of the same session id."""
+ from __future__ import annotations
+ 
+ import bisect
++import hashlib
+ import json
+ import logging
+ import os
+@@ -69,9 +72,10 @@ class HostUidShadowMixin:
+     """Mixed into LCMEngine; reads ``self._store``, ``_state_db_path`` and the reconcile identity helpers."""
+ 
+     def _host_uid_lineage_key(self, session_id=None) -> tuple:
+-        """R3-4: ``(root, None)`` by Hermes' own walk (``_session_turn_lease_key_on_conn``: up while the parent ended
+-        by compression and the row is no fork child), else ``(None, "read_error" | "unresolved")`` (no state.db,
+-        missing row, cycle, over 256 hops). Cached per (state.db, session id): a root, or a missing state.db."""
++        """R3-4: ``("<home_tag>:<root>", None)``, the root by Hermes' own walk (``_session_turn_lease_key_on_conn``:
++        up while the parent ended by compression and the row is no fork child), else ``(None, "read_error" |
++        "unresolved")`` (no state.db, missing row, cycle, over 256 hops). ``home_tag`` (#836) = 16 hex of the
++        sha256 of the resolved state.db path. Cached per (state.db, session id): a key, or a missing state.db."""
+         session_id = str(self._session_id if session_id is None else session_id or "")
+         cache = self.__dict__.setdefault("_host_uid_lineage_cache", {})
+         try:
+@@ -80,6 +84,9 @@ class HostUidShadowMixin:
+             if key in cache:
+                 return cache[key]
+             found = self._host_uid_read_lineage(path, session_id)
++            if found[0] is not None:  # a resolve error is a read error below, never an exception into ingest
++                tag = hashlib.sha256(str(path.resolve()).encode()).hexdigest()[:16]
++                found = (f"{tag}:{found[0]}", None)
+         except Exception as exc:  # host DB drift: no root, no binding; counted as an error
+             self._host_uid_read_error = exc
+             return None, "read_error"
+diff --git a/store.py b/store.py
+index e1c50c46..f1e5b804 100644
+--- a/store.py
++++ b/store.py
+@@ -277,6 +277,14 @@ def delete_message_relations(conn: sqlite3.Connection, rows_sql: str, args: tupl
+         )
+ 
+ 
++def delete_host_uid_bindings(conn: sqlite3.Connection, rows_sql: str, args: tuple = ()) -> None:
++    """#836: the ``host_uid_bindings`` of rows about to be deleted go with them, on the caller's connection and
++    transaction (an error rolls back with the delete): a reused store_id never inherits a stale uid binding.
++    The side table is created lazily; when it is absent there is nothing to purge and it is not created."""
++    if conn.execute("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'host_uid_bindings'").fetchone():
++        conn.execute(f"DELETE FROM host_uid_bindings WHERE store_id IN ({rows_sql})", args)
++
++
+ class MessageStore:
+     """SQLite-backed immutable message store."""
+ 
+@@ -585,6 +593,7 @@ class MessageStore:
+         """Delete all messages for a session. Returns count deleted."""
+         with self._write_lock:
+             delete_message_relations(self._conn, "SELECT store_id FROM messages WHERE session_id = ?", (session_id,))
++            delete_host_uid_bindings(self._conn, "SELECT store_id FROM messages WHERE session_id = ?", (session_id,))
+             cur = self._conn.execute(
+                 "DELETE FROM messages WHERE session_id = ?",
+                 (session_id,),
+diff --git a/tests/test_host_uid_hygiene.py b/tests/test_host_uid_hygiene.py
+new file mode 100644
+index 00000000..024dae91
+--- /dev/null
++++ b/tests/test_host_uid_hygiene.py
+@@ -0,0 +1,166 @@
++"""#836: host-uid shadow hygiene. Bindings go with their deleted rows on both message-delete paths, and the
++persisted lineage key is namespaced by the Hermes home (``<home_tag>:<root>``)."""
++
++from __future__ import annotations
++
++import re
++import sqlite3
++
++import pytest
++
++import hermes_lcm.command as command_mod
++from hermes_lcm.config import LCMConfig
++from hermes_lcm.engine import LCMEngine
++
++PAD = " alpha beta gamma delta" * 4
++
++
++@pytest.fixture(autouse=True)
++def _shadow(monkeypatch):
++    monkeypatch.delenv("LCM_HOST_MESSAGE_UID", raising=False)
++
++
++def _m(text: str, ts: float, uid: str, role: str = "user") -> dict:
++    return {"role": role, "content": text, "timestamp": ts, "message_uid": uid}
++
++
++def _state_db(home, sessions) -> None:
++    home.mkdir(parents=True, exist_ok=True)
++    conn = sqlite3.connect(home / "state.db")
++    conn.execute("CREATE TABLE IF NOT EXISTS sessions (id TEXT PRIMARY KEY, parent_session_id TEXT, end_reason TEXT, "
++                 "source TEXT, model_config TEXT)")
++    conn.executemany("INSERT OR REPLACE INTO sessions VALUES (?, ?, ?, NULL, NULL)", sessions)
++    conn.commit()
++    conn.close()
++
++
++def _engine(db, home, session: str = "S", conversation: str = "conv") -> LCMEngine:
++    engine = LCMEngine(config=LCMConfig(fresh_tail_count=2, leaf_chunk_tokens=1, database_path=str(db)),
++                       hermes_home=str(home))
++    engine.on_session_start(session, platform="cli", context_length=200_000, conversation_id=conversation)
++    return engine
++
++
++def _bindings(conn) -> list[tuple]:
++    if not conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='host_uid_bindings'").fetchone():
++        return []
++    return conn.execute("SELECT store_id, uid, lineage_key, kind FROM host_uid_bindings ORDER BY rowid").fetchall()
++
++
++def _ids(engine, session: str) -> set[int]:
++    return {int(row["store_id"]) for row in engine._store.get_session_messages(session)}
++
++
++# -- 1. purge on delete ---------------------------------------------------------------------------------
++
++def _two_sessions(tmp_path):
++    _state_db(tmp_path, [("S", None, None), ("T", None, None)])
++    other = _engine(tmp_path / "lcm.db", tmp_path, "T", "conv-t")
++    try:
++        other.ingest([_m("t one" + PAD, 1.0, "u-t1"), _m("t two" + PAD, 2.0, "u-t2")])
++    finally:
++        other.shutdown()
++    engine = _engine(tmp_path / "lcm.db", tmp_path)
++    engine.ingest([_m("s one" + PAD, 3.0, "u-s1"), _m("s two" + PAD, 4.0, "u-s2")])
++    return engine
++
++
++@pytest.mark.parametrize("path", ["delete_session_messages", "doctor_clean"])
++def test_bindings_are_deleted_with_their_rows(tmp_path, path):
++    engine = _two_sessions(tmp_path)
++    conn = engine._store._conn
++    try:
++        s_ids, t_ids = _ids(engine, "S"), _ids(engine, "T")
++        assert {b[0] for b in _bindings(conn)} == s_ids | t_ids
++        if path == "delete_session_messages":
++            engine._store.delete_session_messages("S")
++        else:
++            engine.on_session_start("other", platform="cli", context_length=200_000, conversation_id="conv2")
++            command_mod._delete_clean_candidates_atomically(engine, {"S"})
++        assert not engine._store.get_session_messages("S")
++        assert {b[0] for b in _bindings(conn)} == t_ids  # the other session's bindings stay
++        assert sorted(b[1] for b in _bindings(conn)) == ["u-t1", "u-t2"]
++    finally:
++        engine.shutdown()
++
++
++@pytest.mark.parametrize("path", ["delete_session_messages", "doctor_clean"])
++def test_delete_without_the_side_table_works_and_does_not_create_it(tmp_path, monkeypatch, path):
++    monkeypatch.setenv("LCM_HOST_MESSAGE_UID", "off")
++    _state_db(tmp_path, [("S", None, None)])
++    engine = _engine(tmp_path / "lcm.db", tmp_path)
++    try:
++        engine.ingest([_m("s one" + PAD, 3.0, "u-s1")])
++        if path == "delete_session_messages":
++            assert engine._store.delete_session_messages("S") == 1
++        else:
++            engine.on_session_start("other", platform="cli", context_length=200_000, conversation_id="conv2")
++            assert command_mod._delete_clean_candidates_atomically(engine, {"S"})["messages_deleted"] == 1
++        assert not engine._store._conn.execute(
++            "SELECT 1 FROM sqlite_master WHERE name='host_uid_bindings'").fetchone()
++    finally:
++        engine.shutdown()
++
++
++_LEGACY_MESSAGES = """CREATE TABLE messages (
++    store_id INTEGER PRIMARY KEY, session_id TEXT NOT NULL, source TEXT DEFAULT '', conversation_id TEXT DEFAULT '',
++    role TEXT NOT NULL, content TEXT, tool_call_id TEXT, tool_calls TEXT, tool_name TEXT, timestamp REAL NOT NULL,
++    token_estimate INTEGER DEFAULT 0, pinned INTEGER DEFAULT 0, ingested_at REAL, observed_at REAL,
++    observed_at_source TEXT)"""  # a plain INTEGER PRIMARY KEY, as the legacy rebuild creates: ids can be reused
++
++
++def test_a_reused_store_id_never_inherits_a_stale_binding(tmp_path):
++    conn = sqlite3.connect(tmp_path / "lcm.db")
++    conn.execute(_LEGACY_MESSAGES)
++    conn.commit()
++    conn.close()
++    engine = _two_sessions(tmp_path)  # T first, then S: S holds the highest store id
++    try:
++        s_ids = _ids(engine, "S")
++        assert max(s_ids) == max(_ids(engine, "S") | _ids(engine, "T"))
++        assert s_ids <= {b[0] for b in _bindings(engine._store._conn)}
++        engine._store.delete_session_messages("S")
++        reused = engine._store.append("T", {"role": "user", "content": "a new row"})
++        assert reused in s_ids  # SQLite reused a deleted id that carried a binding
++        assert reused not in {b[0] for b in _bindings(engine._store._conn)}
++    finally:
++        engine.shutdown()
++
++
++# -- 2. the persisted lineage key is namespaced by home -------------------------------------------------
++
++def test_two_homes_sharing_one_database_bind_separately(tmp_path):
++    db = tmp_path / "shared" / "lcm.db"
++    _state_db(tmp_path / "one", [("S", None, None)])
++    _state_db(tmp_path / "two", [("S", None, None)])
++    results = []
++    for home, text in (("one", "first profile" + PAD), ("two", "second profile" + PAD)):
++        engine = _engine(db, tmp_path / home)
++        try:
++            engine.ingest([_m(text, 10.0, "u-shared")])
++            results.append(dict(engine._host_uid_counters))
++        finally:
++            engine.shutdown()
++    assert results == [{"unbound.agree_new": 1}, {"unbound.agree_new": 1}]  # no error, no disagreement
++    conn = sqlite3.connect(db)
++    try:
++        rows = _bindings(conn)
++    finally:
++        conn.close()
++    assert [(uid, kind) for _sid, uid, _key, kind in rows] == [("u-shared", "canonical"), ("u-shared", "canonical")]
++    assert len({key for _sid, _uid, key, _kind in rows}) == 2
++    assert {key.split(":", 1)[1] for _sid, _uid, key, _kind in rows} == {"S"}
++
++
++def test_the_key_format_and_a_symlinked_home_give_the_same_tag(tmp_path):
++    _state_db(tmp_path / "real", [("S", None, None)])
++    (tmp_path / "link").symlink_to(tmp_path / "real", target_is_directory=True)
++    keys = []
++    for home in ("real", "link"):
++        engine = _engine(tmp_path / "lcm.db", tmp_path / home)
++        try:
++            keys.append(engine._host_uid_lineage_key()[0])
++        finally:
++            engine.shutdown()
++    assert re.fullmatch(r"[0-9a-f]{16}:S", keys[0]), keys
++    assert keys[0] == keys[1]
+diff --git a/tests/test_host_uid_shadow.py b/tests/test_host_uid_shadow.py
+index e49dbb28..d30dcef8 100644
+--- a/tests/test_host_uid_shadow.py
++++ b/tests/test_host_uid_shadow.py
+@@ -62,10 +62,22 @@ def _bindings(engine: LCMEngine) -> list[tuple]:
+     conn = engine._store._conn
+     if not conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='host_uid_bindings'").fetchone():
+         return []
+-    return conn.execute("SELECT store_id, uid, lineage_key, kind, binding_version, proof_kind FROM host_uid_bindings "
++    return conn.execute("SELECT store_id, uid, substr(lineage_key, 18), kind, binding_version, proof_kind "  # root only
++                        "FROM host_uid_bindings "
+                         "ORDER BY rowid").fetchall()
+ 
+ 
++def _root_of(key):
++    """The root of a persisted ``<home_tag>:<root>`` lineage key (#836); None stays None."""
++    return None if key is None else key.split(":", 1)[1]
++
++
++def _root_and_problem(found):
++    """``_host_uid_lineage_key()`` with the key reduced to its root, the problem kept: ``(root, problem)``."""
++    key, problem = found
++    return _root_of(key), problem
++
++
+ def _counts(engine: LCMEngine) -> dict:
+     return {k: v for k, v in (getattr(engine, "_host_uid_counters", None) or {}).items() if v}
+ 
+@@ -263,7 +275,7 @@ def test_ignore_pattern_drop_is_skipped_not_stored(tmp_path, monkeypatch):
+ def _root(tmp_path, session: str):
+     engine = _engine(tmp_path, session=session)
+     try:
+-        return engine._host_uid_lineage_key()[0]
++        return _root_of(engine._host_uid_lineage_key()[0])
+     finally:
+         engine.shutdown()
+ 
+@@ -378,7 +390,8 @@ def test_same_uid_same_bytes_stored_again_disagrees(tmp_path):
+ def _anchored(tmp_path, engine, seeded, host_view, *, bind=()):
+     """Feed ``host_view`` to a restarted engine after seeding ``bind`` = [(content, uid, kind)]."""
+     if bind:
+-        engine._store.add_host_uid_bindings("S", [(seeded[c], uid, kind, "seed") for c, uid, kind in bind])
++        engine._store.add_host_uid_bindings(engine._host_uid_lineage_key()[0],
++                                            [(seeded[c], uid, kind, "seed") for c, uid, kind in bind])
+     engine.ingest(host_view)
+ 
+ 
+@@ -915,9 +928,9 @@ def test_r3_the_lineage_cache_is_keyed_by_home(tmp_path):
+     engine = LCMEngine(config=LCMConfig(database_path=str(tmp_path / "lcm.db")), hermes_home=str(tmp_path / "one"))
+     engine.on_session_start("S", platform="cli", context_length=200_000)
+     try:
+-        assert engine._host_uid_lineage_key() == ("P", None)
++        assert _root_and_problem(engine._host_uid_lineage_key()) == ("P", None)
+         engine._hermes_home = str(tmp_path / "two")  # the same session id under another profile home
+-        assert engine._host_uid_lineage_key() == ("S", None)
++        assert _root_and_problem(engine._host_uid_lineage_key()) == ("S", None)
+     finally:
+         engine.shutdown()
+ 
+@@ -948,7 +961,8 @@ def test_r3_the_gate_counts_only_canonical_and_version_bindings(tmp_path):
+     try:
+         engine.ingest([_m("user", "hello" + PAD, 10.0, "u-1")])
+         store_id = _bindings(engine)[0][0]
+-        engine._store.add_host_uid_bindings("S", [(store_id, "u-alias", "alias_candidate", "unknown")])
++        engine._store.add_host_uid_bindings(engine._host_uid_lineage_key()[0],
++                                            [(store_id, "u-alias", "alias_candidate", "unknown")])
+         engine._store._conn.execute("UPDATE host_uid_bindings SET first_check = 'disagree', disagree_seen = 1")
+         engine._store._conn.commit()
+         assert engine._store.host_uid_gate() == [(1, 0)]
+@@ -1031,7 +1045,7 @@ def test_r4_a_permission_denied_state_db_is_a_read_error_not_missing(tmp_path, m
+             assert not engine.__dict__.get("_host_uid_lineage_cache")
+         finally:
+             home.chmod(0o700)
+-        assert engine._host_uid_lineage_key() == ("S", None)
++        assert _root_and_problem(engine._host_uid_lineage_key()) == ("S", None)
+     finally:
+         engine.shutdown()
+ 
+@@ -1041,7 +1055,7 @@ def test_r4_the_lineage_cache_keeps_the_newest_512_entries(tmp_path):
+     engine = _engine(tmp_path)
+     try:
+         for i in range(600):
+-            assert engine._host_uid_lineage_key(f"s{i}") == (f"s{i}", None)
++            assert _root_and_problem(engine._host_uid_lineage_key(f"s{i}")) == (f"s{i}", None)
+         cache = engine._host_uid_lineage_cache
+         assert len(cache) == 512
+         assert [key[1] for key in cache][:1] == ["s88"] and list(cache)[-1][1] == "s599"

@@ -1,0 +1,72 @@
+diff --git a/servers/engine/combat_loop.py b/servers/engine/combat_loop.py
+index f053808..64e7247 100644
+--- a/servers/engine/combat_loop.py
++++ b/servers/engine/combat_loop.py
+@@ -622,11 +622,15 @@ def _apply_intent(server, campaign_id: str, actor_id: str, intent: Intent) -> di
+                             "save_made": save_made,
+                         }
+         elif intent.kind == "move":
++            move_result = {}
+             if intent.to_cell is not None:
+-                server.move_to_coords(campaign_id, actor_id, intent.to_cell[0], intent.to_cell[1])
++                move_result = server.move_to_coords(campaign_id, actor_id, intent.to_cell[0], intent.to_cell[1])
+             elif intent.to_zone:
+-                server.move_to_zone(campaign_id, combatant_id=actor_id, zone=intent.to_zone)
++                move_result = server.move_to_zone(campaign_id, combatant_id=actor_id, zone=intent.to_zone)
+             entry["result"] = {"to_cell": intent.to_cell, "to_zone": intent.to_zone}
++            for key in ("movement_illegal", "move_blocked"):
++                if key in move_result:
++                    entry["result"][key] = move_result[key]
+         elif intent.kind == "disengage":
+             server.use_action(campaign_id, actor_id, kind="disengage")
+             if intent.to_cell is not None:
+diff --git a/servers/engine/tests/test_player_turn_arbiter.py b/servers/engine/tests/test_player_turn_arbiter.py
+index 475cf86..96a4e9b 100644
+--- a/servers/engine/tests/test_player_turn_arbiter.py
++++ b/servers/engine/tests/test_player_turn_arbiter.py
+@@ -59,6 +59,7 @@ def test_bare_move_keeps_turn_open(grid_fight):
+ 
+     out = combat_loop.resolve_player_turn(cid, hero, Intent(kind="move", to_cell=(3, 0)))
+     assert out["ok"] is True, out
++    assert out["resolved"]["result"] == {"to_cell": (3, 0), "to_zone": ""}
+     # The token moved (engine charged the budget via the locked verb).
+     assert _cell(cid, hero) == (3, 0)
+     # The turn is STILL the hero's — a move alone never advances initiative.
+@@ -67,6 +68,37 @@ def test_bare_move_keeps_turn_open(grid_fight):
+     assert server._require(cid).combat.current_combatant_id == hero
+ 
+ 
++def test_over_budget_move_surfaces_advisory_and_still_moves(grid_fight):
++    cid, hero, _gob = grid_fight
++    out = combat_loop.resolve_player_turn(cid, hero, Intent(kind="move", to_cell=(7, 0)))
++
++    assert out["ok"] is True, out
++    result = out["resolved"]["result"]
++    assert result["to_cell"] == (7, 0)
++    assert result["movement_illegal"]["budget_cells"] == 6
++    assert result["movement_illegal"]["cost_cells"] == 7
++    assert "move_blocked" not in result
++    assert _cell(cid, hero) == (7, 0)
++    assert out["turn_open"] is True
++    assert out["advanced"] is False
++
++
++def test_blocked_move_surfaces_note_and_stays_put(grid_fight):
++    cid, hero, _gob = grid_fight
++    server.set_grid(cid, 20, 20, obstacles=[[3, 0]])
++    out = combat_loop.resolve_player_turn(cid, hero, Intent(kind="move", to_cell=(3, 0)))
++
++    assert out["ok"] is True, out
++    result = out["resolved"]["result"]
++    assert result["to_cell"] == (3, 0)
++    assert result["move_blocked"]["target"] == [3, 0]
++    assert result["move_blocked"]["reason"]
++    assert "movement_illegal" not in result
++    assert _cell(cid, hero) == (0, 0)
++    assert out["turn_open"] is True
++    assert out["advanced"] is False
++
++
+ def test_move_then_end_turn_advances(grid_fight):
+     """A move followed by end_turn=True ends the move-only turn (the arbiter declares the skip),
+     advances initiative, and auto-runs the enemy turn to the next PC decision."""

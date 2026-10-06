@@ -1,0 +1,40 @@
+{
+ "id": "lcmx-i03",
+ "pr": 364,
+ "base": "fbe24ccef2c0584ee949a1d9f282f3a5b9026c87",
+ "fix": "9e43907fd66de8de9fb4a5961a26c6079520e7fc",
+ "tests": [
+  "tests/test_lcm_core.py"
+ ],
+ "oracle_files": [
+  "tests/test_lcm_core.py"
+ ],
+ "oracle_cmd": "bash $BENCH_ROOT/mining/_scripts/lcmx_pytest.sh -q tests/test_lcm_core.py",
+ "regression_cmd": "bash $BENCH_ROOT/mining/_scripts/lcmx_pytest.sh tests/ -q -n 8",
+ "setup_cmd": "bash $BENCH_ROOT/mining/_scripts/lcmx_setup.sh",
+ "setup_rc": 0,
+ "base_rc": 1,
+ "base_secs": 74.8,
+ "base_tail": [
+  "FAILED tests/test_lcm_core.py::TestLCMEngineCloning::test_deepcopy_current_schema_does_not_require_writer_ownership",
+  "1 failed, 345 passed, 115 warnings in 74.17s (0:01:14)"
+ ],
+ "base_import_err": false,
+ "fix_rc1": 0,
+ "fix_secs1": 68.1,
+ "fix_tail1": [
+  "346 passed, 115 warnings in 67.53s (0:01:07)"
+ ],
+ "fix_rc2": 0,
+ "fix_secs2": 74.2,
+ "fix_tail2": [
+  "346 passed, 115 warnings in 73.55s (0:01:13)"
+ ],
+ "reg_rc": 0,
+ "reg_secs": 197.5,
+ "reg_tail": [
+  "3873 passed, 36 skipped, 12 xfailed, 2661 warnings in 196.84s (0:03:16)"
+ ],
+ "mismatch": [],
+ "final_status": "* (HEAD detached at fbe24cc)\n  main\n  remotes/origin/HEAD -> origin/main\n  remotes/origin/main"
+}

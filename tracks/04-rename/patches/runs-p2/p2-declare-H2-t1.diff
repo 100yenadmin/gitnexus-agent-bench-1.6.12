@@ -1,0 +1,281 @@
+diff --git a/gitnexus/src/core/ingestion/cfg/visitors/c-cpp-harvest.ts b/gitnexus/src/core/ingestion/cfg/visitors/c-cpp-harvest.ts
+index 13e2597..4869f68 100644
+--- a/gitnexus/src/core/ingestion/cfg/visitors/c-cpp-harvest.ts
++++ b/gitnexus/src/core/ingestion/cfg/visitors/c-cpp-harvest.ts
+@@ -130,7 +130,7 @@ export class CCppHarvester extends ScopeTreeHarvester {
+       const p = params.namedChild(i);
+       if (p?.type !== 'parameter_declaration') continue;
+       const name = this.declaratorName(p.childForFieldName('declarator') ?? null);
+-      if (name) this.declare(name, 'param', this.root);
++      if (name) this.declareBinding(name, 'param', this.root);
+     }
+   }
+ 
+@@ -165,7 +165,7 @@ export class CCppHarvester extends ScopeTreeHarvester {
+         // `for (int x : xs)` — the declarator binds in the loop scope.
+         const decl = node.childForFieldName('declarator');
+         const name = this.declaratorName(decl ?? null);
+-        if (name) this.declare(name, 'var', childScope);
++        if (name) this.declareBinding(name, 'var', childScope);
+         break;
+       }
+       case 'catch_clause': {
+@@ -175,7 +175,7 @@ export class CCppHarvester extends ScopeTreeHarvester {
+             const p = params.namedChild(i);
+             if (p?.type !== 'parameter_declaration') continue;
+             const name = this.declaratorName(p.childForFieldName('declarator') ?? null);
+-            if (name) this.declare(name, 'catch', childScope);
++            if (name) this.declareBinding(name, 'catch', childScope);
+           }
+         }
+         break;
+@@ -225,10 +225,10 @@ export class CCppHarvester extends ScopeTreeHarvester {
+         const sbd = this.structuredBinding(declarator);
+         if (sbd) {
+           // `auto [a, b] = e;` — every identifier binds a scalar local.
+-          for (const id of this.structuredBindingNames(sbd)) this.declare(id, 'var', scope);
++          for (const id of this.structuredBindingNames(sbd)) this.declareBinding(id, 'var', scope);
+         } else {
+           const name = this.declaratorName(declarator ?? null);
+-          if (name) this.declare(name, 'var', scope);
++          if (name) this.declareBinding(name, 'var', scope);
+         }
+       } else if (
+         d.type === 'identifier' ||
+@@ -236,11 +236,11 @@ export class CCppHarvester extends ScopeTreeHarvester {
+         d.type === 'array_declarator' ||
+         d.type === 'reference_declarator'
+       ) {
+-        // Uninitialized local (`int x;`) — declare the BINDING (so a later
++        // Uninitialized local (`int x;`) — declareBinding the BINDING (so a later
+         // assignment resolves to a real, non-synthetic binding) but the
+         // declaration itself produces no def (handled in phase 2).
+         const name = this.declaratorName(d);
+-        if (name) this.declare(name, 'var', scope);
++        if (name) this.declareBinding(name, 'var', scope);
+       }
+     }
+   }
+diff --git a/gitnexus/src/core/ingestion/cfg/visitors/csharp-harvest.ts b/gitnexus/src/core/ingestion/cfg/visitors/csharp-harvest.ts
+index f322925..0ab5959 100644
+--- a/gitnexus/src/core/ingestion/cfg/visitors/csharp-harvest.ts
++++ b/gitnexus/src/core/ingestion/cfg/visitors/csharp-harvest.ts
+@@ -102,14 +102,14 @@ export class CsharpHarvester extends ScopeTreeHarvester {
+     if (!params) return;
+     if (params.type === 'implicit_parameter') {
+       // Single un-parenthesized lambda parameter: `x => …`.
+-      this.declare(params, 'param', this.root);
++      this.declareBinding(params, 'param', this.root);
+       return;
+     }
+     for (let i = 0; i < params.namedChildCount; i++) {
+       const p = params.namedChild(i);
+       if (p?.type !== 'parameter') continue;
+       const name = p.childForFieldName('name');
+-      if (name) this.declare(name, 'param', this.root);
++      if (name) this.declareBinding(name, 'param', this.root);
+     }
+   }
+ 
+@@ -146,21 +146,21 @@ export class CsharpHarvester extends ScopeTreeHarvester {
+       case 'catch_clause': {
+         const declNode = node.namedChildren.find((c) => c.type === 'catch_declaration');
+         const name = declNode?.childForFieldName('name');
+-        if (name) this.declare(name, 'catch', childScope);
++        if (name) this.declareBinding(name, 'catch', childScope);
+         break;
+       }
+       case 'declaration_pattern': {
+         // `o is string s` / `case int n:` — `s`/`n` is a fresh binding.
+         const name = node.childForFieldName('name');
+-        if (name) this.declare(name, 'var', childScope);
++        if (name) this.declareBinding(name, 'var', childScope);
+         break;
+       }
+       case 'declaration_expression': {
+         // `f(out var n)` / `f(out int n)` — `n` is a fresh out-binding written
+-        // by the callee; declare it so its def + later uses resolve to a real
++        // by the callee; declareBinding it so its def + later uses resolve to a real
+         // local rather than a synthetic module binding.
+         const name = node.childForFieldName('name');
+-        if (name) this.declare(name, 'var', childScope);
++        if (name) this.declareBinding(name, 'var', childScope);
+         break;
+       }
+       default:
+@@ -180,10 +180,10 @@ export class CsharpHarvester extends ScopeTreeHarvester {
+       if (d?.type !== 'variable_declarator') continue;
+       const name = d.childForFieldName('name');
+       if (name) {
+-        this.declare(name, 'var', scope);
++        this.declareBinding(name, 'var', scope);
+       } else {
+         // Deconstruction declaration `var (a, b) = …;` — the declarator's name
+-        // slot is a `tuple_pattern`; declare each identifier under it (reusing
++        // slot is a `tuple_pattern`; declareBinding each identifier under it (reusing
+         // the foreach tuple-target logic).
+         const tuple = d.namedChildren.find((c) => c.type === 'tuple_pattern');
+         if (tuple) this.declareForeachTarget(tuple, scope);
+@@ -194,13 +194,13 @@ export class CsharpHarvester extends ScopeTreeHarvester {
+   /** Declare a `foreach` target — an identifier or a `tuple_pattern`. */
+   private declareForeachTarget(left: SyntaxNode, scope: Scope): void {
+     if (left.type === 'identifier') {
+-      this.declare(left, 'var', scope);
++      this.declareBinding(left, 'var', scope);
+       return;
+     }
+-    // `var (k, v)` deconstruction — declare each identifier under the pattern.
++    // `var (k, v)` deconstruction — declareBinding each identifier under the pattern.
+     for (let i = 0; i < left.namedChildCount; i++) {
+       const c = left.namedChild(i);
+-      if (c?.type === 'identifier') this.declare(c, 'var', scope);
++      if (c?.type === 'identifier') this.declareBinding(c, 'var', scope);
+     }
+   }
+ 
+diff --git a/gitnexus/src/core/ingestion/cfg/visitors/go-harvest.ts b/gitnexus/src/core/ingestion/cfg/visitors/go-harvest.ts
+index 606229c..7985636 100644
+--- a/gitnexus/src/core/ingestion/cfg/visitors/go-harvest.ts
++++ b/gitnexus/src/core/ingestion/cfg/visitors/go-harvest.ts
+@@ -112,7 +112,11 @@ export class GoHarvester extends ScopeTreeHarvester {
+   // ── phase 1: declaration pre-scan ────────────────────────────────────────
+ 
+   /** Go override: `_` is the blank identifier and binds nothing. */
+-  protected override declare(nameNode: SyntaxNode, kind: BindingEntry['kind'], scope: Scope): void {
++  protected override declareBinding(
++    nameNode: SyntaxNode,
++    kind: BindingEntry['kind'],
++    scope: Scope,
++  ): void {
+     const name = nameNode.text;
+     if (!name || name === '_' || scope.table.has(name)) return; // `_` is the blank identifier
+     scope.table.set(name, this.bindings.length);
+@@ -132,7 +136,7 @@ export class GoHarvester extends ScopeTreeHarvester {
+       const p = recv.namedChild(i);
+       if (p?.type !== 'parameter_declaration') continue;
+       const name = p.childForFieldName('name');
+-      if (name) this.declare(name, 'param', this.root);
++      if (name) this.declareBinding(name, 'param', this.root);
+     }
+   }
+ 
+@@ -147,7 +151,7 @@ export class GoHarvester extends ScopeTreeHarvester {
+       // A single `parameter_declaration` can name several params: `a, b int`.
+       for (let j = 0; j < p.namedChildCount; j++) {
+         const c = p.namedChild(j);
+-        if (c?.type === 'identifier') this.declare(c, 'param', this.root);
++        if (c?.type === 'identifier') this.declareBinding(c, 'param', this.root);
+       }
+     }
+   }
+@@ -211,7 +215,7 @@ export class GoHarvester extends ScopeTreeHarvester {
+   private declareIdentifiers(list: SyntaxNode, scope: Scope): void {
+     for (let i = 0; i < list.namedChildCount; i++) {
+       const c = list.namedChild(i);
+-      if (c?.type === 'identifier') this.declare(c, 'var', scope);
++      if (c?.type === 'identifier') this.declareBinding(c, 'var', scope);
+     }
+   }
+ 
+@@ -223,7 +227,7 @@ export class GoHarvester extends ScopeTreeHarvester {
+       if (!hasValue) continue; // bare `var x int` — not a runtime write
+       for (let i = 0; i < spec.namedChildCount; i++) {
+         const c = spec.namedChild(i);
+-        if (c?.type === 'identifier') this.declare(c, 'var', scope);
++        if (c?.type === 'identifier') this.declareBinding(c, 'var', scope);
+       }
+     }
+   }
+diff --git a/gitnexus/src/core/ingestion/cfg/visitors/java-harvest.ts b/gitnexus/src/core/ingestion/cfg/visitors/java-harvest.ts
+index 44b4568..1692475 100644
+--- a/gitnexus/src/core/ingestion/cfg/visitors/java-harvest.ts
++++ b/gitnexus/src/core/ingestion/cfg/visitors/java-harvest.ts
+@@ -98,14 +98,14 @@ export class JavaHarvester extends ScopeTreeHarvester {
+       // Lambda single un-parenthesized parameter: `x -> …` (a bare identifier).
+       const lambdaParam = fnNode.namedChildren.find((c) => c.type === 'identifier');
+       if (fnNode.type === 'lambda_expression' && lambdaParam) {
+-        this.declare(lambdaParam, 'param', this.root);
++        this.declareBinding(lambdaParam, 'param', this.root);
+       }
+       // Lambda inferred parameters: `(x, y) -> …`.
+       const inferred = fnNode.namedChildren.find((c) => c.type === 'inferred_parameters');
+       if (inferred) {
+         for (let i = 0; i < inferred.namedChildCount; i++) {
+           const p = inferred.namedChild(i);
+-          if (p?.type === 'identifier') this.declare(p, 'param', this.root);
++          if (p?.type === 'identifier') this.declareBinding(p, 'param', this.root);
+         }
+       }
+       return;
+@@ -114,7 +114,7 @@ export class JavaHarvester extends ScopeTreeHarvester {
+       const p = params.namedChild(i);
+       if (p?.type !== 'formal_parameter' && p?.type !== 'spread_parameter') continue;
+       const name = this.paramName(p);
+-      if (name) this.declare(name, 'param', this.root);
++      if (name) this.declareBinding(name, 'param', this.root);
+     }
+   }
+ 
+@@ -145,19 +145,19 @@ export class JavaHarvester extends ScopeTreeHarvester {
+         break;
+       case 'enhanced_for_statement': {
+         const name = node.childForFieldName('name');
+-        if (name) this.declare(name, 'var', childScope);
++        if (name) this.declareBinding(name, 'var', childScope);
+         break;
+       }
+       case 'resource': {
+         // `try (var f = open())` — the resource binds in the try scope.
+         const name = node.childForFieldName('name');
+-        if (name) this.declare(name, 'var', childScope);
++        if (name) this.declareBinding(name, 'var', childScope);
+         break;
+       }
+       case 'catch_clause': {
+         const param = node.namedChildren.find((c) => c.type === 'catch_formal_parameter');
+         const name = param?.childForFieldName('name');
+-        if (name) this.declare(name, 'catch', childScope);
++        if (name) this.declareBinding(name, 'catch', childScope);
+         break;
+       }
+       default:
+@@ -176,7 +176,7 @@ export class JavaHarvester extends ScopeTreeHarvester {
+       const d = declNode.namedChild(i);
+       if (d?.type !== 'variable_declarator') continue;
+       const name = d.childForFieldName('name');
+-      if (name) this.declare(name, 'var', scope);
++      if (name) this.declareBinding(name, 'var', scope);
+     }
+   }
+ 
+diff --git a/gitnexus/src/core/ingestion/cfg/visitors/scope-tree-harvest.ts b/gitnexus/src/core/ingestion/cfg/visitors/scope-tree-harvest.ts
+index 1822e58..7b848d1 100644
+--- a/gitnexus/src/core/ingestion/cfg/visitors/scope-tree-harvest.ts
++++ b/gitnexus/src/core/ingestion/cfg/visitors/scope-tree-harvest.ts
+@@ -12,7 +12,7 @@
+  * / `bindingTable` methods. This base holds that one copy; the four harvesters
+  * extend it and supply ONLY their genuine per-language variation — the
+  * `prescan` switch (abstract) and, for Go, the blank-identifier (`_`) overrides
+- * of `declare` / `def` / `use`.
++ * of `declareBinding` / `def` / `use`.
+  *
+  * TWO-PHASE, ORDER-INDEPENDENT (load-bearing): the CFG walk is NOT source-order
+  * (`visitFor` builds the init block after the body, `visitDoWhile` the condition
+@@ -49,7 +49,7 @@ export interface Scope {
+  * Abstract base owning the lexical scope tree + the two-phase resolution
+  * substrate. Subclasses provide the per-language constructor wiring (param /
+  * receiver declaration + the body `prescan` kick-off) and the abstract
+- * `prescan`; Go additionally overrides `declare` / `def` / `use` for its `_`
++ * `prescan`; Go additionally overrides `declareBinding` / `def` / `use` for its `_`
+  * blank-identifier semantics.
+  */
+ export abstract class ScopeTreeHarvester {
+@@ -99,7 +99,7 @@ export abstract class ScopeTreeHarvester {
+     return this.root;
+   }
+ 
+-  protected declare(nameNode: SyntaxNode, kind: BindingEntry['kind'], scope: Scope): void {
++  protected declareBinding(nameNode: SyntaxNode, kind: BindingEntry['kind'], scope: Scope): void {
+     const name = nameNode.text;
+     if (!name || scope.table.has(name)) return;
+     scope.table.set(name, this.bindings.length);

@@ -1,0 +1,84 @@
+{
+ "locations": [
+  {
+   "path": "hermes_cli/providers.py",
+   "line": 173
+  },
+  {
+   "path": "hermes_cli/providers.py",
+   "line": 197
+  },
+  {
+   "path": "hermes_cli/providers.py",
+   "line": 252
+  },
+  {
+   "path": "hermes_cli/providers.py",
+   "line": 261
+  },
+  {
+   "path": "hermes_cli/providers.py",
+   "line": 281
+  },
+  {
+   "path": "hermes_cli/providers.py",
+   "line": 488
+  },
+  {
+   "path": "hermes_cli/providers.py",
+   "line": 540
+  },
+  {
+   "path": "hermes_cli/auth.py",
+   "line": 2061
+  },
+  {
+   "path": "hermes_cli/route_identity.py",
+   "line": 64
+  },
+  {
+   "path": "hermes_cli/route_identity.py",
+   "line": 83
+  },
+  {
+   "path": "hermes_cli/model_switch.py",
+   "line": 413
+  },
+  {
+   "path": "hermes_cli/model_switch.py",
+   "line": 738
+  },
+  {
+   "path": "hermes_cli/doctor_connectivity.py",
+   "line": 109
+  },
+  {
+   "path": "hermes_cli/doctor_config.py",
+   "line": 265
+  },
+  {
+   "path": "hermes_cli/model_setup_flows.py",
+   "line": 953
+  },
+  {
+   "path": "agent/title_generator.py",
+   "line": 215
+  },
+  {
+   "path": "agent/agent_init.py",
+   "line": 111
+  },
+  {
+   "path": "agent/agent_init.py",
+   "line": 142
+  },
+  {
+   "path": "agent/agent_init.py",
+   "line": 143
+  },
+  {
+   "path": "agent/agent_init.py",
+   "line": 860
+  }
+ ]
+}

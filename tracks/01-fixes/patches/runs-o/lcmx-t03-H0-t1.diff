@@ -1,0 +1,357 @@
+diff --git a/command.py b/command.py
+index a012a1c..63ee70c 100644
+--- a/command.py
++++ b/command.py
+@@ -2849,6 +2849,11 @@ def _embedding_current_profile(conn: sqlite3.Connection) -> sqlite3.Row | None:
+         raise
+ 
+ 
++def _is_blank_summary(summary: str | None) -> bool:
++    """Check if a summary is blank (None, empty, or only whitespace)."""
++    return summary is None or not str(summary).strip()
++
++
+ def _embedding_pending_rows(
+     conn: sqlite3.Connection,
+     identity_hash: str,
+@@ -2857,7 +2862,8 @@ def _embedding_pending_rows(
+     # Discovery excludes both recorded rows and every durable in-flight state.
+     # A dispatched/uncertain row may already have been accepted remotely, so it
+     # must never be silently resent; only explicit --retry-uncertain operator
+-    # authorization can return it to discovery.
++    # authorization can return it to discovery. Blank summaries are skipped
++    # entirely—not counted as pending, not selected.
+     inflight_exists = conn.execute(
+         "SELECT 1 FROM sqlite_master WHERE type='table' "
+         "AND name='lcm_embedding_backfill_inflight'"
+@@ -2886,21 +2892,20 @@ def _embedding_pending_rows(
+     args: tuple[object, ...] = (
+         (identity_hash, identity_hash) if inflight_exists else (identity_hash,)
+     )
+-    total = int(conn.execute(
+-        f"SELECT COUNT(*) FROM summary_nodes AS n WHERE {where}",
+-        args,
+-    ).fetchone()[0])
+-    rows = conn.execute(
++    all_rows = conn.execute(
+         f"""
+         SELECT n.node_id, n.summary
+         FROM summary_nodes AS n
+         WHERE {where}
+         ORDER BY COALESCE(n.latest_at, n.created_at) DESC, n.node_id DESC
+-        LIMIT ?
+         """,
+-        (*args, limit),
++        args,
+     ).fetchall()
+-    return total, rows
++    # Filter out blank summaries (None, empty, or whitespace-only)
++    filtered_rows = [row for row in all_rows if not _is_blank_summary(row["summary"])]
++    total = len(filtered_rows)
++    selected_rows = filtered_rows[:limit]
++    return total, selected_rows
+ 
+ 
+ def _embedding_authorized_uncertain_rows(
+@@ -2908,7 +2913,11 @@ def _embedding_authorized_uncertain_rows(
+     identity_hash: str,
+     limit: int,
+ ) -> tuple[int, list[sqlite3.Row]]:
+-    """Select exact uncertain rows without consuming their durable markers."""
++    """Select exact uncertain rows without consuming their durable markers.
++
++    Blank summaries are skipped—existing uncertain markers are preserved but
++    the rows themselves are not selected for retry.
++    """
+     where = """
+         f.identity_hash = ?
+         AND f.state = 'uncertain'
+@@ -2921,24 +2930,19 @@ def _embedding_authorized_uncertain_rows(
+               AND m.identity_hash = f.identity_hash
+         )
+     """
+-    total = int(
+-        conn.execute(
+-            "SELECT COUNT(*) "
+-            "FROM lcm_embedding_backfill_inflight AS f "
+-            "JOIN summary_nodes AS n ON n.node_id = CAST(f.embedded_id AS INTEGER) "
+-            f"WHERE {where}",
+-            (identity_hash,),
+-        ).fetchone()[0]
+-    )
+-    rows = conn.execute(
++    all_rows = conn.execute(
+         "SELECT n.node_id, n.summary "
+         "FROM lcm_embedding_backfill_inflight AS f "
+         "JOIN summary_nodes AS n ON n.node_id = CAST(f.embedded_id AS INTEGER) "
+         f"WHERE {where} "
+-        "ORDER BY f.updated_at, f.embedded_id LIMIT ?",
+-        (identity_hash, max(0, int(limit))),
++        "ORDER BY f.updated_at, f.embedded_id",
++        (identity_hash,),
+     ).fetchall()
+-    return total, rows
++    # Filter out blank summaries (None, empty, or whitespace-only)
++    filtered_rows = [row for row in all_rows if not _is_blank_summary(row["summary"])]
++    total = len(filtered_rows)
++    selected_rows = filtered_rows[:max(0, int(limit))]
++    return total, selected_rows
+ 
+ 
+ def _embedding_batch_estimate(
+diff --git a/tests/test_embedding_backfill.py b/tests/test_embedding_backfill.py
+index 673dbdd..23e1d25 100644
+--- a/tests/test_embedding_backfill.py
++++ b/tests/test_embedding_backfill.py
+@@ -1511,3 +1511,251 @@ def test_backfill_apply_honors_env_batch_size(monkeypatch, tmp_path):
+     assert "embedded: 5" in result
+     assert "remaining: 0" in result
+     assert [len(batch) for batch in provider.calls] == [2, 2, 1]
++
++
++def test_dry_run_skips_blank_summaries(tmp_path):
++    """Blank summaries are not counted as pending or selected."""
++    engine = _engine(tmp_path)
++    dag = SummaryDAG(engine._store.db_path)
++    try:
++        # Create 3 valid summaries and 2 blank ones
++        valid_ids = [
++            dag.add_node(SummaryNode(
++                session_id="session-a",
++                depth=0,
++                summary=f"valid-{i}",
++                source_token_count=100 + i,
++                created_at=float(i + 1),
++                latest_at=float(i + 1),
++            ))
++            for i in range(3)
++        ]
++        # Add blank summaries: empty string and whitespace-only
++        blank_ids = [
++            dag.add_node(SummaryNode(
++                session_id="session-a",
++                depth=0,
++                summary="",  # empty
++                source_token_count=100,
++                created_at=10.0,
++                latest_at=10.0,
++            )),
++            dag.add_node(SummaryNode(
++                session_id="session-a",
++                depth=0,
++                summary="  \v\f\t  ",  # Unicode whitespace
++                source_token_count=100,
++                created_at=12.0,
++                latest_at=12.0,
++            )),
++        ]
++        dag.add_node(SummaryNode(
++            session_id="session-a",
++            depth=1,
++            summary="not a leaf",
++            created_at=20.0,
++        ))
++    finally:
++        dag.close()
++
++    store = VectorStore(engine._store.db_path, config=engine._config)
++    try:
++        store.register_profile("model-a", "ollama", 2)
++    finally:
++        store.close()
++
++    result = handle_lcm_command("embed backfill", engine)
++
++    # Only the 3 valid summaries should be counted as pending
++    assert "pending: 3" in result
++    assert "selected: 3" in result
++    assert "status: dry-run" in result
++    # No provider calls in dry-run
++
++
++def test_apply_skips_blank_summaries(monkeypatch, tmp_path):
++    """Blank summaries are not sent to the provider."""
++    engine = _engine(tmp_path)
++    dag = SummaryDAG(engine._store.db_path)
++    try:
++        # Create 3 valid summaries and 2 blank ones
++        valid_ids = [
++            dag.add_node(SummaryNode(
++                session_id="session-a",
++                depth=0,
++                summary=f"valid-{i}",
++                source_token_count=100 + i,
++                created_at=float(i + 1),
++                latest_at=float(i + 1),
++            ))
++            for i in range(3)
++        ]
++        dag.add_node(SummaryNode(
++            session_id="session-a",
++            depth=0,
++            summary="",  # empty
++            source_token_count=100,
++            created_at=10.0,
++            latest_at=10.0,
++        ))
++        dag.add_node(SummaryNode(
++            session_id="session-a",
++            depth=0,
++            summary="  \t  ",  # whitespace-only
++            source_token_count=100,
++            created_at=11.0,
++            latest_at=11.0,
++        ))
++    finally:
++        dag.close()
++
++    store = VectorStore(engine._store.db_path, config=engine._config)
++    try:
++        store.register_profile("model-a", "ollama", 2)
++    finally:
++        store.close()
++
++    provider = FakeProvider()
++    monkeypatch.setattr(command_mod, "resolve_provider", lambda _config, **_kw: provider)
++
++    result = handle_lcm_command("embed backfill --apply", engine)
++
++    # Only 3 valid summaries should be embedded
++    assert "embedded: 3" in result
++    assert "remaining: 0" in result
++    # Provider should receive only valid summaries
++    assert len(provider.calls) == 1  # one batch
++    assert len(provider.calls[0]) == 3  # three documents
++    assert all("valid-" in str(text) for text in provider.calls[0])
++
++
++def test_blank_summaries_do_not_create_meta_rows(monkeypatch, tmp_path):
++    """Blank summaries never get embedded_meta rows."""
++    engine = _engine(tmp_path)
++    dag = SummaryDAG(engine._store.db_path)
++    try:
++        dag.add_node(SummaryNode(
++            session_id="session-a",
++            depth=0,
++            summary="valid",
++            source_token_count=100,
++            created_at=1.0,
++            latest_at=1.0,
++        ))
++        dag.add_node(SummaryNode(
++            session_id="session-a",
++            depth=0,
++            summary="  ",  # blank
++            source_token_count=100,
++            created_at=2.0,
++            latest_at=2.0,
++        ))
++    finally:
++        dag.close()
++
++    store = VectorStore(engine._store.db_path, config=engine._config)
++    try:
++        store.register_profile("model-a", "ollama", 2)
++    finally:
++        store.close()
++
++    provider = FakeProvider()
++    monkeypatch.setattr(command_mod, "resolve_provider", lambda _config, **_kw: provider)
++
++    result = handle_lcm_command("embed backfill --apply", engine)
++
++    # Only 1 valid summary embedded
++    assert "embedded: 1" in result
++    meta_ids = _meta_ids(engine)
++    assert len(meta_ids) == 1
++
++
++def test_retry_uncertain_skips_blank_summaries(monkeypatch, tmp_path):
++    """Retry-uncertain skips blank summaries but preserves their uncertain markers."""
++    engine = _engine(tmp_path)
++    dag = SummaryDAG(engine._store.db_path)
++    try:
++        valid_id = dag.add_node(SummaryNode(
++            session_id="session-a",
++            depth=0,
++            summary="valid",
++            source_token_count=100,
++            created_at=1.0,
++            latest_at=1.0,
++        ))
++        blank_id = dag.add_node(SummaryNode(
++            session_id="session-a",
++            depth=0,
++            summary="  ",  # blank
++            source_token_count=100,
++            created_at=2.0,
++            latest_at=2.0,
++        ))
++    finally:
++        dag.close()
++
++    store = VectorStore(engine._store.db_path, config=engine._config)
++    try:
++        store.register_profile("model-a", "ollama", 2)
++    finally:
++        store.close()
++
++    # Mark both as uncertain
++    _mark_uncertain(engine, [valid_id, blank_id])
++
++    provider = FakeProvider()
++    monkeypatch.setattr(command_mod, "resolve_provider", lambda _config, **_kw: provider)
++
++    result = handle_lcm_command("embed backfill --apply --retry-uncertain", engine)
++
++    # Only valid summary should be sent to provider
++    assert "embedded: 1" in result
++    assert len(provider.calls) == 1
++    assert len(provider.calls[0]) == 1
++    # Blank summary's uncertain marker should still be in inflight
++    # (the valid one's uncertain marker is cleared after successful embedding)
++    inflight = _inflight_rows(engine)
++    assert len(inflight) == 1  # only blank row
++    assert inflight[0][0] == str(blank_id)
++    assert inflight[0][1] == "uncertain"
++
++
++def test_blank_uncertain_marker_preserved_on_retry(monkeypatch, tmp_path):
++    """An existing uncertain marker for a blank row is kept, not cleared."""
++    engine = _engine(tmp_path)
++    dag = SummaryDAG(engine._store.db_path)
++    try:
++        blank_id = dag.add_node(SummaryNode(
++            session_id="session-a",
++            depth=0,
++            summary="",  # blank
++            source_token_count=100,
++            created_at=1.0,
++            latest_at=1.0,
++        ))
++    finally:
++        dag.close()
++
++    store = VectorStore(engine._store.db_path, config=engine._config)
++    try:
++        store.register_profile("model-a", "ollama", 2)
++    finally:
++        store.close()
++
++    # Create an uncertain marker for the blank summary
++    _mark_uncertain(engine, [blank_id])
++
++    provider = FakeProvider()
++    monkeypatch.setattr(command_mod, "resolve_provider", lambda _config, **_kw: provider)
++
++    # Try to retry-uncertain
++    result = handle_lcm_command("embed backfill --apply --retry-uncertain", engine)
++
++    # No embedding should happen (blank is skipped)
++    assert "embedded: 0" in result
++    # Provider should not be called
++    assert provider.calls == []
++    # Uncertain marker should still exist
++    inflight = _inflight_rows(engine)
++    assert len(inflight) == 1
++    assert inflight[0][1] == "uncertain"

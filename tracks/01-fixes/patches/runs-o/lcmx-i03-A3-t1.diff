@@ -1,0 +1,168 @@
+diff --git a/db_bootstrap.py b/db_bootstrap.py
+index 5b31c38..baeaa21 100644
+--- a/db_bootstrap.py
++++ b/db_bootstrap.py
+@@ -3316,4 +3316,13 @@ def run_versioned_migrations(conn: sqlite3.Connection) -> None:
+     # feature materialized lazily by VectorStore (recorded via the named
+     # ``embeddings_v1`` marker), so a disabled install stays at v5 with no
+     # embedding tables and the numeric counter is free for the temporal train.
+-    set_schema_version(conn, current_version)
++    #
++    # Only stamp when the stored value differs: an unconditional upsert takes
++    # the SQLite write slot on every open, so a current-schema DB could not be
++    # opened (e.g. by Hermes deep-copying the engine) while another WAL writer
++    # holds the lock (#363).
++    stored = conn.execute(
++        "SELECT value FROM metadata WHERE key = 'schema_version'"
++    ).fetchone()
++    if stored is None or stored[0] != str(current_version):
++        set_schema_version(conn, current_version)
+diff --git a/store.py b/store.py
+index 3ebfcd0..ebebd04 100644
+--- a/store.py
++++ b/store.py
+@@ -384,9 +384,15 @@ class MessageStore:
+             "observed_at_source",
+             "ALTER TABLE messages ADD COLUMN observed_at_source TEXT",
+         )
+-        self._conn.execute(
+-            "UPDATE messages SET ingested_at = timestamp WHERE ingested_at IS NULL"
+-        )
++        # Probe before backfilling so a fully repaired DB takes no write lock
++        # on open (#363); legacy rows still get repaired.
++        needs_backfill = self._conn.execute(
++            "SELECT 1 FROM messages WHERE ingested_at IS NULL LIMIT 1"
++        ).fetchone()
++        if needs_backfill:
++            self._conn.execute(
++                "UPDATE messages SET ingested_at = timestamp WHERE ingested_at IS NULL"
++            )
+ 
+     # -- Write operations ---------------------------------------------------
+ 
+diff --git a/tests/test_lcm_core.py b/tests/test_lcm_core.py
+index 2a62069..da01791 100644
+--- a/tests/test_lcm_core.py
++++ b/tests/test_lcm_core.py
+@@ -8759,6 +8759,121 @@ class TestLCMEngineCloning:
+             if callable(shutdown):
+                 shutdown()
+ 
++    @staticmethod
++    def _join_background_integrity_scans() -> None:
++        from hermes_lcm import db_bootstrap
++
++        while True:
++            with db_bootstrap._integrity_scan_lock:
++                threads = list(db_bootstrap._integrity_scan_threads.values())
++            if not threads:
++                return
++            for thread in threads:
++                thread.join(10)
++
++    @staticmethod
++    def _hold_wal_write_slot(db_path: Path) -> sqlite3.Connection:
++        writer = sqlite3.connect(str(db_path), timeout=0.01, isolation_level=None)
++        writer.execute("PRAGMA busy_timeout=1")
++        writer.execute("PRAGMA journal_mode=WAL")
++        writer.execute("BEGIN IMMEDIATE")
++        return writer
++
++    def test_deepcopy_on_current_schema_db_succeeds_under_active_writer(self, tmp_path):
++        """#363: current-schema startup must not need the SQLite write slot."""
++        from hermes_lcm.engine import LCMEngine
++
++        def host_selects_context_engine(candidate):
++            try:
++                return copy.deepcopy(candidate)
++            except Exception:
++                return "built-in-compressor-fallback"
++
++        db_path = tmp_path / "lcm-current-schema.db"
++        config = LCMConfig(database_path=str(db_path))
++        prototype = LCMEngine(config=config, hermes_home=str(tmp_path / "hermes"))
++        prototype._store.append("seed-session", {"role": "user", "content": "hello"})
++        self._join_background_integrity_scans()
++        clone = None
++        writer = self._hold_wal_write_slot(db_path)
++        try:
++            clone = host_selects_context_engine(prototype)
++
++            assert clone != "built-in-compressor-fallback"
++            assert isinstance(clone, LCMEngine)
++            assert clone._store is not prototype._store
++        finally:
++            writer.execute("ROLLBACK")
++            writer.close()
++            prototype.shutdown()
++            shutdown = getattr(clone, "shutdown", None)
++            if callable(shutdown):
++                shutdown()
++
++    def test_outdated_schema_stamp_still_migrates_and_fails_closed_under_writer(self, tmp_path, monkeypatch):
++        db_path = tmp_path / "lcm-stale-stamp.db"
++        MessageStore(db_path).close()
++        self._join_background_integrity_scans()
++        conn = sqlite3.connect(str(db_path))
++        conn.execute("UPDATE metadata SET value = '4' WHERE key = 'schema_version'")
++        conn.commit()
++        conn.close()
++
++        from hermes_lcm import db_bootstrap
++
++        monkeypatch.setattr(db_bootstrap, "SQLITE_BUSY_TIMEOUT_MS", 50)
++        writer = self._hold_wal_write_slot(db_path)
++        try:
++            with pytest.raises(sqlite3.OperationalError, match="locked"):
++                MessageStore(db_path)
++        finally:
++            writer.execute("ROLLBACK")
++            writer.close()
++
++        MessageStore(db_path).close()
++        conn = sqlite3.connect(str(db_path))
++        try:
++            row = conn.execute(
++                "SELECT value FROM metadata WHERE key = 'schema_version'"
++            ).fetchone()
++            assert row[0] == str(SCHEMA_VERSION)
++        finally:
++            conn.close()
++
++    def test_legacy_ingested_at_rows_still_repair_and_fail_closed_under_writer(self, tmp_path, monkeypatch):
++        db_path = tmp_path / "lcm-legacy-rows.db"
++        store = MessageStore(db_path)
++        store_id = store.append("legacy-session", {"role": "user", "content": "old"})
++        store.close()
++        self._join_background_integrity_scans()
++        conn = sqlite3.connect(str(db_path))
++        conn.execute("UPDATE messages SET ingested_at = NULL WHERE store_id = ?", (store_id,))
++        conn.commit()
++        conn.close()
++
++        from hermes_lcm import db_bootstrap
++
++        monkeypatch.setattr(db_bootstrap, "SQLITE_BUSY_TIMEOUT_MS", 50)
++        writer = self._hold_wal_write_slot(db_path)
++        try:
++            with pytest.raises(sqlite3.OperationalError, match="locked"):
++                MessageStore(db_path)
++        finally:
++            writer.execute("ROLLBACK")
++            writer.close()
++
++        MessageStore(db_path).close()
++        conn = sqlite3.connect(str(db_path))
++        try:
++            row = conn.execute(
++                "SELECT ingested_at, timestamp FROM messages WHERE store_id = ?",
++                (store_id,),
++            ).fetchone()
++            assert row[0] is not None
++            assert row[0] == row[1]
++        finally:
++            conn.close()
++
+ 
+ def test_like_fallback_relevance_prefers_multi_term_score_over_single_exact(tmp_path):
+     import hermes_lcm.store as store_module

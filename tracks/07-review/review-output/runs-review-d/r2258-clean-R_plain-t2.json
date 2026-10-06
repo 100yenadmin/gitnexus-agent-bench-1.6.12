@@ -1,0 +1,18 @@
+{
+ "schema_version": 1,
+ "verdict": "comment",
+ "findings": [
+  {
+   "id": "measure-stale-dist-cli-preferred",
+   "severity": "medium",
+   "path": "gitnexus/bench/impact-pdg/measure.mjs",
+   "line": 128,
+   "end_line": 130,
+   "category": "correctness",
+   "scenario": "A developer has an old gitnexus/dist/ from an earlier build, edits the analyzer or PDG code under src/, and runs `node --import tsx bench/impact-pdg/measure.mjs` locally. cliChildArgs sees that dist/cli/index.js exists and runs the stale compiled analyzer. The parent still imports LocalBackend from src/mcp/local/local-backend.ts. The bench then scores (and can bless baselines or recall numbers for) old analyzer output read by new backend code. A schema or graph-shape mismatch between the two shows up as wrong metrics or confusing failures, and nothing warns about it. Before this change the child always ran from src, which matched the parent.",
+   "evidence": "`return fs.existsSync(DIST_CLI) ? [DIST_CLI, ...rest] : [TSX_CLI, CLI_ENTRY, ...rest];` decides only on whether the file exists and never checks freshness. Meanwhile analyzeAndImpact still does `await import(path.join(REPO_ROOT, 'src', 'mcp', 'local', 'local-backend.ts'))`, so the producer (dist) and consumer (src) can come from different code versions. Only the CI workflow (impact-pdg-mutation-report.yml, build: 'true') guarantees a fresh dist.",
+   "recommendation": "Make dist selection explicit or check that it is fresh. For example, use dist only when an env var or flag is set (the CI workflow can set it), or compare the dist/cli/index.js mtime with the newest src/**/*.ts and either fall back to the tsx/src path or fail with a clear 'stale dist — run node scripts/build.js' error. At minimum, log which CLI path was used.",
+   "blocking": false
+  }
+ ]
+}

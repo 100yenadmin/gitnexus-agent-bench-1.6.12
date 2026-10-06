@@ -1,0 +1,194 @@
+diff --git a/command.py b/command.py
+index a012a1c..d8f0702 100644
+--- a/command.py
++++ b/command.py
+@@ -2849,6 +2849,32 @@ def _embedding_current_profile(conn: sqlite3.Connection) -> sqlite3.Row | None:
+         raise
+ 
+ 
++_SUMMARY_TEXT_PRESENT_SQL_FUNCTION = "lcm_summary_text_present"
++
++
++def _summary_text_present(value: object) -> int:
++    """True when a summary has embeddable text under Python's ``str.strip()``.
++
++    SQLite's ``TRIM`` only strips ASCII spaces, so Unicode/control whitespace
++    such as ``"\\v\\f"`` would otherwise survive and be sent to the provider,
++    which rejects the whole mixed batch.
++    """
++    if value is None:
++        return 0
++    if isinstance(value, bytes):
++        value = value.decode("utf-8", errors="replace")
++    return 1 if str(value).strip() else 0
++
++
++def _register_summary_text_present(conn: sqlite3.Connection) -> None:
++    conn.create_function(
++        _SUMMARY_TEXT_PRESENT_SQL_FUNCTION,
++        1,
++        _summary_text_present,
++        deterministic=True,
++    )
++
++
+ def _embedding_pending_rows(
+     conn: sqlite3.Connection,
+     identity_hash: str,
+@@ -2857,7 +2883,9 @@ def _embedding_pending_rows(
+     # Discovery excludes both recorded rows and every durable in-flight state.
+     # A dispatched/uncertain row may already have been accepted remotely, so it
+     # must never be silently resent; only explicit --retry-uncertain operator
+-    # authorization can return it to discovery.
++    # authorization can return it to discovery. Blank summaries (NULL, empty,
++    # or whitespace-only) are never pending: there is nothing to embed.
++    _register_summary_text_present(conn)
+     inflight_exists = conn.execute(
+         "SELECT 1 FROM sqlite_master WHERE type='table' "
+         "AND name='lcm_embedding_backfill_inflight'"
+@@ -2873,8 +2901,9 @@ def _embedding_pending_rows(
+         if inflight_exists
+         else ""
+     )
+-    where = """
++    where = f"""
+         n.depth = 0
++        AND {_SUMMARY_TEXT_PRESENT_SQL_FUNCTION}(n.summary) = 1
+         AND NOT EXISTS (
+             SELECT 1
+             FROM lcm_embedding_meta AS m
+@@ -2908,11 +2937,16 @@ def _embedding_authorized_uncertain_rows(
+     identity_hash: str,
+     limit: int,
+ ) -> tuple[int, list[sqlite3.Row]]:
+-    """Select exact uncertain rows without consuming their durable markers."""
+-    where = """
++    """Select exact uncertain rows without consuming their durable markers.
++
++    Blank summaries are skipped; their uncertain markers are left untouched.
++    """
++    _register_summary_text_present(conn)
++    where = f"""
+         f.identity_hash = ?
+         AND f.state = 'uncertain'
+         AND n.depth = 0
++        AND {_SUMMARY_TEXT_PRESENT_SQL_FUNCTION}(n.summary) = 1
+         AND NOT EXISTS (
+             SELECT 1
+             FROM lcm_embedding_meta AS m
+diff --git a/tests/test_embedding_backfill.py b/tests/test_embedding_backfill.py
+index 673dbdd..47fad40 100644
+--- a/tests/test_embedding_backfill.py
++++ b/tests/test_embedding_backfill.py
+@@ -521,6 +521,111 @@ def test_retry_uncertain_limit_binds_exact_old_row_before_new_ordinary(
+     assert _meta_ids(engine) == [str(node_id) for node_id in node_ids]
+ 
+ 
++_BLANK_SUMMARIES = ("", "   ", "\v\f", " \n\t")
++
++
++def _blank_out(engine, node_ids: list[int]) -> None:
++    conn = sqlite3.connect(engine._store.db_path)
++    try:
++        conn.executemany(
++            "UPDATE summary_nodes SET summary = ? WHERE node_id = ?",
++            [
++                (_BLANK_SUMMARIES[index % len(_BLANK_SUMMARIES)], node_id)
++                for index, node_id in enumerate(node_ids)
++            ],
++        )
++        conn.commit()
++    finally:
++        conn.close()
++
++
++@pytest.mark.parametrize(
++    ("value", "expected"),
++    [
++        (None, 0), ("", 0), ("   ", 0), ("\v\f", 0), ("  \n", 0),
++        (b" \t", 0), ("x", 1), ("  text  ", 1), (b"bytes", 1),
++    ],
++)
++def test_summary_text_present_matches_python_strip(value, expected):
++    assert command_mod._summary_text_present(value) == expected
++
++
++def test_dry_run_excludes_blank_leaf_summaries_from_counts(monkeypatch, tmp_path):
++    engine = _engine(tmp_path)
++    node_ids = _seed(engine, 6)
++    _blank_out(engine, node_ids[:4])
++    provider = FakeProvider()
++    monkeypatch.setattr(command_mod, "resolve_provider", lambda _config, **_kw: provider)
++
++    result = handle_lcm_command("embed backfill", engine)
++
++    assert "pending: 2" in result
++    assert "selected: 2" in result
++    # Only "summary-4" + "summary-5" contribute tokens.
++    assert "estimated_tokens: 18" in result
++    assert provider.calls == []
++
++
++def test_apply_never_sends_blank_leaf_summaries(monkeypatch, tmp_path):
++    engine = _engine(tmp_path)
++    node_ids = _seed(engine, 5)
++    _blank_out(engine, [node_ids[1], node_ids[3]])
++    provider = FakeProvider()
++    monkeypatch.setattr(command_mod, "resolve_provider", lambda _config, **_kw: provider)
++
++    result = handle_lcm_command("embed backfill --apply", engine)
++
++    assert "status: complete" in result
++    assert "embedded: 3" in result
++    assert "remaining: 0" in result
++    sent = [text for batch in provider.calls for text in batch]
++    assert sorted(sent) == ["summary-0", "summary-2", "summary-4"]
++    assert all(text.strip() for text in sent)
++    assert _meta_ids(engine) == [
++        str(node_ids[0]), str(node_ids[2]), str(node_ids[4])
++    ]
++    assert _inflight_rows(engine) == []
++
++
++def test_retry_uncertain_skips_blank_summary_and_keeps_its_marker(
++    monkeypatch, tmp_path
++):
++    engine = _engine(tmp_path)
++    node_ids = _seed(engine, 2)
++    _mark_uncertain(engine, node_ids)
++    conn = sqlite3.connect(engine._store.db_path)
++    try:
++        conn.execute(
++            "UPDATE summary_nodes SET summary = ? WHERE node_id = ?",
++            ("\v\f", node_ids[0]),
++        )
++        conn.commit()
++        before = conn.execute(
++            "SELECT * FROM lcm_embedding_backfill_inflight WHERE embedded_id = ?",
++            (str(node_ids[0]),),
++        ).fetchone()
++    finally:
++        conn.close()
++    provider = FakeProvider()
++    monkeypatch.setattr(command_mod, "resolve_provider", lambda _config, **_kw: provider)
++
++    result = handle_lcm_command("embed backfill --apply --retry-uncertain", engine)
++
++    assert "embedded: 1" in result
++    assert provider.calls == [["summary-1"]]
++    assert _meta_ids(engine) == [str(node_ids[1])]
++    assert _inflight_rows(engine) == [(str(node_ids[0]), "uncertain")]
++    conn = sqlite3.connect(engine._store.db_path)
++    try:
++        after = conn.execute(
++            "SELECT * FROM lcm_embedding_backfill_inflight WHERE embedded_id = ?",
++            (str(node_ids[0]),),
++        ).fetchone()
++    finally:
++        conn.close()
++    assert after == before
++
++
+ def test_retry_uncertain_partial_publish_preserves_unused_authorization(
+     monkeypatch, tmp_path
+ ):

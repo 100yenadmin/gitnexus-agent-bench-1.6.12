@@ -1,0 +1,82 @@
+[
+ {
+  "id": "p1-parseSourceSafe",
+  "kind": "qa",
+  "statement": "Impact check before a change. We are about to add a new required parameter to `parseSourceSafe`, the function declared at `gitnexus/src/core/tree-sitter/safe-parse.ts:212`. Before anyone edits code, list every location in `gitnexus/src/` that would have to be updated so the project still type-checks after that change: each place that calls this exact function, or otherwise uses it in a way that would break (for example passing it, or an object that carries it, where a compatible signature is required). Do not include other functions or methods that only share its name, the declaration itself, import/export statements, comments, or files outside `gitnexus/src/`. Do not modify any repository files.\n\nWrite `.bench-review/answer.json` as UTF-8 JSON with exactly this shape:\n{\"locations\": [{\"path\": \"gitnexus/src/<file>.ts\", \"line\": <1-based line of the call or use>}]}\nOne entry per affected line. Then reply with a one-line summary.",
+  "base": "GitNexus c4ecf398 (gnxu-base index)",
+  "ground_truth": "gt.json",
+  "user_instruction_file_on_claude_arms": true
+ },
+ {
+  "id": "p1-getPhaseOutput",
+  "kind": "qa",
+  "statement": "Impact check before a change. We are about to add a new required parameter to `getPhaseOutput`, the function declared at `gitnexus/src/core/ingestion/pipeline-phases/types.ts:99`. Before anyone edits code, list every location in `gitnexus/src/` that would have to be updated so the project still type-checks after that change: each place that calls this exact function, or otherwise uses it in a way that would break (for example passing it, or an object that carries it, where a compatible signature is required). Do not include other functions or methods that only share its name, the declaration itself, import/export statements, comments, or files outside `gitnexus/src/`. Do not modify any repository files.\n\nWrite `.bench-review/answer.json` as UTF-8 JSON with exactly this shape:\n{\"locations\": [{\"path\": \"gitnexus/src/<file>.ts\", \"line\": <1-based line of the call or use>}]}\nOne entry per affected line. Then reply with a one-line summary.",
+  "base": "GitNexus c4ecf398 (gnxu-base index)",
+  "ground_truth": "gt.json",
+  "user_instruction_file_on_claude_arms": true
+ },
+ {
+  "id": "p1-resolve",
+  "kind": "qa",
+  "statement": "Impact check before a change. We are about to add a new required parameter to `ScopeTreeHarvester.resolve`, the method declared at `gitnexus/src/core/ingestion/cfg/visitors/scope-tree-harvest.ts:123`. Before anyone edits code, list every location in `gitnexus/src/` that would have to be updated so the project still type-checks after that change: each place that calls this exact method, or otherwise uses it in a way that would break (for example passing it, or an object that carries it, where a compatible signature is required). Do not include other functions or methods that only share its name, the declaration itself, import/export statements, comments, or files outside `gitnexus/src/`. Do not modify any repository files.\n\nWrite `.bench-review/answer.json` as UTF-8 JSON with exactly this shape:\n{\"locations\": [{\"path\": \"gitnexus/src/<file>.ts\", \"line\": <1-based line of the call or use>}]}\nOne entry per affected line. Then reply with a one-line summary.",
+  "base": "GitNexus c4ecf398 (gnxu-base index)",
+  "ground_truth": "gt.json",
+  "user_instruction_file_on_claude_arms": true
+ },
+ {
+  "id": "p1-init",
+  "kind": "qa",
+  "statement": "Impact check before a change. We are about to add a new required parameter to `LocalBackend.init`, the method declared at `gitnexus/src/mcp/local/local-backend.ts:1779`. Before anyone edits code, list every location in `gitnexus/src/` that would have to be updated so the project still type-checks after that change: each place that calls this exact method, or otherwise uses it in a way that would break (for example passing it, or an object that carries it, where a compatible signature is required). Do not include other functions or methods that only share its name, the declaration itself, import/export statements, comments, or files outside `gitnexus/src/`. Do not modify any repository files.\n\nWrite `.bench-review/answer.json` as UTF-8 JSON with exactly this shape:\n{\"locations\": [{\"path\": \"gitnexus/src/<file>.ts\", \"line\": <1-based line of the call or use>}]}\nOne entry per affected line. Then reply with a one-line summary.",
+  "base": "GitNexus c4ecf398 (gnxu-base index)",
+  "ground_truth": "gt.json",
+  "user_instruction_file_on_claude_arms": true
+ },
+ {
+  "id": "p1-sortSinkKinds",
+  "kind": "qa",
+  "statement": "Impact check before a change. We are about to add a new required parameter to `sortSinkKinds`, the function declared at `gitnexus/src/core/ingestion/taint/source-sink-config.ts:158`. Before anyone edits code, list every location in `gitnexus/src/` that would have to be updated so the project still type-checks after that change: each place that calls this exact function, or otherwise uses it in a way that would break (for example passing it, or an object that carries it, where a compatible signature is required). Do not include other functions or methods that only share its name, the declaration itself, import/export statements, comments, or files outside `gitnexus/src/`. Do not modify any repository files.\n\nWrite `.bench-review/answer.json` as UTF-8 JSON with exactly this shape:\n{\"locations\": [{\"path\": \"gitnexus/src/<file>.ts\", \"line\": <1-based line of the call or use>}]}\nOne entry per affected line. Then reply with a one-line summary.",
+  "base": "GitNexus c4ecf398 (gnxu-base index)",
+  "ground_truth": "gt.json",
+  "user_instruction_file_on_claude_arms": true
+ },
+ {
+  "id": "p1-resolveConstant",
+  "kind": "qa",
+  "statement": "Impact check before a change. We are about to add a new required parameter to `resolveConstant`, the function declared at `gitnexus/src/core/ingestion/route-extractors/constant-resolver.ts:225`. Before anyone edits code, list every location in `gitnexus/src/` that would have to be updated so the project still type-checks after that change: each place that calls this exact function, or otherwise uses it in a way that would break (for example passing it, or an object that carries it, where a compatible signature is required). Do not include other functions or methods that only share its name, the declaration itself, import/export statements, comments, or files outside `gitnexus/src/`. Do not modify any repository files.\n\nWrite `.bench-review/answer.json` as UTF-8 JSON with exactly this shape:\n{\"locations\": [{\"path\": \"gitnexus/src/<file>.ts\", \"line\": <1-based line of the call or use>}]}\nOne entry per affected line. Then reply with a one-line summary.",
+  "base": "GitNexus c4ecf398 (gnxu-base index)",
+  "ground_truth": "gt.json",
+  "user_instruction_file_on_claude_arms": true
+ },
+ {
+  "id": "p1-validateBranchName",
+  "kind": "qa",
+  "statement": "Impact check before a change. We are about to add a new required parameter to `validateBranchName`, the function declared at `gitnexus/src/core/git-ref.ts:56`. Before anyone edits code, list every location in `gitnexus/src/` that would have to be updated so the project still type-checks after that change: each place that calls this exact function, or otherwise uses it in a way that would break (for example passing it, or an object that carries it, where a compatible signature is required). Do not include other functions or methods that only share its name, the declaration itself, import/export statements, comments, or files outside `gitnexus/src/`. Do not modify any repository files.\n\nWrite `.bench-review/answer.json` as UTF-8 JSON with exactly this shape:\n{\"locations\": [{\"path\": \"gitnexus/src/<file>.ts\", \"line\": <1-based line of the call or use>}]}\nOne entry per affected line. Then reply with a one-line summary.",
+  "base": "GitNexus c4ecf398 (gnxu-base index)",
+  "ground_truth": "gt.json",
+  "user_instruction_file_on_claude_arms": true
+ },
+ {
+  "id": "p1-close",
+  "kind": "qa",
+  "statement": "Impact check before a change. We are about to add a new required parameter to `SyncCsvWriter.close`, the method declared at `gitnexus/src/core/lbug/sync-csv-writer.ts:97`. Before anyone edits code, list every location in `gitnexus/src/` that would have to be updated so the project still type-checks after that change: each place that calls this exact method, or otherwise uses it in a way that would break (for example passing it, or an object that carries it, where a compatible signature is required). Do not include other functions or methods that only share its name, the declaration itself, import/export statements, comments, or files outside `gitnexus/src/`. Do not modify any repository files.\n\nWrite `.bench-review/answer.json` as UTF-8 JSON with exactly this shape:\n{\"locations\": [{\"path\": \"gitnexus/src/<file>.ts\", \"line\": <1-based line of the call or use>}]}\nOne entry per affected line. Then reply with a one-line summary.",
+  "base": "GitNexus c4ecf398 (gnxu-base index)",
+  "ground_truth": "gt.json",
+  "user_instruction_file_on_claude_arms": true
+ },
+ {
+  "id": "p1-resolveCallerGraphId",
+  "kind": "qa",
+  "statement": "Impact check before a change. We are about to add a new required parameter to `resolveCallerGraphId`, the function declared at `gitnexus/src/core/ingestion/scope-resolution/graph-bridge/ids.ts:546`. Before anyone edits code, list every location in `gitnexus/src/` that would have to be updated so the project still type-checks after that change: each place that calls this exact function, or otherwise uses it in a way that would break (for example passing it, or an object that carries it, where a compatible signature is required). Do not include other functions or methods that only share its name, the declaration itself, import/export statements, comments, or files outside `gitnexus/src/`. Do not modify any repository files.\n\nWrite `.bench-review/answer.json` as UTF-8 JSON with exactly this shape:\n{\"locations\": [{\"path\": \"gitnexus/src/<file>.ts\", \"line\": <1-based line of the call or use>}]}\nOne entry per affected line. Then reply with a one-line summary.",
+  "base": "GitNexus c4ecf398 (gnxu-base index)",
+  "ground_truth": "gt.json",
+  "user_instruction_file_on_claude_arms": true
+ },
+ {
+  "id": "p1-drainFinalizerPending",
+  "kind": "qa",
+  "statement": "Impact check before a change. We are about to add a new required parameter to `drainFinalizerPending`, the function declared at `gitnexus/src/core/ingestion/cfg/control-flow-context.ts:220`. Before anyone edits code, list every location in `gitnexus/src/` that would have to be updated so the project still type-checks after that change: each place that calls this exact function, or otherwise uses it in a way that would break (for example passing it, or an object that carries it, where a compatible signature is required). Do not include other functions or methods that only share its name, the declaration itself, import/export statements, comments, or files outside `gitnexus/src/`. Do not modify any repository files.\n\nWrite `.bench-review/answer.json` as UTF-8 JSON with exactly this shape:\n{\"locations\": [{\"path\": \"gitnexus/src/<file>.ts\", \"line\": <1-based line of the call or use>}]}\nOne entry per affected line. Then reply with a one-line summary.",
+  "base": "GitNexus c4ecf398 (gnxu-base index)",
+  "ground_truth": "gt.json",
+  "user_instruction_file_on_claude_arms": true
+ }
+]

@@ -1,0 +1,30 @@
+{
+ "schema_version": 1,
+ "verdict": "comment",
+ "findings": [
+  {
+   "id": "measure-dist-cli-stale-precedence",
+   "severity": "medium",
+   "path": "gitnexus/bench/impact-pdg/measure.mjs",
+   "line": 128,
+   "end_line": 130,
+   "category": "correctness",
+   "scenario": "A developer who has ever run `node scripts/build.js` (so gitnexus/dist/cli/index.js exists) edits analyzer/PDG code under src/ and runs `node --import tsx bench/impact-pdg/measure.mjs` (or `--check`/`--mutation`). cliChildArgs now unconditionally prefers dist/cli/index.js whenever the file exists, so the child `analyze --pdg` runs the stale compiled analyzer and the bench reports (and gates baselines/recall against) old behaviour with no warning. Before this diff the main analyze process always ran from src via tsx.",
+   "evidence": "measure.mjs:129 `return fs.existsSync(DIST_CLI) ? [DIST_CLI, ...rest] : [TSX_CLI, CLI_ENTRY, ...rest];` — existence is the only criterion; no mtime/freshness check, no env override, no log of which entry was used. analyzeAndImpact (measure.mjs:174) is the sole caller (detect_changes: analyzeAndImpact touched). CI is unaffected because the workflow builds dist immediately before running.",
+   "recommendation": "Make the choice explicit and visible: e.g. select dist only when an env flag (set by the workflow) is present or when dist is newer than src, and print which CLI entry the child uses to stderr.",
+   "blocking": false
+  },
+  {
+   "id": "lockfile-libc-constraints-dropped",
+   "severity": "low",
+   "path": "gitnexus/package-lock.json",
+   "line": 1,
+   "end_line": 1,
+   "category": "compatibility",
+   "scenario": "The lockfile was regenerated with an npm version that strips the `libc` field, removing glibc/musl constraints from @rolldown/binding-linux-* and lightningcss-linux-* optional entries. On Linux, `npm ci` with this lockfile can no longer filter by libc, so both gnu and musl native bindings are considered for install, and the next contributor using the repo's npm will re-add the fields, causing lockfile churn unrelated to the Babel devDependency addition.",
+   "evidence": "`git diff package-lock.json` removes `\"libc\": [\"glibc\"]` / `[\"musl\"]` from node_modules/@rolldown/binding-linux-{arm64,ppc64,s390x,x64}-{gnu,musl} and node_modules/lightningcss-linux-{arm64,x64}-{gnu,musl}; these removals are unrelated to the four @babel/* additions in package.json.",
+   "recommendation": "Regenerate package-lock.json with the npm version the repo/CI uses (npm >=10.9 / 11) so the libc fields are preserved and the diff contains only the @babel/* additions.",
+   "blocking": false
+  }
+ ]
+}

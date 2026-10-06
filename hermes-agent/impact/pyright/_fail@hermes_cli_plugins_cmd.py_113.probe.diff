@@ -1,0 +1,13 @@
+diff --git a/hermes_cli/plugins_cmd.py b/hermes_cli/plugins_cmd.py
+index 562601931c..84eaa86aea 100644
+--- a/hermes_cli/plugins_cmd.py
++++ b/hermes_cli/plugins_cmd.py
+@@ -110,7 +110,7 @@ def _is_tty() -> bool:
+     return sys.stdin.isatty() and sys.stdout.isatty()
+ 
+ 
+-def _fail(console, message: str) -> NoReturn:
++def _fail(console, message: str, bench_probe) -> NoReturn:
+     """Print *message* and exit 1."""
+     console.print(message)
+     sys.exit(1)

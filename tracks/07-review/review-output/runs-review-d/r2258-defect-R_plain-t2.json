@@ -1,0 +1,18 @@
+{
+ "schema_version": 1,
+ "verdict": "comment",
+ "findings": [
+  {
+   "id": "measure-prefers-stale-dist-cli",
+   "severity": "medium",
+   "path": "gitnexus/bench/impact-pdg/measure.mjs",
+   "line": 128,
+   "end_line": 130,
+   "category": "correctness",
+   "scenario": "A developer edits ingestion/PDG code under src/ and runs the documented local command `node --import tsx bench/impact-pdg/measure.mjs --check` (README) with an old dist/ left over from a previous build. cliChildArgs now picks dist/cli/index.js solely because it exists, so the whole analyze child (not only the workers, as before) runs the stale compiled code; the F1/mutation numbers and the --check baseline gate silently reflect the old build, letting a src regression pass or reporting a false regression.",
+   "evidence": "`return fs.existsSync(DIST_CLI) ? [DIST_CLI, ...rest] : [TSX_CLI, CLI_ENTRY, ...rest];` — existence is the only criterion; there is no freshness check (mtime vs src), no env/flag to force src, and no log line telling the user which CLI was used. Previously the analyze entry was always `--import tsx src/cli/index.ts`, so the main analyze pipeline tracked the working tree.",
+   "recommendation": "Make the dist preference explicit or verified: e.g. use dist only when an env/flag (set by the mutation workflow) requests it, or compare dist/cli/index.js mtime against the newest src/ file and fall back/warn when stale; at minimum print which CLI entry was selected to stderr.",
+   "blocking": false
+  }
+ ]
+}

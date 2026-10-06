@@ -1,0 +1,56 @@
+[
+ {
+  "id": "p2-close",
+  "statement": "Rename the `close` method of class `SyncCsvWriter` (declared at `gitnexus/src/core/lbug/sync-csv-writer.ts:97`) to `closeWriter` everywhere it is used, including tests. Rename only this method: other functions, methods, properties and variables that happen to share the name `close` must stay unchanged. Behaviour must not change and the project must still type-check.",
+  "base": "GitNexus c4ecf398 (gnxu-base index)",
+  "oracle_cmd": "cd gitnexus && node \"$GITNEXUS_BENCH_ORACLE_ROOT/rename_gt.mjs\" check \"$GITNEXUS_BENCH_ORACLE_ROOT/spec.json\" close",
+  "regression_cmd": "cd gitnexus && ./node_modules/.bin/tsc --noEmit -p .",
+  "oracle_version": "v2",
+  "user_instruction_file_on_claude_arms": true
+ },
+ {
+  "id": "p2-resolve",
+  "statement": "Rename the `resolve` method of class `ScopeTreeHarvester` (declared at `gitnexus/src/core/ingestion/cfg/visitors/scope-tree-harvest.ts:123`) to `resolveBinding` everywhere it is used, including tests. Rename only this method: other functions, methods, properties and variables that happen to share the name `resolve` must stay unchanged. Behaviour must not change and the project must still type-check.",
+  "base": "GitNexus c4ecf398 (gnxu-base index)",
+  "oracle_cmd": "cd gitnexus && node \"$GITNEXUS_BENCH_ORACLE_ROOT/rename_gt.mjs\" check \"$GITNEXUS_BENCH_ORACLE_ROOT/spec.json\" resolve",
+  "regression_cmd": "cd gitnexus && ./node_modules/.bin/tsc --noEmit -p .",
+  "oracle_version": "v2",
+  "user_instruction_file_on_claude_arms": true
+ },
+ {
+  "id": "p2-declare",
+  "statement": "Rename the `declare` method of class `ScopeTreeHarvester` (declared at `gitnexus/src/core/ingestion/cfg/visitors/scope-tree-harvest.ts:102`) to `declareBinding` everywhere it is used, including tests. Rename only this method: other functions, methods, properties and variables that happen to share the name `declare` must stay unchanged. Behaviour must not change and the project must still type-check.",
+  "base": "GitNexus c4ecf398 (gnxu-base index)",
+  "oracle_cmd": "cd gitnexus && node \"$GITNEXUS_BENCH_ORACLE_ROOT/rename_gt.mjs\" check \"$GITNEXUS_BENCH_ORACLE_ROOT/spec.json\" declare",
+  "regression_cmd": "cd gitnexus && ./node_modules/.bin/tsc --noEmit -p .",
+  "oracle_version": "v2",
+  "user_instruction_file_on_claude_arms": true
+ },
+ {
+  "id": "p2-drainFinalizerPending",
+  "statement": "Rename the function `drainFinalizerPending` (declared at `gitnexus/src/core/ingestion/cfg/control-flow-context.ts:220`) to `flushFinalizerPending` everywhere it is used, including tests. Rename only this function: other functions, methods, properties and variables that happen to share the name `drainFinalizerPending` must stay unchanged. Behaviour must not change and the project must still type-check.",
+  "base": "GitNexus c4ecf398 (gnxu-base index)",
+  "oracle_cmd": "cd gitnexus && node \"$GITNEXUS_BENCH_ORACLE_ROOT/rename_gt.mjs\" check \"$GITNEXUS_BENCH_ORACLE_ROOT/spec.json\" drainFinalizerPending",
+  "regression_cmd": "cd gitnexus && ./node_modules/.bin/tsc --noEmit -p .",
+  "oracle_version": "v2",
+  "user_instruction_file_on_claude_arms": true
+ },
+ {
+  "id": "p2-getPhaseOutput",
+  "statement": "Rename the function `getPhaseOutput` (declared at `gitnexus/src/core/ingestion/pipeline-phases/types.ts:99`) to `readPhaseOutput` everywhere it is used, including tests. Rename only this function: other functions, methods, properties and variables that happen to share the name `getPhaseOutput` must stay unchanged. Behaviour must not change and the project must still type-check.",
+  "base": "GitNexus c4ecf398 (gnxu-base index)",
+  "oracle_cmd": "cd gitnexus && node \"$GITNEXUS_BENCH_ORACLE_ROOT/rename_gt.mjs\" check \"$GITNEXUS_BENCH_ORACLE_ROOT/spec.json\" getPhaseOutput",
+  "regression_cmd": "cd gitnexus && ./node_modules/.bin/tsc --noEmit -p .",
+  "oracle_version": "v2",
+  "user_instruction_file_on_claude_arms": true
+ },
+ {
+  "id": "p2-facts",
+  "statement": "Rename the `facts` method of class `JavaHarvester` (declared at `gitnexus/src/core/ingestion/cfg/visitors/java-harvest.ts:186`) to `collectFacts` everywhere it is used, including tests. Rename only this method: other functions, methods, properties and variables that happen to share the name `facts` must stay unchanged. Behaviour must not change and the project must still type-check.",
+  "base": "GitNexus c4ecf398 (gnxu-base index)",
+  "oracle_cmd": "cd gitnexus && node \"$GITNEXUS_BENCH_ORACLE_ROOT/rename_gt.mjs\" check \"$GITNEXUS_BENCH_ORACLE_ROOT/spec.json\" facts",
+  "regression_cmd": "cd gitnexus && ./node_modules/.bin/tsc --noEmit -p .",
+  "oracle_version": "v2",
+  "user_instruction_file_on_claude_arms": true
+ }
+]

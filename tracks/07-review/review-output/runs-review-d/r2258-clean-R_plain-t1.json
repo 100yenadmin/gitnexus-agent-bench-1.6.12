@@ -1,0 +1,18 @@
+{
+ "schema_version": 1,
+ "verdict": "comment",
+ "findings": [
+  {
+   "id": "measure-stale-dist-cli-preferred",
+   "severity": "low",
+   "path": "gitnexus/bench/impact-pdg/measure.mjs",
+   "line": 128,
+   "end_line": 130,
+   "category": "correctness",
+   "scenario": "A developer edits analyzer/PDG code under gitnexus/src and runs `node --import tsx bench/impact-pdg/measure.mjs` locally (the documented build-free usage) while an older gitnexus/dist/ is on disk. cliChildArgs sees that dist/cli/index.js exists and runs the analyze child from the stale compiled CLI. The in-process LocalBackend, imported from src, then reads an index produced by old code. The precision/recall/mutation numbers reflect the old analyzer, and nothing warns about it.",
+   "evidence": "`function cliChildArgs(rest) { return fs.existsSync(DIST_CLI) ? [DIST_CLI, ...rest] : [TSX_CLI, CLI_ENTRY, ...rest]; }` picks dist only because the file exists. There is no freshness check against src and no opt-out. Before this change the analyze entry always ran from src/cli/index.ts via tsx.",
+   "recommendation": "Only prefer dist when it is requested explicitly (for example an env flag set by the mutation workflow) or when dist is newer than src. Otherwise print a clear notice saying which CLI entry was used, so a stale build cannot silently skew local bench results.",
+   "blocking": false
+  }
+ ]
+}

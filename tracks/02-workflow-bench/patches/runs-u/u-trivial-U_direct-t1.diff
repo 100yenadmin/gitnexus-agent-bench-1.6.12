@@ -1,0 +1,73 @@
+diff --git a/gitnexus/src/cli/help-i18n.ts b/gitnexus/src/cli/help-i18n.ts
+index ede4097..6b6d742 100644
+--- a/gitnexus/src/cli/help-i18n.ts
++++ b/gitnexus/src/cli/help-i18n.ts
+@@ -86,7 +86,7 @@ const OPTION_DESCRIPTION_KEYS = {
+   'mcp|--auth-token <token>': 'help.option.mcp.authToken',
+   'serve|-p, --port <port>': 'help.option.port',
+   'serve|--host <host>': 'help.option.serve.host',
+-  'status|--json': 'help.option.status.json',
++  'status|-j, --json': 'help.option.status.json',
+   'uninstall|-f, --force': 'help.option.uninstall.force',
+   'clean|-f, --force': 'help.option.force.confirmation',
+   'clean|--all': 'help.option.clean.all',
+diff --git a/gitnexus/src/cli/index.ts b/gitnexus/src/cli/index.ts
+index 22bb3c0..da85c35 100644
+--- a/gitnexus/src/cli/index.ts
++++ b/gitnexus/src/cli/index.ts
+@@ -292,7 +292,7 @@ program
+   .command('status')
+   .description('Show index status for the current repo or a registered index')
+   .option('-r, --repo <name>', 'Registered repository alias or path (works after checkout removal)')
+-  .option('--json', 'Emit machine-readable index and analyzer provenance')
++  .option('-j, --json', 'Emit machine-readable index and analyzer provenance')
+   .addHelpText('after', () => t('help.identityCache.environment'))
+   .action(createLazyAction(() => import('./status.js'), 'statusCommand'));
+ 
+diff --git a/gitnexus/test/unit/status-json-alias.test.ts b/gitnexus/test/unit/status-json-alias.test.ts
+new file mode 100644
+index 0000000..d2f0c8d
+--- /dev/null
++++ b/gitnexus/test/unit/status-json-alias.test.ts
+@@ -0,0 +1,41 @@
++import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
++
++const statusCommand = vi.fn();
++
++vi.mock('../../src/cli/status.js', () => ({ statusCommand }));
++vi.mock('../../src/cli/command-banner.js', () => ({ writeCommandBanner: vi.fn() }));
++vi.mock('../../src/cli/update-notice.js', () => ({ runProcessCliUpdateNotice: vi.fn() }));
++
++async function runCli(args: string[]): Promise<void> {
++  process.argv = ['node', 'gitnexus', ...args];
++  await import('../../src/cli/index.js');
++  await vi.waitFor(() => expect(statusCommand).toHaveBeenCalledTimes(1));
++}
++
++describe('gitnexus status -j', () => {
++  const originalArgv = process.argv;
++
++  beforeEach(() => {
++    vi.resetModules();
++    statusCommand.mockReset();
++  });
++
++  afterEach(() => {
++    process.argv = originalArgv;
++  });
++
++  it('treats -j as an alias for --json', async () => {
++    await runCli(['status', '-j']);
++    expect(statusCommand.mock.calls[0][0]).toMatchObject({ json: true });
++  });
++
++  it('still accepts --json', async () => {
++    await runCli(['status', '--json']);
++    expect(statusCommand.mock.calls[0][0]).toMatchObject({ json: true });
++  });
++
++  it('leaves json unset without the flag', async () => {
++    await runCli(['status']);
++    expect(statusCommand.mock.calls[0][0].json).toBeUndefined();
++  });
++});

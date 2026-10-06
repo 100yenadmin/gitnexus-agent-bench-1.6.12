@@ -1,0 +1,32 @@
+{
+ "locations": [
+  {
+   "path": "agent/video_gen_registry.py",
+   "line": 26
+  },
+  {
+   "path": "agent/terminal_env_registry.py",
+   "line": 45
+  },
+  {
+   "path": "agent/image_gen_registry.py",
+   "line": 24
+  },
+  {
+   "path": "agent/transcription_registry.py",
+   "line": 45
+  },
+  {
+   "path": "agent/browser_registry.py",
+   "line": 25
+  },
+  {
+   "path": "agent/web_search_registry.py",
+   "line": 33
+  },
+  {
+   "path": "agent/tts_registry.py",
+   "line": 45
+  }
+ ]
+}

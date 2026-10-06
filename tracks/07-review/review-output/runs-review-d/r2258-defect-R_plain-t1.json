@@ -1,0 +1,30 @@
+{
+ "schema_version": 1,
+ "verdict": "comment",
+ "findings": [
+  {
+   "id": "measure-stale-dist-cli-preferred",
+   "severity": "medium",
+   "path": "gitnexus/bench/impact-pdg/measure.mjs",
+   "line": 127,
+   "end_line": 130,
+   "category": "correctness",
+   "scenario": "A developer edits analyzer/PDG code under gitnexus/src and runs the documented build-free command `node --import tsx bench/impact-pdg/measure.mjs` in a checkout that still has an older dist/ from a previous build. cliChildArgs() picks dist/cli/index.js purely because the file exists, so the fixtures are indexed by the stale compiled analyzer, while the parent process still imports LocalBackend from src/mcp/local/local-backend.ts. The benchmark/mutation numbers (and baseline re-captures) then silently reflect old analyzer code, or fail confusingly on a src/dist schema mismatch.",
+   "evidence": "`return fs.existsSync(DIST_CLI) ? [DIST_CLI, ...rest] : [TSX_CLI, CLI_ENTRY, ...rest];` — only an existence check, no freshness check or opt-in; analyzeAndImpact still does `await import(path.join(REPO_ROOT, 'src', 'mcp', 'local', 'local-backend.ts'))`, and the file header still advertises `Build-free: node --import tsx bench/impact-pdg/measure.mjs`.",
+   "recommendation": "Make the dist path explicit (e.g. an env flag/CLI option set by the mutation workflow), or only prefer dist when it is newer than src (mtime check), and log which CLI entry was used so stale-build runs are visible.",
+   "blocking": false
+  },
+  {
+   "id": "gate-fail-open-when-no-gated-checks",
+   "severity": "low",
+   "path": "gitnexus/bench/impact-pdg/gate-mutation-recall.mjs",
+   "line": 27,
+   "end_line": 27,
+   "category": "correctness",
+   "scenario": "If a mutation report contains checks but none carry `recallGated === true` (an older/variant report without the field, or a regression in measure.mjs that marks everything excluded), `scored` is empty, `min` is null and the gate exits 0 with 'scored cases: 0 of N' — a realized-recall regression passes the CI gate silently.",
+   "evidence": "`const scored = checks.filter((c) => c.recallGated === true && typeof c.recall === 'number');` followed by `if (min !== null && min < floor) { ... process.exit(1); }` — no failure path when checks.length > 0 but scored.length === 0.",
+   "recommendation": "Fail (or at least warn loudly) when checks exist but zero are recall-gated, e.g. `if (checks.length && !scored.length) { console.error(...); process.exit(1); }`.",
+   "blocking": false
+  }
+ ]
+}

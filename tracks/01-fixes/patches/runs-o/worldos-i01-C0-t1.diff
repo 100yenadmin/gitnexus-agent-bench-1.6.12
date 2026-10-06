@@ -1,0 +1,218 @@
+diff --git a/servers/engine/combat_ai.py b/servers/engine/combat_ai.py
+index de6e1bc..9395e08 100644
+--- a/servers/engine/combat_ai.py
++++ b/servers/engine/combat_ai.py
+@@ -425,6 +425,10 @@ def _step_toward(view: CombatView, target: CombatantView, reach_ft: int) -> Opti
+     if budget <= 0:
+         return None
+     occupied = _occupied_cells(view) - {view.actor_cell}
++    blocking = _blocking_set(view)
++    difficult = _difficult_set(view)
++    if blocking or difficult:
++        return _terrain_step_toward(view, target, reach_ft, occupied, blocking, difficult)
+     reach = combat_grid.reachable(view.actor_cell, budget, occupied, view.grid_width, view.grid_height)
+     if not reach:
+         return None
+@@ -1027,12 +1031,11 @@ def _pick_action_tactical(actor: "Character", view: CombatView) -> Optional[Inte
+                     note=f"tactical-v2 flank move to {cell} on {target.name} (completes a flank)",
+                 )
+ 
+-    # T4 — Terrain-aware close-the-distance. When walls/difficult terrain are present, greedy's
+-    # _step_toward (which routes on OPEN floor only) can pick a cell it must cross a wall/difficult
+-    # ground to reach. Here we route with the SAME impassable/difficult Dijkstra the engine uses:
++    # T4 — Terrain-aware close-the-distance, shared with greedy's _step_toward. Route with
++    # the SAME impassable/difficult Dijkstra the engine uses:
+     # among reachable cells, minimize (distance-to-target, ROUTED move cost, cell) — so a same-distance
+-    # CLEAR route beats one through difficult terrain, and no wall is crossed. We only OVERRIDE greedy
+-    # when terrain actually exists (blocking or difficult non-empty); on open floor we return None and
++    # CLEAR route beats one through difficult terrain, and no wall is crossed. Keep the tactical
++    # movement intent when terrain exists; on open floor we return None and
+     # greedy's identical open-floor step-toward runs (byte-identical). Bounded: O(reachable cells).
+     if (blocking or difficult) and target is not None and (view.attacks or view.spells):
+         best_reach_ft = max(
+@@ -1049,10 +1052,20 @@ def _pick_action_tactical(actor: "Character", view: CombatView) -> Optional[Inte
+     return None
+ 
+ 
++def _routed_move_cost(view: CombatView, cell: tuple[int, int],
++                     occupied: set, blocking: set, difficult: set) -> int:
++    """Cost of a terrain-aware route to a cell already proven reachable."""
++    route = combat_grid.shortest_path(
++        view.actor_cell, cell, occupied, view.grid_width, view.grid_height,
++        impassable=blocking, difficult=difficult,
++    )
++    return combat_grid.path_cost_cells(view.actor_cell, cell, route, difficult=difficult)
++
++
+ def _terrain_step_toward(view: CombatView, target: CombatantView, reach_ft: int,
+                          occupied: set, blocking: set, difficult: set) -> Optional[tuple[int, int]]:
+     """The reachable cell that best closes on `target` while ROUTING around walls + difficult terrain
+-    (tactical-v2). Reachability is the terrain-aware Dijkstra (impassable walls can't be entered;
++    for either policy. Reachability is the terrain-aware Dijkstra (impassable walls can't be entered;
+     difficult cells cost double). TIE-BREAK ORDER: (1) closest to the target (Chebyshev), (2) lowest
+     ROUTED move cost (a same-distance CLEAR route beats one through difficult ground), (3) stable cell.
+     Returns None when nothing gets strictly closer than staying put (matches _step_toward's contract)."""
+@@ -1068,18 +1081,11 @@ def _terrain_step_toward(view: CombatView, target: CombatantView, reach_ft: int,
+     if not reach:
+         return None
+ 
+-    def _routed_cost(cell: tuple[int, int]) -> int:
+-        route = combat_grid.shortest_path(
+-            view.actor_cell, cell, occupied, view.grid_width, view.grid_height,
+-            impassable=blocking, difficult=difficult,
+-        )
+-        return combat_grid.path_cost_cells(view.actor_cell, cell, route, difficult=difficult)
+-
+     best = min(
+         reach,
+         key=lambda cell: (
+             combat_grid.distance_ft(cell, target.cell, view.cell_size),
+-            _routed_cost(cell),
++            _routed_move_cost(view, cell, occupied, blocking, difficult),
+             cell,
+         ),
+     )
+@@ -1124,7 +1130,7 @@ def pick_action(
+     read-only CombatView). Returns an Intent; the loop is the sole writer that applies it.
+ 
+     `policy` selects the decision layer (additive; an unknown policy falls back to greedy-v1):
+-      * "greedy-v1" (default) — the EV policy above, byte-identical to today.
++      * "greedy-v1" (default) — the EV policy above, with terrain-aware grid movement.
+       * "tactical-v2" (#1255 / grid-461 PR-D) — when the fight is ON THE GRID, a positioning pass
+         (_pick_action_tactical) runs FIRST for OFFENCE only: prefer an AoE catching ≥2 foes and no
+         allies; respect cover (skip total-cover, discount partial); seek a flank when moving to melee;
+@@ -1155,14 +1161,20 @@ def pick_action(
+             if threat is not None and view.grid_enabled and view.actor_cell is not None:
+                 budget = combat_grid.movement_budget_cells(view.speed, view.cell_size, view.dashed)
+                 occupied = _occupied_cells(view) - {view.actor_cell}
++                blocking = _blocking_set(view)
++                difficult = _difficult_set(view)
+                 reach = combat_grid.reachable(
+-                    view.actor_cell, budget, occupied, view.grid_width, view.grid_height
++                    view.actor_cell, budget, occupied, view.grid_width, view.grid_height,
++                    impassable=blocking, difficult=difficult,
+                 )
+                 if reach and threat.cell is not None:
+                     flee_cell = max(
+                         reach,
+                         key=lambda cell: (
+-                            combat_grid.distance_ft(cell, threat.cell, view.cell_size), cell
++                            combat_grid.distance_ft(cell, threat.cell, view.cell_size),
++                            -_routed_move_cost(view, cell, occupied, blocking, difficult)
++                            if blocking or difficult else 0,
++                            cell,
+                         ),
+                     )
+                     return Intent(
+diff --git a/servers/engine/tests/test_combat_greedy_terrain.py b/servers/engine/tests/test_combat_greedy_terrain.py
+new file mode 100644
+index 0000000..43788d9
+--- /dev/null
++++ b/servers/engine/tests/test_combat_greedy_terrain.py
+@@ -0,0 +1,106 @@
++"""Greedy-v1 and fallback movement obey the engine's grid terrain rules (#1269)."""
++from dataclasses import replace
++from types import SimpleNamespace
++
++import pytest
++
++import combat_ai
++import combat_grid
++from combat_ai import AttackOption, CombatantView, CombatView
++
++
++def _view(*, foe_cell=(8, 5), blocking=(), difficult=(), speed=30):
++    return CombatView(
++        actor_id="monster", actor_cell=(2, 5), actor_zone="", actor_side="enemy",
++        speed=speed, dashed=False, grid_enabled=True,
++        grid_width=12, grid_height=12, cell_size=5,
++        foes=(CombatantView(
++            id="foe", name="foe", side="party", current_hp=20, max_hp=20,
++            armor_class=12, cell=foe_cell,
++        ),),
++        allies=(),
++        attacks=(AttackOption(name="Bite", to_hit=4, damage_expr="1d8", reach_ft=5),),
++        blocking=tuple(blocking), difficult=tuple(difficult),
++    )
++
++
++def _assert_legal_move(view, intent):
++    occupied = {foe.cell for foe in view.foes} | {ally.cell for ally in view.allies}
++    blocking, difficult = set(view.blocking), set(view.difficult)
++    route = combat_grid.shortest_path(
++        view.actor_cell, intent.to_cell, occupied, view.grid_width, view.grid_height,
++        impassable=blocking, difficult=difficult,
++    )
++    assert route is not None
++    assert not set(route) & (blocking | occupied)
++    assert combat_grid.path_cost_cells(
++        view.actor_cell, intent.to_cell, route, difficult=difficult,
++    ) <= combat_grid.movement_budget_cells(view.speed, view.cell_size, view.dashed)
++
++
++@pytest.mark.parametrize("policy", ["greedy-v1", "unknown-policy", "tactical-v2"])
++@pytest.mark.parametrize("wall_y", [range(1, 12), range(12)])
++def test_approach_never_crosses_an_unreachable_wall(policy, wall_y):
++    view = _view(blocking=[(5, y) for y in wall_y])
++    intent = combat_ai.pick_action(object(), view, policy=policy)
++    assert intent.kind == "move"
++    assert intent.to_cell[0] < 5
++    _assert_legal_move(view, intent)
++
++
++def test_approach_routes_through_a_reachable_wall_gap():
++    view = _view(blocking=[(5, y) for y in range(12) if y != 5])
++    intent = combat_ai.pick_action(object(), view)
++    assert intent.kind == "move"
++    assert intent.to_cell[0] > 5
++    _assert_legal_move(view, intent)
++
++
++@pytest.mark.parametrize("policy", ["greedy-v1", "unknown-policy"])
++def test_approach_prefers_cheaper_ground_at_the_same_distance(policy):
++    # The old lexical winner (7, 4) costs six; clear (7, 5) costs five.
++    view = _view(difficult=[(7, 4)])
++    intent = combat_ai.pick_action(object(), view, policy=policy)
++    assert intent.kind == "move"
++    assert intent.to_cell == (7, 5)
++    _assert_legal_move(view, intent)
++
++
++def test_difficult_ground_limits_the_approach_budget():
++    view = _view(difficult=[(x, y) for x in range(12) for y in range(12)])
++    intent = combat_ai.pick_action(object(), view)
++    assert intent.kind == "move"
++    assert combat_grid.chebyshev_cells(view.actor_cell, intent.to_cell) <= 3
++    _assert_legal_move(view, intent)
++
++
++@pytest.mark.parametrize("speed", [0, 30])
++def test_no_reachable_approach_dodges(speed):
++    view = _view(speed=speed, blocking=[
++        (x, y) for x in range(1, 4) for y in range(4, 7) if (x, y) != (2, 5)
++    ])
++    assert combat_ai.pick_action(object(), view).kind == "dodge"
++
++
++@pytest.mark.parametrize("policy", ["greedy-v1", "unknown-policy", "tactical-v2"])
++def test_retreat_obeys_walls_and_prefers_cheaper_ground(monkeypatch, policy):
++    monkeypatch.setattr(combat_ai, "RETREAT_FRACTION", 0.5)
++    actor = SimpleNamespace(current_hp=1, max_hp=20)
++    view = _view(foe_cell=(1, 5), blocking=[(5, y) for y in range(12)],
++                 difficult=[(4, 11)])
++    intent = combat_ai.pick_action(actor, view, policy=policy)
++    assert intent.kind == "disengage"
++    assert intent.to_cell == (3, 11)
++    _assert_legal_move(view, intent)
++
++
++@pytest.mark.parametrize("policy", ["greedy-v1", "unknown-policy", "tactical-v2"])
++def test_open_floor_keeps_original_approach_and_retreat_cells(monkeypatch, policy):
++    view = _view()
++    assert combat_ai.pick_action(object(), view, policy=policy).to_cell == (7, 4)
++    monkeypatch.setattr(combat_ai, "RETREAT_FRACTION", 0.5)
++    actor = SimpleNamespace(current_hp=1, max_hp=20)
++    retreat = replace(view, foes=(_view(foe_cell=(1, 5)).foes[0],))
++    intent = combat_ai.pick_action(actor, retreat, policy=policy)
++    assert intent.kind == "disengage"
++    assert intent.to_cell == (8, 11)

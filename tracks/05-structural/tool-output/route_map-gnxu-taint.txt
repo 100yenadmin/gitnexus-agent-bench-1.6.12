@@ -1,0 +1,1132 @@
+
+  GitNexus MCP (1.6.12)
+{"level":30,"time":1791218565952,"name":"gitnexus","repoCount":1,"repos":["gnxu-taint"],"msg":"GitNexus: MCP server starting"}
+{
+  "routes": [
+    {
+      "route": "/api",
+      "method": null,
+      "handler": "docker-server.mjs",
+      "runtimeEvidence": {
+        "confirmed": false
+      },
+      "middleware": [],
+      "consumers": [],
+      "flows": []
+    },
+    {
+      "route": "/test/file",
+      "method": "GET",
+      "handler": "gitnexus/test/unit/rate-limit.test.ts",
+      "runtimeEvidence": {
+        "confirmed": false
+      },
+      "middleware": [],
+      "consumers": [],
+      "flows": []
+    },
+    {
+      "route": "/users/list",
+      "method": "GET",
+      "handler": "gitnexus/test/integration/fastapi-prefix-pipeline.test.ts",
+      "runtimeEvidence": {
+        "confirmed": false
+      },
+      "middleware": [],
+      "consumers": [],
+      "flows": []
+    },
+    {
+      "route": "/users/create",
+      "method": "GET",
+      "handler": "gitnexus/test/integration/fastapi-prefix-pipeline.test.ts",
+      "runtimeEvidence": {
+        "confirmed": false
+      },
+      "middleware": [],
+      "consumers": [],
+      "flows": []
+    },
+    {
+      "route": "/calls/list",
+      "method": "GET",
+      "handler": "gitnexus/test/integration/fastapi-prefix-pipeline.test.ts",
+      "runtimeEvidence": {
+        "confirmed": false
+      },
+      "middleware": [],
+      "consumers": [],
+      "flows": []
+    },
+    {
+      "route": "/rel/info",
+      "method": "GET",
+      "handler": "gitnexus/test/integration/fastapi-prefix-pipeline.test.ts",
+      "runtimeEvidence": {
+        "confirmed": false
+      },
+      "middleware": [],
+      "consumers": [],
+      "flows": []
+    },
+    {
+      "route": "/local",
+      "method": "GET",
+      "handler": "gitnexus/test/integration/fastapi-prefix-pipeline.test.ts",
+      "runtimeEvidence": {
+        "confirmed": false
+      },
+      "middleware": [],
+      "consumers": [],
+      "flows": []
+    },
+    {
+      "route": "/v1/items/{item_id}",
+      "method": "GET",
+      "handler": "gitnexus/test/integration/fastapi-prefix-pipeline.test.ts",
+      "runtimeEvidence": {
+        "confirmed": false
+      },
+      "middleware": [],
+      "consumers": [],
+      "flows": []
+    },
+    {
+      "route": "/audit",
+      "method": "GET",
+      "handler": "gitnexus/test/integration/fastapi-prefix-pipeline.test.ts",
+      "runtimeEvidence": {
+        "confirmed": false
+      },
+      "middleware": [],
+      "consumers": [],
+      "flows": []
+    },
+    {
+      "route": "/api/mcp",
+      "method": "GET",
+      "handler": "gitnexus/src/server/mcp-http.ts",
+      "runtimeEvidence": {
+        "confirmed": false
+      },
+      "middleware": [],
+      "consumers": [
+        {
+          "name": "docker-server.test.mjs",
+          "filePath": "docker-server.test.mjs",
+          "accessedKeys": [
+            "setEncoding",
+            "on",
+            "statusCode",
+            "body",
+            "writeHead",
+            "end",
+            "write",
+            "socket"
+          ],
+          "fetchCount": 29
+        }
+      ],
+      "flows": []
+    },
+    {
+      "route": "/api/blame",
+      "method": "GET",
+      "handler": "gitnexus/src/server/repo-tools.ts",
+      "runtimeEvidence": {
+        "confirmed": false
+      },
+      "middleware": [],
+      "consumers": [],
+      "flows": [
+        "MountRepoTools → BuildBlameArgs",
+        "MountRepoTools → RunGit",
+        "MountRepoTools → CompileFilter",
+        "MountRepoTools → GetPull"
+      ]
+    },
+    {
+      "route": "/api/snippet",
+      "method": "GET",
+      "handler": "gitnexus/src/server/repo-tools.ts",
+      "runtimeEvidence": {
+        "confirmed": false
+      },
+      "middleware": [],
+      "consumers": [],
+      "flows": [
+        "MountRepoTools → BuildBlameArgs",
+        "MountRepoTools → RunGit",
+        "MountRepoTools → CompileFilter",
+        "MountRepoTools → GetPull"
+      ]
+    },
+    {
+      "route": "/api/commit-subject",
+      "method": "GET",
+      "handler": "gitnexus/src/server/repo-tools.ts",
+      "runtimeEvidence": {
+        "confirmed": false
+      },
+      "middleware": [],
+      "consumers": [],
+      "flows": [
+        "MountRepoTools → BuildBlameArgs",
+        "MountRepoTools → RunGit",
+        "MountRepoTools → CompileFilter",
+        "MountRepoTools → GetPull"
+      ]
+    },
+    {
+      "route": "/api/rows/filter",
+      "method": "POST",
+      "handler": "gitnexus/src/server/repo-tools.ts",
+      "runtimeEvidence": {
+        "confirmed": false
+      },
+      "middleware": [],
+      "consumers": [],
+      "flows": [
+        "MountRepoTools → BuildBlameArgs",
+        "MountRepoTools → RunGit",
+        "MountRepoTools → CompileFilter",
+        "MountRepoTools → GetPull"
+      ]
+    },
+    {
+      "route": "/api/license",
+      "method": "GET",
+      "handler": "gitnexus/src/server/repo-tools.ts",
+      "runtimeEvidence": {
+        "confirmed": false
+      },
+      "middleware": [],
+      "consumers": [],
+      "flows": [
+        "MountRepoTools → BuildBlameArgs",
+        "MountRepoTools → RunGit",
+        "MountRepoTools → CompileFilter",
+        "MountRepoTools → GetPull"
+      ]
+    },
+    {
+      "route": "/api/query",
+      "method": "POST",
+      "handler": "gitnexus/test/integration/api-query.test.ts",
+      "runtimeEvidence": {
+        "confirmed": false
+      },
+      "middleware": [],
+      "consumers": [
+        {
+          "name": "docker-server.test.mjs",
+          "filePath": "docker-server.test.mjs",
+          "accessedKeys": [
+            "setEncoding",
+            "on",
+            "statusCode",
+            "body",
+            "writeHead",
+            "end",
+            "write",
+            "socket"
+          ],
+          "fetchCount": 29
+        }
+      ],
+      "flows": []
+    },
+    {
+      "route": "/health",
+      "method": "GET",
+      "handler": "gitnexus/src/mcp/http-transport.ts",
+      "runtimeEvidence": {
+        "confirmed": false
+      },
+      "middleware": [],
+      "consumers": [],
+      "flows": [
+        "StartMcpHttpServer → McpRepositoryPolicy",
+        "StartMcpHttpServer → IsTransientStorageInspection",
+        "StartMcpHttpServer → Claim",
+        "StartMcpHttpServer → GetPull"
+      ]
+    },
+    {
+      "route": "/mcp",
+      "method": "GET",
+      "handler": "gitnexus/src/mcp/http-transport.ts",
+      "runtimeEvidence": {
+        "confirmed": false
+      },
+      "middleware": [],
+      "consumers": [],
+      "flows": [
+        "StartMcpHttpServer → McpRepositoryPolicy",
+        "StartMcpHttpServer → IsTransientStorageInspection",
+        "StartMcpHttpServer → Claim",
+        "StartMcpHttpServer → GetPull"
+      ]
+    },
+    {
+      "route": "/sse",
+      "method": "GET",
+      "handler": "gitnexus/src/mcp/http-transport.ts",
+      "runtimeEvidence": {
+        "confirmed": false
+      },
+      "middleware": [],
+      "consumers": [],
+      "flows": [
+        "StartMcpHttpServer → McpRepositoryPolicy",
+        "StartMcpHttpServer → IsTransientStorageInspection",
+        "StartMcpHttpServer → Claim",
+        "StartMcpHttpServer → GetPull"
+      ]
+    },
+    {
+      "route": "/messages",
+      "method": "POST",
+      "handler": "gitnexus/src/mcp/http-transport.ts",
+      "runtimeEvidence": {
+        "confirmed": false
+      },
+      "middleware": [],
+      "consumers": [],
+      "flows": [
+        "StartMcpHttpServer → McpRepositoryPolicy",
+        "StartMcpHttpServer → IsTransientStorageInspection",
+        "StartMcpHttpServer → Claim",
+        "StartMcpHttpServer → GetPull"
+      ]
+    },
+    {
+      "route": "/photos",
+      "method": null,
+      "handler": "gitnexus/test/unit/laravel-route-extraction.test.ts",
+      "runtimeEvidence": {
+        "confirmed": false
+      },
+      "middleware": [],
+      "consumers": [],
+      "flows": []
+    },
+    {
+      "route": "/api/photos",
+      "method": null,
+      "handler": "gitnexus/test/unit/laravel-route-extraction.test.ts",
+      "runtimeEvidence": {
+        "confirmed": false
+      },
+      "middleware": [],
+      "consumers": [],
+      "flows": []
+    },
+    {
+      "route": "/api/repos",
+      "method": null,
+      "handler": "gitnexus-web/e2e/language-switching.spec.ts",
+      "runtimeEvidence": {
+        "confirmed": false
+      },
+      "middleware": [],
+      "consumers": [],
+      "flows": []
+    },
+    {
+      "route": "/api/repo",
+      "method": null,
+      "handler": "gitnexus-web/e2e/language-switching.spec.ts",
+      "runtimeEvidence": {
+        "confirmed": false
+      },
+      "middleware": [],
+      "consumers": [
+        {
+          "name": "docker-server.test.mjs",
+          "filePath": "docker-server.test.mjs",
+          "accessedKeys": [
+            "setEncoding",
+            "on",
+            "statusCode",
+            "body",
+            "writeHead",
+            "end",
+            "write",
+            "socket"
+          ],
+          "fetchCount": 29
+        }
+      ],
+      "flows": []
+    },
+    {
+      "route": "/api/graph",
+      "method": null,
+      "handler": "gitnexus-web/e2e/language-switching.spec.ts",
+      "runtimeEvidence": {
+        "confirmed": false
+      },
+      "middleware": [],
+      "consumers": [],
+      "flows": []
+    },
+    {
+      "route": "/api/heartbeat",
+      "method": null,
+      "handler": "gitnexus-web/e2e/language-switching.spec.ts",
+      "runtimeEvidence": {
+        "confirmed": false
+      },
+      "middleware": [],
+      "consumers": [],
+      "flows": []
+    },
+    {
+      "route": "/api/info",
+      "method": "GET",
+      "handler": "gitnexus/test/unit/web-ui-serving.test.ts",
+      "runtimeEvidence": {
+        "confirmed": false
+      },
+      "middleware": [],
+      "consumers": [
+        {
+          "name": "docker-server.test.mjs",
+          "filePath": "docker-server.test.mjs",
+          "accessedKeys": [
+            "setEncoding",
+            "on",
+            "statusCode",
+            "body",
+            "writeHead",
+            "end",
+            "write",
+            "socket"
+          ],
+          "fetchCount": 29
+        }
+      ],
+      "flows": []
+    },
+    {
+      "route": "/items",
+      "method": null,
+      "handler": "gitnexus/test/unit/kotlin-spring-route-ingestion.test.ts",
+      "runtimeEvidence": {
+        "confirmed": false
+      },
+      "middleware": [],
+      "consumers": [],
+      "flows": []
+    },
+    {
+      "route": "/",
+      "method": "GET",
+      "handler": "gitnexus/src/server/api.ts",
+      "runtimeEvidence": {
+        "confirmed": false
+      },
+      "middleware": [],
+      "consumers": [],
+      "flows": [
+        "CreateJob → IsTerminalJobStatus",
+        "HandleQueryRequest → IsExplicitFtsDisablement",
+        "HandleFileRequest → BadRequestError",
+        "HandleQueryRequest → IsDbBusyError",
+        "HandleQueryRequest → IsOpenRetryExhausted",
+        "HandleQueryRequest → SkipFtsOption",
+        "CreateServer → IsTransientStorageInspection",
+        "CreateServer → Claim",
+        "HandleQueryRequest → Clear",
+        "HandleQueryRequest → CascadeClear",
+        "HandleQueryRequest → Clear",
+        "CreateServer → GetPull"
+      ]
+    },
+    {
+      "route": "/api/health",
+      "method": "GET",
+      "handler": "gitnexus/src/server/api.ts",
+      "runtimeEvidence": {
+        "confirmed": false
+      },
+      "middleware": [],
+      "consumers": [
+        {
+          "name": "docker-server.test.mjs",
+          "filePath": "docker-server.test.mjs",
+          "accessedKeys": [
+            "setEncoding",
+            "on",
+            "statusCode",
+            "body",
+            "writeHead",
+            "end",
+            "write",
+            "socket"
+          ],
+          "fetchCount": 29
+        }
+      ],
+      "flows": [
+        "CreateJob → IsTerminalJobStatus",
+        "HandleQueryRequest → IsExplicitFtsDisablement",
+        "HandleFileRequest → BadRequestError",
+        "HandleQueryRequest → IsDbBusyError",
+        "HandleQueryRequest → IsOpenRetryExhausted",
+        "HandleQueryRequest → SkipFtsOption",
+        "CreateServer → IsTransientStorageInspection",
+        "CreateServer → Claim",
+        "HandleQueryRequest → Clear",
+        "HandleQueryRequest → CascadeClear",
+        "HandleQueryRequest → Clear",
+        "CreateServer → GetPull"
+      ]
+    },
+    {
+      "route": "/api/heartbeat",
+      "method": "GET",
+      "handler": "gitnexus/src/server/api.ts",
+      "runtimeEvidence": {
+        "confirmed": false
+      },
+      "middleware": [],
+      "consumers": [],
+      "flows": [
+        "CreateJob → IsTerminalJobStatus",
+        "HandleQueryRequest → IsExplicitFtsDisablement",
+        "HandleFileRequest → BadRequestError",
+        "HandleQueryRequest → IsDbBusyError",
+        "HandleQueryRequest → IsOpenRetryExhausted",
+        "HandleQueryRequest → SkipFtsOption",
+        "CreateServer → IsTransientStorageInspection",
+        "CreateServer → Claim",
+        "HandleQueryRequest → Clear",
+        "HandleQueryRequest → CascadeClear",
+        "HandleQueryRequest → Clear",
+        "CreateServer → GetPull"
+      ]
+    },
+    {
+      "route": "/api/repos",
+      "method": "GET",
+      "handler": "gitnexus/src/server/api.ts",
+      "runtimeEvidence": {
+        "confirmed": false
+      },
+      "middleware": [],
+      "consumers": [],
+      "flows": [
+        "CreateJob → IsTerminalJobStatus",
+        "HandleQueryRequest → IsExplicitFtsDisablement",
+        "HandleFileRequest → BadRequestError",
+        "HandleQueryRequest → IsDbBusyError",
+        "HandleQueryRequest → IsOpenRetryExhausted",
+        "HandleQueryRequest → SkipFtsOption",
+        "CreateServer → IsTransientStorageInspection",
+        "CreateServer → Claim",
+        "HandleQueryRequest → Clear",
+        "HandleQueryRequest → CascadeClear",
+        "HandleQueryRequest → Clear",
+        "CreateServer → GetPull"
+      ]
+    },
+    {
+      "route": "/api/repo",
+      "method": "GET",
+      "handler": "gitnexus/src/server/api.ts",
+      "runtimeEvidence": {
+        "confirmed": false
+      },
+      "middleware": [],
+      "consumers": [
+        {
+          "name": "docker-server.test.mjs",
+          "filePath": "docker-server.test.mjs",
+          "accessedKeys": [
+            "setEncoding",
+            "on",
+            "statusCode",
+            "body",
+            "writeHead",
+            "end",
+            "write",
+            "socket"
+          ],
+          "fetchCount": 29
+        }
+      ],
+      "flows": [
+        "CreateJob → IsTerminalJobStatus",
+        "HandleQueryRequest → IsExplicitFtsDisablement",
+        "HandleFileRequest → BadRequestError",
+        "HandleQueryRequest → IsDbBusyError",
+        "HandleQueryRequest → IsOpenRetryExhausted",
+        "HandleQueryRequest → SkipFtsOption",
+        "CreateServer → IsTransientStorageInspection",
+        "CreateServer → Claim",
+        "HandleQueryRequest → Clear",
+        "HandleQueryRequest → CascadeClear",
+        "HandleQueryRequest → Clear",
+        "CreateServer → GetPull"
+      ]
+    },
+    {
+      "route": "/api/repo",
+      "method": "DELETE",
+      "handler": "gitnexus/src/server/api.ts",
+      "runtimeEvidence": {
+        "confirmed": false
+      },
+      "middleware": [],
+      "consumers": [
+        {
+          "name": "docker-server.test.mjs",
+          "filePath": "docker-server.test.mjs",
+          "accessedKeys": [
+            "setEncoding",
+            "on",
+            "statusCode",
+            "body",
+            "writeHead",
+            "end",
+            "write",
+            "socket"
+          ],
+          "fetchCount": 29
+        }
+      ],
+      "flows": [
+        "CreateJob → IsTerminalJobStatus",
+        "HandleQueryRequest → IsExplicitFtsDisablement",
+        "HandleFileRequest → BadRequestError",
+        "HandleQueryRequest → IsDbBusyError",
+        "HandleQueryRequest → IsOpenRetryExhausted",
+        "HandleQueryRequest → SkipFtsOption",
+        "CreateServer → IsTransientStorageInspection",
+        "CreateServer → Claim",
+        "HandleQueryRequest → Clear",
+        "HandleQueryRequest → CascadeClear",
+        "HandleQueryRequest → Clear",
+        "CreateServer → GetPull"
+      ]
+    },
+    {
+      "route": "/api/graph",
+      "method": "GET",
+      "handler": "gitnexus/src/server/api.ts",
+      "runtimeEvidence": {
+        "confirmed": false
+      },
+      "middleware": [],
+      "consumers": [],
+      "flows": [
+        "CreateJob → IsTerminalJobStatus",
+        "HandleQueryRequest → IsExplicitFtsDisablement",
+        "HandleFileRequest → BadRequestError",
+        "HandleQueryRequest → IsDbBusyError",
+        "HandleQueryRequest → IsOpenRetryExhausted",
+        "HandleQueryRequest → SkipFtsOption",
+        "CreateServer → IsTransientStorageInspection",
+        "CreateServer → Claim",
+        "HandleQueryRequest → Clear",
+        "HandleQueryRequest → CascadeClear",
+        "HandleQueryRequest → Clear",
+        "CreateServer → GetPull"
+      ]
+    },
+    {
+      "route": "/api/search",
+      "method": "POST",
+      "handler": "gitnexus/src/server/api.ts",
+      "runtimeEvidence": {
+        "confirmed": false
+      },
+      "middleware": [],
+      "consumers": [],
+      "flows": [
+        "CreateJob → IsTerminalJobStatus",
+        "HandleQueryRequest → IsExplicitFtsDisablement",
+        "HandleFileRequest → BadRequestError",
+        "HandleQueryRequest → IsDbBusyError",
+        "HandleQueryRequest → IsOpenRetryExhausted",
+        "HandleQueryRequest → SkipFtsOption",
+        "CreateServer → IsTransientStorageInspection",
+        "CreateServer → Claim",
+        "HandleQueryRequest → Clear",
+        "HandleQueryRequest → CascadeClear",
+        "HandleQueryRequest → Clear",
+        "CreateServer → GetPull"
+      ]
+    },
+    {
+      "route": "/api/file",
+      "method": "GET",
+      "handler": "gitnexus/src/server/api.ts",
+      "runtimeEvidence": {
+        "confirmed": false
+      },
+      "middleware": [],
+      "consumers": [],
+      "flows": [
+        "CreateJob → IsTerminalJobStatus",
+        "HandleQueryRequest → IsExplicitFtsDisablement",
+        "HandleFileRequest → BadRequestError",
+        "HandleQueryRequest → IsDbBusyError",
+        "HandleQueryRequest → IsOpenRetryExhausted",
+        "HandleQueryRequest → SkipFtsOption",
+        "CreateServer → IsTransientStorageInspection",
+        "CreateServer → Claim",
+        "HandleQueryRequest → Clear",
+        "HandleQueryRequest → CascadeClear",
+        "HandleQueryRequest → Clear",
+        "CreateServer → GetPull"
+      ]
+    },
+    {
+      "route": "/api/grep",
+      "method": "GET",
+      "handler": "gitnexus/src/server/api.ts",
+      "runtimeEvidence": {
+        "confirmed": false
+      },
+      "middleware": [],
+      "consumers": [],
+      "flows": [
+        "CreateJob → IsTerminalJobStatus",
+        "HandleQueryRequest → IsExplicitFtsDisablement",
+        "HandleFileRequest → BadRequestError",
+        "HandleQueryRequest → IsDbBusyError",
+        "HandleQueryRequest → IsOpenRetryExhausted",
+        "HandleQueryRequest → SkipFtsOption",
+        "CreateServer → IsTransientStorageInspection",
+        "CreateServer → Claim",
+        "HandleQueryRequest → Clear",
+        "HandleQueryRequest → CascadeClear",
+        "HandleQueryRequest → Clear",
+        "CreateServer → GetPull"
+      ]
+    },
+    {
+      "route": "/api/processes",
+      "method": "GET",
+      "handler": "gitnexus/src/server/api.ts",
+      "runtimeEvidence": {
+        "confirmed": false
+      },
+      "middleware": [],
+      "consumers": [],
+      "flows": [
+        "CreateJob → IsTerminalJobStatus",
+        "HandleQueryRequest → IsExplicitFtsDisablement",
+        "HandleFileRequest → BadRequestError",
+        "HandleQueryRequest → IsDbBusyError",
+        "HandleQueryRequest → IsOpenRetryExhausted",
+        "HandleQueryRequest → SkipFtsOption",
+        "CreateServer → IsTransientStorageInspection",
+        "CreateServer → Claim",
+        "HandleQueryRequest → Clear",
+        "HandleQueryRequest → CascadeClear",
+        "HandleQueryRequest → Clear",
+        "CreateServer → GetPull"
+      ]
+    },
+    {
+      "route": "/api/process",
+      "method": "GET",
+      "handler": "gitnexus/src/server/api.ts",
+      "runtimeEvidence": {
+        "confirmed": false
+      },
+      "middleware": [],
+      "consumers": [],
+      "flows": [
+        "CreateJob → IsTerminalJobStatus",
+        "HandleQueryRequest → IsExplicitFtsDisablement",
+        "HandleFileRequest → BadRequestError",
+        "HandleQueryRequest → IsDbBusyError",
+        "HandleQueryRequest → IsOpenRetryExhausted",
+        "HandleQueryRequest → SkipFtsOption",
+        "CreateServer → IsTransientStorageInspection",
+        "CreateServer → Claim",
+        "HandleQueryRequest → Clear",
+        "HandleQueryRequest → CascadeClear",
+        "HandleQueryRequest → Clear",
+        "CreateServer → GetPull"
+      ]
+    },
+    {
+      "route": "/api/clusters",
+      "method": "GET",
+      "handler": "gitnexus/src/server/api.ts",
+      "runtimeEvidence": {
+        "confirmed": false
+      },
+      "middleware": [],
+      "consumers": [],
+      "flows": [
+        "CreateJob → IsTerminalJobStatus",
+        "HandleQueryRequest → IsExplicitFtsDisablement",
+        "HandleFileRequest → BadRequestError",
+        "HandleQueryRequest → IsDbBusyError",
+        "HandleQueryRequest → IsOpenRetryExhausted",
+        "HandleQueryRequest → SkipFtsOption",
+        "CreateServer → IsTransientStorageInspection",
+        "CreateServer → Claim",
+        "HandleQueryRequest → Clear",
+        "HandleQueryRequest → CascadeClear",
+        "HandleQueryRequest → Clear",
+        "CreateServer → GetPull"
+      ]
+    },
+    {
+      "route": "/api/cluster",
+      "method": "GET",
+      "handler": "gitnexus/src/server/api.ts",
+      "runtimeEvidence": {
+        "confirmed": false
+      },
+      "middleware": [],
+      "consumers": [],
+      "flows": [
+        "CreateJob → IsTerminalJobStatus",
+        "HandleQueryRequest → IsExplicitFtsDisablement",
+        "HandleFileRequest → BadRequestError",
+        "HandleQueryRequest → IsDbBusyError",
+        "HandleQueryRequest → IsOpenRetryExhausted",
+        "HandleQueryRequest → SkipFtsOption",
+        "CreateServer → IsTransientStorageInspection",
+        "CreateServer → Claim",
+        "HandleQueryRequest → Clear",
+        "HandleQueryRequest → CascadeClear",
+        "HandleQueryRequest → Clear",
+        "CreateServer → GetPull"
+      ]
+    },
+    {
+      "route": "/api/analyze",
+      "method": "POST",
+      "handler": "gitnexus/src/server/api.ts",
+      "runtimeEvidence": {
+        "confirmed": false
+      },
+      "middleware": [],
+      "consumers": [
+        {
+          "name": "docker-server.test.mjs",
+          "filePath": "docker-server.test.mjs",
+          "accessedKeys": [
+            "setEncoding",
+            "on",
+            "statusCode",
+            "body",
+            "writeHead",
+            "end",
+            "write",
+            "socket"
+          ],
+          "fetchCount": 29
+        }
+      ],
+      "flows": [
+        "CreateJob → IsTerminalJobStatus",
+        "HandleQueryRequest → IsExplicitFtsDisablement",
+        "HandleFileRequest → BadRequestError",
+        "HandleQueryRequest → IsDbBusyError",
+        "HandleQueryRequest → IsOpenRetryExhausted",
+        "HandleQueryRequest → SkipFtsOption",
+        "CreateServer → IsTransientStorageInspection",
+        "CreateServer → Claim",
+        "HandleQueryRequest → Clear",
+        "HandleQueryRequest → CascadeClear",
+        "HandleQueryRequest → Clear",
+        "CreateServer → GetPull"
+      ]
+    },
+    {
+      "route": "/api/analyze/upload",
+      "method": "POST",
+      "handler": "gitnexus/src/server/api.ts",
+      "runtimeEvidence": {
+        "confirmed": false
+      },
+      "middleware": [],
+      "consumers": [
+        {
+          "name": "docker-server.test.mjs",
+          "filePath": "docker-server.test.mjs",
+          "accessedKeys": [
+            "setEncoding",
+            "on",
+            "statusCode",
+            "body",
+            "writeHead",
+            "end",
+            "write",
+            "socket"
+          ],
+          "fetchCount": 29
+        }
+      ],
+      "flows": [
+        "CreateJob → IsTerminalJobStatus",
+        "HandleQueryRequest → IsExplicitFtsDisablement",
+        "HandleFileRequest → BadRequestError",
+        "HandleQueryRequest → IsDbBusyError",
+        "HandleQueryRequest → IsOpenRetryExhausted",
+        "HandleQueryRequest → SkipFtsOption",
+        "CreateServer → IsTransientStorageInspection",
+        "CreateServer → Claim",
+        "HandleQueryRequest → Clear",
+        "HandleQueryRequest → CascadeClear",
+        "HandleQueryRequest → Clear",
+        "CreateServer → GetPull"
+      ]
+    },
+    {
+      "route": "/api/analyze/:jobId",
+      "method": "GET",
+      "handler": "gitnexus/src/server/api.ts",
+      "runtimeEvidence": {
+        "confirmed": false
+      },
+      "middleware": [],
+      "consumers": [],
+      "flows": [
+        "CreateJob → IsTerminalJobStatus",
+        "HandleQueryRequest → IsExplicitFtsDisablement",
+        "HandleFileRequest → BadRequestError",
+        "HandleQueryRequest → IsDbBusyError",
+        "HandleQueryRequest → IsOpenRetryExhausted",
+        "HandleQueryRequest → SkipFtsOption",
+        "CreateServer → IsTransientStorageInspection",
+        "CreateServer → Claim",
+        "HandleQueryRequest → Clear",
+        "HandleQueryRequest → CascadeClear",
+        "HandleQueryRequest → Clear",
+        "CreateServer → GetPull"
+      ]
+    },
+    {
+      "route": "/api/analyze/:jobId",
+      "method": "DELETE",
+      "handler": "gitnexus/src/server/api.ts",
+      "runtimeEvidence": {
+        "confirmed": false
+      },
+      "middleware": [],
+      "consumers": [],
+      "flows": [
+        "CreateJob → IsTerminalJobStatus",
+        "HandleQueryRequest → IsExplicitFtsDisablement",
+        "HandleFileRequest → BadRequestError",
+        "HandleQueryRequest → IsDbBusyError",
+        "HandleQueryRequest → IsOpenRetryExhausted",
+        "HandleQueryRequest → SkipFtsOption",
+        "CreateServer → IsTransientStorageInspection",
+        "CreateServer → Claim",
+        "HandleQueryRequest → Clear",
+        "HandleQueryRequest → CascadeClear",
+        "HandleQueryRequest → Clear",
+        "CreateServer → GetPull"
+      ]
+    },
+    {
+      "route": "/api/embed",
+      "method": "POST",
+      "handler": "gitnexus/src/server/api.ts",
+      "runtimeEvidence": {
+        "confirmed": false
+      },
+      "middleware": [],
+      "consumers": [],
+      "flows": [
+        "CreateJob → IsTerminalJobStatus",
+        "HandleQueryRequest → IsExplicitFtsDisablement",
+        "HandleFileRequest → BadRequestError",
+        "HandleQueryRequest → IsDbBusyError",
+        "HandleQueryRequest → IsOpenRetryExhausted",
+        "HandleQueryRequest → SkipFtsOption",
+        "CreateServer → IsTransientStorageInspection",
+        "CreateServer → Claim",
+        "HandleQueryRequest → Clear",
+        "HandleQueryRequest → CascadeClear",
+        "HandleQueryRequest → Clear",
+        "CreateServer → GetPull"
+      ]
+    },
+    {
+      "route": "/api/embed/:jobId",
+      "method": "GET",
+      "handler": "gitnexus/src/server/api.ts",
+      "runtimeEvidence": {
+        "confirmed": false
+      },
+      "middleware": [],
+      "consumers": [],
+      "flows": [
+        "CreateJob → IsTerminalJobStatus",
+        "HandleQueryRequest → IsExplicitFtsDisablement",
+        "HandleFileRequest → BadRequestError",
+        "HandleQueryRequest → IsDbBusyError",
+        "HandleQueryRequest → IsOpenRetryExhausted",
+        "HandleQueryRequest → SkipFtsOption",
+        "CreateServer → IsTransientStorageInspection",
+        "CreateServer → Claim",
+        "HandleQueryRequest → Clear",
+        "HandleQueryRequest → CascadeClear",
+        "HandleQueryRequest → Clear",
+        "CreateServer → GetPull"
+      ]
+    },
+    {
+      "route": "/api/embed/:jobId",
+      "method": "DELETE",
+      "handler": "gitnexus/src/server/api.ts",
+      "runtimeEvidence": {
+        "confirmed": false
+      },
+      "middleware": [],
+      "consumers": [],
+      "flows": [
+        "CreateJob → IsTerminalJobStatus",
+        "HandleQueryRequest → IsExplicitFtsDisablement",
+        "HandleFileRequest → BadRequestError",
+        "HandleQueryRequest → IsDbBusyError",
+        "HandleQueryRequest → IsOpenRetryExhausted",
+        "HandleQueryRequest → SkipFtsOption",
+        "CreateServer → IsTransientStorageInspection",
+        "CreateServer → Claim",
+        "HandleQueryRequest → Clear",
+        "HandleQueryRequest → CascadeClear",
+        "HandleQueryRequest → Clear",
+        "CreateServer → GetPull"
+      ]
+    },
+    {
+      "route": "/shutdown",
+      "method": "POST",
+      "handler": "gitnexus/src/cli/eval-server.ts",
+      "runtimeEvidence": {
+        "confirmed": false
+      },
+      "middleware": [],
+      "consumers": [],
+      "flows": [
+        "Server → ChunkToBuffer",
+        "Server → ExtractCallback",
+        "Server → IsMcpWrite",
+        "Server → RealStdoutWrite",
+        "Server → WithPoolLock",
+        "EvalServerCommand → IsTransientStorageInspection",
+        "EvalServerCommand → Claim",
+        "Server → Clear",
+        "Server → CascadeClear",
+        "Server → Clear",
+        "EvalServerCommand → GetPull",
+        "Server → GetPull"
+      ]
+    },
+    {
+      "route": "/dashboard",
+      "method": null,
+      "handler": "gitnexus/test/unit/java-spring-route-ingestion.test.ts",
+      "runtimeEvidence": {
+        "confirmed": false
+      },
+      "middleware": [],
+      "consumers": [],
+      "flows": []
+    },
+    {
+      "route": "/info",
+      "method": null,
+      "handler": "gitnexus/test/unit/java-spring-route-ingestion.test.ts",
+      "runtimeEvidence": {
+        "confirmed": false
+      },
+      "middleware": [],
+      "consumers": [],
+      "flows": []
+    },
+    {
+      "route": "/old",
+      "method": null,
+      "handler": "gitnexus/test/unit/java-spring-route-ingestion.test.ts",
+      "runtimeEvidence": {
+        "confirmed": false
+      },
+      "middleware": [],
+      "consumers": [],
+      "flows": []
+    },
+    {
+      "route": "/bare",
+      "method": null,
+      "handler": "gitnexus/test/unit/java-spring-route-ingestion.test.ts",
+      "runtimeEvidence": {
+        "confirmed": false
+      },
+      "middleware": [],
+      "consumers": [],
+      "flows": []
+    },
+    {
+      "route": "/new",
+      "method": null,
+      "handler": "gitnexus/test/unit/java-spring-route-ingestion.test.ts",
+      "runtimeEvidence": {
+        "confirmed": false
+      },
+      "middleware": [],
+      "consumers": [],
+      "flows": []
+    },
+    {
+      "route": "/first",
+      "method": null,
+      "handler": "gitnexus/test/unit/java-spring-route-ingestion.test.ts",
+      "runtimeEvidence": {
+        "confirmed": false
+      },
+      "middleware": [],
+      "consumers": [],
+      "flows": []
+    },
+    {
+      "route": "/second",
+      "method": null,
+      "handler": "gitnexus/test/unit/java-spring-route-ingestion.test.ts",
+      "runtimeEvidence": {
+        "confirmed": false
+      },
+      "middleware": [],
+      "consumers": [],
+      "flows": []
+    },
+    {
+      "route": "/api/v1/widgets/get",
+      "method": "GET",
+      "handler": "gitnexus/test/integration/fastapi-composed-route-constants.test.ts",
+      "runtimeEvidence": {
+        "confirmed": false
+      },
+      "middleware": [],
+      "consumers": [],
+      "flows": []
+    },
+    {
+      "route": "/api/other",
+      "method": "POST",
+      "handler": "gitnexus/test/unit/mcp-http-transport.test.ts",
+      "runtimeEvidence": {
+        "confirmed": false
+      },
+      "middleware": [],
+      "consumers": [],
+      "flows": []
+    }
+  ],
+  "total": 59
+}

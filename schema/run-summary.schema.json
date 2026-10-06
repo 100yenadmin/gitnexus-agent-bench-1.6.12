@@ -1,0 +1,310 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "run-summary.schema.json",
+  "title": "Per-run summary",
+  "description": "One JSON object per line in every runs.jsonl of this bundle (tracks/*/runs.jsonl, hermes-agent/*/runs.jsonl, ab-ripgrep/runs.public.jsonl, tracks/not-scored-smoke.jsonl). It replaces the raw agent transcripts, which are not published. Every row has all 20 keys; a value is null when it is unknown or does not apply. Free-text fields (the agent's final message, prompts, command lines, environment) are deliberately absent.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "run",
+    "track",
+    "task",
+    "arm",
+    "engine",
+    "model",
+    "effort",
+    "trial",
+    "wall_s",
+    "cost_usd",
+    "cost_basis",
+    "tokens",
+    "turns",
+    "tool_calls",
+    "gitnexus_calls",
+    "hooks",
+    "outcome",
+    "graded_by",
+    "excluded",
+    "exclude_reason"
+  ],
+  "properties": {
+    "run": {
+      "type": "string",
+      "description": "Run id, unique within its file. In tracks/ it is '<source run directory>/<run name>' (for example 'runs-u-pdg/u-trivial-U_mcp-t1'); patch and answer files use the same path (patches/<run>.diff, answers/<run>.json). Superseded attempts carry a '#attemptN' suffix."
+    },
+    "track": {
+      "type": "string",
+      "description": "Track code. Claims bench: O (track 1, fixes), U (track 2, upstream workflow_bench), P1 (track 3, impact), P2 (track 4, rename), P3 (track 5, structural), P4 (track 6, taint), RV (track 7, review). Follow-ups: hermes-impact, hermes-fix-sol, ab-ripgrep. Harness smoke runs: smoke.",
+      "examples": [
+        "O",
+        "U",
+        "P1",
+        "P2",
+        "P3",
+        "P4",
+        "RV",
+        "hermes-impact",
+        "hermes-fix-sol",
+        "ab-ripgrep",
+        "smoke"
+      ]
+    },
+    "task": {
+      "type": "string",
+      "description": "Task id as defined in the track's tasks.json (tasks.public.json for ab-ripgrep)."
+    },
+    "arm": {
+      "type": "string",
+      "description": "Setup id. Definitions: harness/README.md (claims bench and hermes arms), ab-ripgrep/README.md (A/B arms).",
+      "examples": [
+        "A0",
+        "A1",
+        "A2",
+        "A3",
+        "H0",
+        "H2",
+        "C0",
+        "C1",
+        "C2",
+        "U_nomcp",
+        "U_mcp",
+        "U_direct",
+        "R_plain",
+        "R_gnx",
+        "CR0",
+        "CR1",
+        "A1f",
+        "A1m",
+        "C1f",
+        "rg",
+        "gnx",
+        "gnxf",
+        "realA",
+        "realB",
+        "realF",
+        "augH0",
+        "augHk",
+        "cxA",
+        "cxB",
+        "S_mcp"
+      ]
+    },
+    "engine": {
+      "enum": [
+        "claude",
+        "codex"
+      ],
+      "description": "claude = headless Claude Code (claude -p); codex = codex exec."
+    },
+    "model": {
+      "type": "string",
+      "description": "Model id passed to the CLI.",
+      "examples": [
+        "claude-opus-5-5",
+        "claude-haiku-4-5-20251001",
+        "gpt-6.1-sol"
+      ]
+    },
+    "effort": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Reasoning effort from the run's command line: Claude --effort, Codex model_reasoning_effort.",
+      "examples": [
+        "medium",
+        "high"
+      ]
+    },
+    "trial": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 1,
+      "description": "Trial number for repeated task x arm cells, starting at 1."
+    },
+    "wall_s": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0,
+      "description": "Agent wall time in seconds, excluding base preparation, indexing and grading. Measured on a loaded machine; indicative only."
+    },
+    "cost_usd": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0,
+      "description": "Notional cost in USD at API list prices. See cost_basis."
+    },
+    "cost_basis": {
+      "enum": [
+        "cli_total_cost_usd",
+        "tokens_x_list_price",
+        null
+      ],
+      "description": "cli_total_cost_usd: Claude Code's reported total_cost_usd. tokens_x_list_price: Codex token counts x gpt-6.1-sol list price ($2.00 per million uncached input, $0.10 per million cached input, $10.00 per million output tokens). null when cost_usd is null."
+    },
+    "tokens": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "in",
+        "cache_create",
+        "cache_read",
+        "out"
+      ],
+      "description": "Token usage as reported by the CLI. Claude rows: in = uncached input. Codex rows: cache_read = cached input and cache_create = null (Codex reports no cache-creation count); 'in' is uncached input for both engines.",
+      "properties": {
+        "in": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "description": "Input tokens excluding cached input, for both engines (Codex: input minus cached input)."
+        },
+        "cache_create": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "cache_read": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "out": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        }
+      }
+    },
+    "turns": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "description": "Claude: turn count from the CLI's stream-json output. Codex: null in tracks/ and ab-ripgrep/; 1 in hermes-agent/ (one turn.completed event per codex exec run)."
+    },
+    "tool_calls": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "description": "Tool-use counts by tool name (Claude, including mcp__gitnexus__* tools) or completed item counts by item type (Codex: command_execution, file_change, mcp_tool_call, ...)."
+    },
+    "gitnexus_calls": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "description": "GitNexus MCP calls by tool name (impact, context, query, list_repos, ...). In tracks/, the key 'cli' counts GitNexus CLI invocations made through the shell; in setups without GitNexus these reached the 'not found' stub (contamination audit in tracks/report-data/metrics.json)."
+    },
+    "hooks": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "description": "Hook statistics, computed from the hook log, for setups with upstream's Claude hook installed; null otherwise. tracks/: calls, pre, post, enriched (graph context injected), hint (the 'use the MCP query tool' hint), stale, no_context, other. ab-ripgrep/: configured, plus calls, injected_context, empty, lock_fallback and by_event_tool for the hooks-only arm.",
+      "additionalProperties": true
+    },
+    "outcome": {
+      "type": "object",
+      "description": "The grade of record for the track, not the in-run grade. Change tasks (O, U, P2, hermes-fix-sol): hidden_tests_pass, regression_clean, and in tracks/ resolved_clean (both true), from regrade.jsonl. Q&A probes: the scorer's per-run output, e.g. recall, precision, tp, gt (P1, P3, hermes-impact), found/decoy counts (P4), upstream review metrics (RV), top1/in3 or recall/precision (ab-ripgrep narrow tasks), judge_correctness/judge_completeness (ab-ripgrep broad questions). Empty object when the run was not graded.",
+      "additionalProperties": true,
+      "properties": {
+        "hidden_tests_pass": {
+          "type": "boolean"
+        },
+        "regression_clean": {
+          "type": "boolean"
+        },
+        "resolved_clean": {
+          "type": "boolean"
+        },
+        "recall": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "precision": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "tp": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "gt": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "graded_by": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Which grader produced 'outcome' (script name, or blind judge model and effort for ab-ripgrep broad questions). null when the run was not graded."
+    },
+    "excluded": {
+      "type": "boolean",
+      "description": "true when the row is not counted in any published number. Excluded rows are kept so that totals reconcile."
+    },
+    "exclude_reason": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Why the row is excluded; null when excluded is false."
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "excluded": {
+            "const": true
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "exclude_reason": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "exclude_reason": {
+            "type": "null"
+          }
+        }
+      }
+    }
+  ]
+}

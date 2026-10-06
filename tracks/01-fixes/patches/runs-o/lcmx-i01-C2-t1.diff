@@ -1,0 +1,151 @@
+diff --git a/dag.py b/dag.py
+index 084411e..a5f7b2a 100644
+--- a/dag.py
++++ b/dag.py
+@@ -459,6 +459,16 @@ class SummaryDAG:
+         ).fetchone()
+         return self._row_to_node(row) if row else None
+ 
++    def get_session_depths(self, session_id: str) -> list[int]:
++        """Return every distinct depth in a session, ascending and uncapped."""
++        with self._db_lock:
++            rows = self._conn.execute(
++                """SELECT DISTINCT depth FROM summary_nodes
++                   WHERE session_id = ? ORDER BY depth""",
++                (session_id,),
++            ).fetchall()
++        return [int(row[0]) for row in rows]
++
+     def get_session_nodes(self, session_id: str,
+                           depth: int | None = None,
+                           limit: int = 1000) -> List[SummaryNode]:
+diff --git a/engine.py b/engine.py
+index e5533cb..c24a3d9 100644
+--- a/engine.py
++++ b/engine.py
+@@ -6976,8 +6976,8 @@ class LCMEngine(
+         # the deepest existing node + 1, so condensation can always
+         # create the next depth level.
+         if max_depth < 0:
+-            all_nodes = self._dag.get_session_nodes(self._session_id)
+-            upper = (max(n.depth for n in all_nodes) + 1) if all_nodes else 1
++            depths = self._dag.get_session_depths(self._session_id)
++            upper = depths[-1] + 1 if depths else 1
+         else:
+             upper = max_depth
+ 
+@@ -7706,13 +7706,12 @@ class LCMEngine(
+         # Node ids placed in the summary prefix — used to dedupe proactive-recall
+         # injection against summaries already visible in the active context.
+         active_summary_node_ids: set = set()
+-        all_nodes = self._dag.get_session_nodes(self._session_id)
+-        if all_nodes:
++        depths = self._dag.get_session_depths(self._session_id)
++        if depths:
+             # Group by depth, take the most recent uncondensed at each level
+             # For active context, we want the highest-level summaries
+             # that haven't been condensed into even higher levels
+-            depths = sorted(set(n.depth for n in all_nodes), reverse=True)
+-            for group, d in enumerate(depths):
++            for group, d in enumerate(reversed(depths)):
+                 uncondensed = self._dag.get_uncondensed_at_depth(self._session_id, d, newest=True)
+                 for node in uncondensed:
+                     part_keys.append((group, node.node_id))
+diff --git a/tests/test_issue_750_session_depths.py b/tests/test_issue_750_session_depths.py
+new file mode 100644
+index 0000000..e9f268b
+--- /dev/null
++++ b/tests/test_issue_750_session_depths.py
+@@ -0,0 +1,92 @@
++"""#750: depth discovery must not depend on a capped node listing."""
++
++import pytest
++
++import hermes_lcm.engine as engine_module
++from hermes_lcm.config import LCMConfig
++from hermes_lcm.dag import SummaryDAG, SummaryNode
++from hermes_lcm.engine import LCMEngine
++
++
++def _node(dag, session, depth, sources=()):
++    return dag.add_node(SummaryNode(
++        session_id=session, depth=depth, summary=f"history at depth {depth}",
++        token_count=10, source_token_count=40, source_ids=list(sources),
++        source_type="nodes" if depth else "messages",
++    ))
++
++
++def _hierarchy(dag, leaves):
++    ids = [_node(dag, "S", 0) for _ in range(leaves)]
++    for depth in range(1, 4):
++        ids = [_node(dag, "S", depth, ids[i:i + 4])
++               for i in range(0, len(ids), 4)]
++    return ids
++
++
++@pytest.fixture
++def engine(tmp_path):
++    instance = LCMEngine(config=LCMConfig(
++        database_path=str(tmp_path / "lcm.db"), condensation_fanin=4,
++        incremental_max_depth=3, max_assembly_tokens=100_000,
++        threshold_full_sweep_enabled=False,
++    ))
++    instance.on_session_start("S", context_length=200_000)
++    try:
++        yield instance
++    finally:
++        instance.shutdown()
++
++
++def test_session_depths_are_distinct_sorted_uncapped_and_scoped(tmp_path):
++    dag = SummaryDAG(tmp_path / "dag.db")
++    try:
++        assert dag.get_session_depths("missing") == []
++        for depth in reversed(range(1005)):
++            _node(dag, "S", depth)
++        _node(dag, "S", 3)
++        _node(dag, "other", 2000)
++        assert dag.get_session_depths("S") == list(range(1005))
++        assert dag.get_session_depths("other") == [2000]
++        assert dag.get_session_depths("missing") == []
++        # Existing row readers retain their cap and explicit-limit behavior.
++        assert len(dag.get_session_nodes("S")) == 1000
++        assert len(dag.get_session_nodes("S", limit=2000)) == 1006
++        assert len(dag.get_session_nodes("S", depth=3)) == 2
++    finally:
++        dag.close()
++
++
++@pytest.mark.parametrize("leaves", [760, 800, 1000, 1024])
++def test_assembly_keeps_deepest_history_in_long_sessions(engine, leaves):
++    top_ids = _hierarchy(engine._dag, leaves)
++    system = {"role": "system", "content": "system prompt"}
++    tail = [{"role": "user", "content": "fresh question"}]
++    result = engine._assemble_context(system, tail, include_lcm_note=False)
++    content = "\n".join(row["content"] for row in result)
++    for node_id in top_ids:
++        assert f"(d3, node {node_id})" in content
++    assert result[0] == system
++    assert result[-1] == tail[0]
++    assert engine._dag.get_session_node_count("S") == sum(
++        (leaves + 4 ** depth - 1) // 4 ** depth for depth in range(4)
++    )
++
++
++def test_unlimited_condensation_reaches_top_depth_after_1000_leaves(engine, monkeypatch):
++    top_ids = _hierarchy(engine._dag, 1024)
++    engine._config.incremental_max_depth = -1
++    calls = []
++
++    def summarize(**kwargs):
++        calls.append(kwargs["depth"])
++        return "condensed history", 1
++
++    monkeypatch.setattr(engine_module, "summarize_with_escalation", summarize)
++    before = engine._dag.get_session_node_count("S")
++    assert engine._maybe_condense() == 1
++    parent, = engine._dag.get_session_nodes("S", depth=4)
++    assert parent.source_ids == top_ids[:4]
++    assert calls == [4]
++    assert engine._dag.get_session_node_count("S") == before + 1
++    assert all(engine._dag.get_node(node_id) is not None for node_id in top_ids)

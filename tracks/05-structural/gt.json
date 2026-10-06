@@ -1,0 +1,239 @@
+{
+ "routes": [
+  {
+   "method": "GET",
+   "path": "/",
+   "file": "gitnexus/src/server/api.ts",
+   "line": 300
+  },
+  {
+   "method": "GET",
+   "path": "/api/health",
+   "file": "gitnexus/src/server/api.ts",
+   "line": 1100
+  },
+  {
+   "method": "GET",
+   "path": "/api/heartbeat",
+   "file": "gitnexus/src/server/api.ts",
+   "line": 1107
+  },
+  {
+   "method": "GET",
+   "path": "/api/info",
+   "file": "gitnexus/src/server/api.ts",
+   "line": 1125
+  },
+  {
+   "method": "GET",
+   "path": "/api/repos",
+   "file": "gitnexus/src/server/api.ts",
+   "line": 1134
+  },
+  {
+   "method": "GET",
+   "path": "/api/repo",
+   "file": "gitnexus/src/server/api.ts",
+   "line": 1166
+  },
+  {
+   "method": "DELETE",
+   "path": "/api/repo",
+   "file": "gitnexus/src/server/api.ts",
+   "line": 1201
+  },
+  {
+   "method": "GET",
+   "path": "/api/graph",
+   "file": "gitnexus/src/server/api.ts",
+   "line": 1295
+  },
+  {
+   "method": "POST",
+   "path": "/api/query",
+   "file": "gitnexus/src/server/api.ts",
+   "line": 1376
+  },
+  {
+   "method": "POST",
+   "path": "/api/search",
+   "file": "gitnexus/src/server/api.ts",
+   "line": 1381
+  },
+  {
+   "method": "GET",
+   "path": "/api/file",
+   "file": "gitnexus/src/server/api.ts",
+   "line": 1561
+  },
+  {
+   "method": "GET",
+   "path": "/api/grep",
+   "file": "gitnexus/src/server/api.ts",
+   "line": 1580
+  },
+  {
+   "method": "GET",
+   "path": "/api/processes",
+   "file": "gitnexus/src/server/api.ts",
+   "line": 1631
+  },
+  {
+   "method": "GET",
+   "path": "/api/process",
+   "file": "gitnexus/src/server/api.ts",
+   "line": 1641
+  },
+  {
+   "method": "GET",
+   "path": "/api/clusters",
+   "file": "gitnexus/src/server/api.ts",
+   "line": 1663
+  },
+  {
+   "method": "GET",
+   "path": "/api/cluster",
+   "file": "gitnexus/src/server/api.ts",
+   "line": 1673
+  },
+  {
+   "method": "POST",
+   "path": "/api/analyze",
+   "file": "gitnexus/src/server/api.ts",
+   "line": 1697
+  },
+  {
+   "method": "POST",
+   "path": "/api/analyze/upload",
+   "file": "gitnexus/src/server/api.ts",
+   "line": 1894
+  },
+  {
+   "method": "GET",
+   "path": "/api/analyze/:jobId",
+   "file": "gitnexus/src/server/api.ts",
+   "line": 1906
+  },
+  {
+   "method": "DELETE",
+   "path": "/api/analyze/:jobId",
+   "file": "gitnexus/src/server/api.ts",
+   "line": 1929
+  },
+  {
+   "method": "POST",
+   "path": "/api/embed",
+   "file": "gitnexus/src/server/api.ts",
+   "line": 1949
+  },
+  {
+   "method": "GET",
+   "path": "/api/embed/:jobId",
+   "file": "gitnexus/src/server/api.ts",
+   "line": 2245
+  },
+  {
+   "method": "DELETE",
+   "path": "/api/embed/:jobId",
+   "file": "gitnexus/src/server/api.ts",
+   "line": 2269
+  },
+  {
+   "method": "ALL",
+   "path": "/api/mcp",
+   "file": "gitnexus/src/server/mcp-http.ts",
+   "line": 44
+  },
+  {
+   "method": "GET",
+   "path": "/api/analyze/:jobId/progress",
+   "file": "gitnexus/src/server/api.ts",
+   "line": 1926,
+   "via": "mountSSEProgress -> sse-progress.ts:62 app.get(routePath)"
+  },
+  {
+   "method": "GET",
+   "path": "/api/embed/:jobId/progress",
+   "file": "gitnexus/src/server/api.ts",
+   "line": 2266,
+   "via": "mountSSEProgress -> sse-progress.ts:62 app.get(routePath)"
+  },
+  {
+   "method": "GET",
+   "path": "<SPA fallback regex>",
+   "file": "gitnexus/src/server/api.ts",
+   "line": 296,
+   "via": "app.get(SPA_FALLBACK_REGEX) = /^(?!\\/api(?:\\/|$))(?!.*\\.\\w{1,10}$).*/"
+  }
+ ],
+ "tools": [
+  "list_repos",
+  "query",
+  "cypher",
+  "context",
+  "detect_changes",
+  "check",
+  "rename",
+  "impact",
+  "explain",
+  "pdg_query",
+  "route_map",
+  "tool_map",
+  "shape_check",
+  "api_impact",
+  "group_list",
+  "group_sync",
+  "trace"
+ ],
+ "consumers": {
+  "/api/query": {
+   "functions": [
+    "runQuery"
+   ],
+   "files": [
+    "gitnexus-web/src/hooks/useAppState.tsx",
+    "gitnexus-web/src/services/backend-client.ts"
+   ]
+  },
+  "/api/repos": {
+   "functions": [
+    "fetchRepos"
+   ],
+   "files": [
+    "gitnexus-web/src/App.tsx",
+    "gitnexus-web/src/components/DropZone.tsx",
+    "gitnexus-web/src/components/Header.tsx",
+    "gitnexus-web/src/services/backend-client.ts"
+   ]
+  },
+  "/api/file": {
+   "functions": [
+    "readFile"
+   ],
+   "files": [
+    "gitnexus-web/src/components/CodeReferencesPanel.tsx",
+    "gitnexus-web/src/hooks/useAppState.tsx",
+    "gitnexus-web/src/services/backend-client.ts"
+   ]
+  },
+  "/api/search": {
+   "functions": [
+    "search"
+   ],
+   "files": [
+    "gitnexus-web/src/hooks/useAppState.tsx",
+    "gitnexus-web/src/services/backend-client.ts"
+   ]
+  },
+  "/api/grep": {
+   "functions": [
+    "grep"
+   ],
+   "files": [
+    "gitnexus-web/src/hooks/useAppState.tsx",
+    "gitnexus-web/src/services/backend-client.ts"
+   ]
+  }
+ },
+ "gt_version": "v2: +3 routes registered without a string literal at the app.<verb> call (helper mountSSEProgress x2, regex SPA fallback); found while reviewing the first scoring pass, verified in source"
+}

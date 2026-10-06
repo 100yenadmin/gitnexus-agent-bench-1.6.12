@@ -1,0 +1,319 @@
+{
+ "description": "Answer keys for the public tasks. Callers and impact keys were hand-verified before the runs. Find tasks were scored by target NAME only (top-1 and in-top-3); definition sites are listed for reference.",
+ "scoring": {
+  "find": "score.py: normalise each candidate name (strip signature, keep last segment after . : #); top1 = first candidate equals target; in3 = target among first 3",
+  "callers": "score.py: DEF line must match path suffix and line within +-3; a call matches a key entry on path suffix and line within +-3; recall = key entries hit / key size; precision = predicted calls matching a key entry / predicted calls",
+  "impact": "score.py / score_codex.py: an item is hit if a predicted line's path ends with the key path and its name is one of the key names; precision = predicted lines that hit some key item / predicted lines; hop labels are not scored"
+ },
+ "find": {
+  "P01": {
+   "target": "trimMiddle",
+   "definitions": [
+    [
+     "src/clawsweeper-text.ts",
+     11
+    ]
+   ],
+   "note": null
+  },
+  "P02": {
+   "target": "_fallback_token_estimate",
+   "definitions": [
+    [
+     "tokens.py",
+     92
+    ]
+   ],
+   "note": null
+  },
+  "P03": {
+   "target": "reciprocal_rank_fusion",
+   "definitions": [
+    [
+     "src/agentic_layer/retrieval_utils.py",
+     146
+    ],
+    [
+     "evaluation/src/adapters/evermemos/stage3_memory_retrivel.py",
+     193
+    ]
+   ],
+   "note": "Two functions with this name exist; either matches by name."
+  },
+  "P05": {
+   "target": "truncateTextToEstimatedTokens",
+   "definitions": [
+    [
+     "src/estimate-tokens.ts",
+     263
+    ]
+   ],
+   "note": "A same-named Go function exists in tui/repair.go:1301; it is a different function."
+  },
+  "P06": {
+   "target": "sanitizeFeedbackForInjection",
+   "definitions": [
+    [
+     "src/helpers/sanitize.ts",
+     42
+    ]
+   ],
+   "note": null
+  },
+  "P08": {
+   "target": "validateOAuthEndpointUrl",
+   "definitions": [
+    [
+     "src/auth/oauth-discovery.ts",
+     82
+    ]
+   ],
+   "note": null
+  },
+  "P09": {
+   "target": "extract_tool_calls_from_text",
+   "definitions": [
+    [
+     "agent/acp_openai_bridge.py",
+     136
+    ]
+   ],
+   "note": null
+  },
+  "P10": {
+   "target": "detect_provider",
+   "definitions": [
+    [
+     "acp_adapter/auth.py",
+     11
+    ]
+   ],
+   "note": "Ambiguous: two functions in this repository fit the description. The scored target is detect_provider; every arm except gnx missed it."
+  },
+  "P11": {
+   "target": "parseHostnameCsv",
+   "definitions": [
+    [
+     "cli/src/config/hostnames.ts",
+     17
+    ]
+   ],
+   "note": null
+  },
+  "P12": {
+   "target": "isoWeek",
+   "definitions": [
+    [
+     "src/core/audit-week-file.ts",
+     27
+    ]
+   ],
+   "note": null
+  },
+  "P14": {
+   "target": "collectRightSideLines",
+   "definitions": [
+    [
+     "src/diff.ts",
+     5
+    ]
+   ],
+   "note": null
+  },
+  "P15": {
+   "target": "short_rest",
+   "definitions": [
+    [
+     "servers/engine/rests.py",
+     36
+    ],
+    [
+     "servers/engine/server.py",
+     9961
+    ]
+   ],
+   "note": "Two functions with this name exist (rules helper and MCP tool wrapper); either matches by name."
+  },
+  "P16": {
+   "target": "FindAvailablePort",
+   "definitions": [
+    [
+     "MCPForUnity/Editor/Helpers/PortManager.cs",
+     110
+    ]
+   ],
+   "note": null
+  }
+ },
+ "callers": {
+  "C01": {
+   "def": [
+    "src/codex-spawn.ts",
+    43
+   ],
+   "calls": [
+    [
+     "src/codex-app-server-worker.ts",
+     111
+    ],
+    [
+     "src/codex-app-server-worker.ts",
+     139
+    ],
+    [
+     "src/codex-app-server-worker.ts",
+     395
+    ],
+    [
+     "src/codex-process-worker.ts",
+     40
+    ],
+    [
+     "src/codex-process-worker.ts",
+     84
+    ],
+    [
+     "src/repair/run-worker.ts",
+     292
+    ]
+   ]
+  },
+  "C02": {
+   "def": [
+    "agent/anthropic_adapter.py",
+    614
+   ],
+   "calls": [
+    [
+     "agent/auxiliary_client.py",
+     1771
+    ],
+    [
+     "agent/transports/anthropic.py",
+     60
+    ]
+   ]
+  }
+ },
+ "impact": {
+  "I01": {
+   "items": [
+    [
+     "src/compaction.ts",
+     [
+      "capSummaryText"
+     ]
+    ],
+    [
+     "src/summary-fallback.ts",
+     [
+      "buildDeterministicFallbackSummary"
+     ]
+    ],
+    [
+     "src/compaction.ts",
+     [
+      "runSummarizer",
+      "summarizeWithEscalation"
+     ]
+    ],
+    [
+     "src/summarize.ts",
+     [
+      "buildFallbackSummary",
+      "createLcmSummarizeFromLegacyParams"
+     ]
+    ],
+    [
+     "src/engine.ts",
+     [
+      "createEmergencyFallbackSummarize"
+     ]
+    ],
+    [
+     "src/compaction.ts",
+     [
+      "buildDeterministicFallback",
+      "summarizeWithEscalation"
+     ]
+    ]
+   ]
+  },
+  "I03": {
+   "items": [
+    [
+     "src/auth/tokens.ts",
+     [
+      "refreshOAuthAccessToken"
+     ]
+    ],
+    [
+     "src/auth/tokens.ts",
+     [
+      "resolveTokenUrl"
+     ]
+    ],
+    [
+     "src/auth/tokens.ts",
+     [
+      "discoverMcpTokenEndpoint"
+     ]
+    ],
+    [
+     "src/auth/oauth-discovery.ts",
+     [
+      "discoverProtectedResourceMetadata"
+     ]
+    ],
+    [
+     "src/auth/oauth-discovery.ts",
+     [
+      "discoverAuthorizationServerMetadata"
+     ]
+    ],
+    [
+     "src/auth/oauth.ts",
+     [
+      "registerMcpOAuthClient"
+     ]
+    ],
+    [
+     "src/auth/oauth.ts",
+     [
+      "createAuthorizationUrl"
+     ]
+    ],
+    [
+     "src/auth/oauth.ts",
+     [
+      "exchangeAuthorizationCode"
+     ]
+    ],
+    [
+     "src/auth/tokens.ts",
+     [
+      "getOAuthAccessToken"
+     ]
+    ],
+    [
+     "src/connectors/sources/gmail.ts",
+     [
+      "gmailApi"
+     ]
+    ],
+    [
+     "src/auth/oauth.ts",
+     [
+      "resolveClientRegistration"
+     ]
+    ],
+    [
+     "src/auth/oauth.ts",
+     [
+      "runOAuthAuth"
+     ]
+    ]
+   ]
+  }
+ }
+}

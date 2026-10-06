@@ -1,0 +1,84 @@
+{
+ "locations": [
+  {
+   "path": "hermes_cli/plugins_cmd.py",
+   "line": 437
+  },
+  {
+   "path": "hermes_cli/plugins_cmd.py",
+   "line": 439
+  },
+  {
+   "path": "hermes_cli/plugins_cmd.py",
+   "line": 648
+  },
+  {
+   "path": "hermes_cli/plugins_cmd.py",
+   "line": 656
+  },
+  {
+   "path": "hermes_cli/plugins_cmd.py",
+   "line": 665
+  },
+  {
+   "path": "hermes_cli/plugins_cmd.py",
+   "line": 694
+  },
+  {
+   "path": "hermes_cli/plugins_cmd.py",
+   "line": 1006
+  },
+  {
+   "path": "hermes_cli/plugins_cmd_listing.py",
+   "line": 123
+  },
+  {
+   "path": "hermes_cli/plugins_cmd_update.py",
+   "line": 91
+  },
+  {
+   "path": "hermes_cli/plugins_cmd_install.py",
+   "line": 521
+  },
+  {
+   "path": "hermes_cli/plugins_cmd_install.py",
+   "line": 550
+  },
+  {
+   "path": "hermes_cli/plugins_cmd_remove.py",
+   "line": 53
+  },
+  {
+   "path": "hermes_cli/plugins_cmd_capabilities.py",
+   "line": 124
+  },
+  {
+   "path": "hermes_cli/plugins_cmd_catalog.py",
+   "line": 60
+  },
+  {
+   "path": "hermes_cli/plugins_cmd_catalog.py",
+   "line": 661
+  },
+  {
+   "path": "hermes_cli/plugins_cmd_catalog.py",
+   "line": 664
+  },
+  {
+   "path": "hermes_cli/plugin_packs.py",
+   "line": 508
+  },
+  {
+   "path": "hermes_cli/plugin_packs.py",
+   "line": 536
+  },
+  {
+   "path": "hermes_cli/plugin_packs.py",
+   "line": 540
+  },
+  {
+   "path": "hermes_cli/plugin_packs.py",
+   "line": 574
+  }
+ ]
+}

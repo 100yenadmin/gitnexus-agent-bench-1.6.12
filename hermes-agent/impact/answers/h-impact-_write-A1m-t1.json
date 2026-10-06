@@ -1,0 +1,56 @@
+{
+ "locations": [
+  {
+   "path": "pm/lock.py",
+   "line": 126
+  },
+  {
+   "path": "pm/lock.py",
+   "line": 188
+  },
+  {
+   "path": "pm/lock.py",
+   "line": 233
+  },
+  {
+   "path": "pm/lock.py",
+   "line": 280
+  },
+  {
+   "path": "pm/receipt.py",
+   "line": 310
+  },
+  {
+   "path": "pm/receipt.py",
+   "line": 311
+  },
+  {
+   "path": "pm/operations.py",
+   "line": 111
+  },
+  {
+   "path": "pm/operations.py",
+   "line": 314
+  },
+  {
+   "path": "pm/runtime.py",
+   "line": 165
+  },
+  {
+   "path": "pm/runtime.py",
+   "line": 166
+  },
+  {
+   "path": "scripts/bundles/native_build.py",
+   "line": 48
+  },
+  {
+   "path": "scripts/bundles/desktop_prepare.py",
+   "line": 228
+  },
+  {
+   "path": "scripts/bundles/desktop_prepare.py",
+   "line": 299
+  }
+ ]
+}

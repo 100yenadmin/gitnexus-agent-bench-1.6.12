@@ -1,0 +1,196 @@
+[
+ {
+  "id": "h-impact-format_bytes",
+  "target": "format_bytes",
+  "role": "alias",
+  "probe": "positional",
+  "pyright": 24,
+  "adjudicated": 0,
+  "share": 0.0,
+  "selected": true,
+  "files": 10,
+  "keep": true,
+  "refs": {
+   "import": 10,
+   "gt": 25,
+   "def": 1
+  }
+ },
+ {
+  "id": "h-impact-_norm",
+  "target": "_norm",
+  "role": "common",
+  "probe": "positional",
+  "pyright": 27,
+  "adjudicated": 0,
+  "share": 0.0,
+  "selected": true,
+  "files": 3,
+  "keep": true,
+  "refs": {
+   "res-other": 63,
+   "comment": 2,
+   "def": 14,
+   "gt": 27,
+   "import": 3
+  }
+ },
+ {
+  "id": "h-impact-_write",
+  "target": "_write",
+  "role": "common",
+  "probe": "positional",
+  "pyright": 13,
+  "adjudicated": 0,
+  "share": 0.0,
+  "selected": true,
+  "files": 6,
+  "keep": true,
+  "refs": {
+   "def": 20,
+   "res-skip-attr": 37,
+   "string": 1,
+   "res-other": 50,
+   "comment": 2,
+   "gt": 13,
+   "import": 7
+  }
+ },
+ {
+  "id": "h-impact-_fail",
+  "target": "_fail",
+  "role": "common",
+  "probe": "positional",
+  "pyright": 20,
+  "adjudicated": 0,
+  "share": 0.0,
+  "selected": true,
+  "files": 8,
+  "keep": true,
+  "refs": {
+   "def": 26,
+   "res-other": 161,
+   "import": 8,
+   "gt": 20,
+   "string": 1,
+   "comment": 2,
+   "res-unresolved": 3,
+   "res-skip-attr": 15
+  }
+ },
+ {
+  "id": "h-impact-_section",
+  "target": "_section",
+  "role": "common",
+  "probe": "positional",
+  "pyright": 9,
+  "adjudicated": 0,
+  "share": 0.0,
+  "selected": true,
+  "files": 5,
+  "keep": true,
+  "refs": {
+   "res-other": 60,
+   "def": 12,
+   "res-skip-attr": 13,
+   "import": 8,
+   "gt": 9,
+   "string": 1
+  }
+ },
+ {
+  "id": "h-impact-CredentialPool.has_credentials",
+  "target": "CredentialPool.has_credentials",
+  "role": "method",
+  "probe": "positional",
+  "pyright": 27,
+  "adjudicated": 0,
+  "share": 0.0,
+  "selected": true,
+  "files": 18,
+  "keep": true,
+  "refs": {
+   "gt": 27,
+   "comment": 2,
+   "def": 1
+  }
+ },
+ {
+  "id": "h-impact-ProviderRegistry.export",
+  "target": "ProviderRegistry.export",
+  "role": "method",
+  "probe": "positional",
+  "pyright": 7,
+  "adjudicated": 0,
+  "share": 0.0,
+  "selected": true,
+  "files": 7,
+  "keep": true,
+  "refs": {
+   "string": 260,
+   "comment": 67,
+   "gt": 7,
+   "string-exact": 28,
+   "def": 1,
+   "res-other": 26
+  }
+ },
+ {
+  "id": "h-impact-normalize_provider",
+  "target": "normalize_provider",
+  "role": "namesake",
+  "probe": "positional",
+  "pyright": 18,
+  "adjudicated": 2,
+  "share": 0.1,
+  "selected": true,
+  "files": 9,
+  "keep": true,
+  "refs": {
+   "res-other": 48,
+   "import": 24,
+   "gt": 18,
+   "res-TARGET": 3,
+   "def": 3,
+   "comment": 1
+  }
+ },
+ {
+  "id": "h-impact-UpdateLock.acquire",
+  "target": "UpdateLock.acquire",
+  "role": "method-spare",
+  "probe": "positional",
+  "pyright": 6,
+  "adjudicated": 0,
+  "share": 0.0,
+  "selected": false,
+  "files": 5,
+  "keep": true,
+  "refs": {
+   "comment": 32,
+   "string": 65,
+   "import": 41,
+   "res-other": 91,
+   "res-unresolved": 10,
+   "def": 11,
+   "gt": 6
+  }
+ },
+ {
+  "id": "h-impact-coerce_port",
+  "target": "coerce_port",
+  "role": "alias-spare",
+  "probe": "positional",
+  "pyright": 13,
+  "adjudicated": 0,
+  "share": 0.0,
+  "selected": false,
+  "files": 10,
+  "keep": true,
+  "refs": {
+   "def": 1,
+   "import": 10,
+   "gt": 13
+  }
+ }
+]

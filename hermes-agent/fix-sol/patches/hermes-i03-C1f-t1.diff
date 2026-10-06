@@ -1,0 +1,103 @@
+diff --git a/hermes_cli/config.py b/hermes_cli/config.py
+index 49a2980a..689cabb0 100644
+--- a/hermes_cli/config.py
++++ b/hermes_cli/config.py
+@@ -3381,7 +3381,10 @@ def _coerce_config_set_value(key: str, value: str) -> Any:
+     String-typed settings (per ``DEFAULT_CONFIG``) are preserved verbatim so enum members such as
+     ``approvals.mode="off"`` never become booleans. List/mapping literals are parsed so
+     isinstance-gated readers see real structures; the trigger is conservative."""
+-    if isinstance(_default_value_for_key(key), str):
++    # Bare model accepts both an id and a section, despite its scalar schema default.
++    if isinstance(_default_value_for_key(key), str) and (
++        key != "model" or not _looks_structured_value(value)
++    ):
+         return value
+     stripped = value.strip()
+     lower = stripped.lower()
+@@ -3524,12 +3527,19 @@ def _exit_if_key_managed(key: str, action: str) -> None:
+ 
+ def _guard_section_overwrite(key: str, value: Any, user_config: Dict[str, Any], force: bool) -> str:
+     """Refuse (or with ``force`` allow) a single-segment key overwriting a mapping with a scalar.
+-    Bare ``model`` is a documented shorthand — redirected to ``model.default`` so siblings survive.
++    Bare ``model`` ids redirect to ``model.default``; mapping replacements require ``force``.
+     Returns the (possibly redirected) key."""
+     existing = user_config.get(key)
+     if "." in key or not isinstance(existing, dict):
+         return key
+     if key == "model":
++        if isinstance(value, dict):
++            if not force:
++                _exit_invalid(
++                    "✗ Cannot replace the 'model' configuration section — nothing was written.\n"
++                    "  Set model.provider / model.default individually, or use --force "
++                    "to replace the entire section.")
++            return key
+         if force:
+             print(
+                 f"⚠ Replacing entire 'model' section with a scalar "
+diff --git a/tests/hermes_cli/test_set_config_value.py b/tests/hermes_cli/test_set_config_value.py
+index a6ff5221..cc11fc1b 100644
+--- a/tests/hermes_cli/test_set_config_value.py
++++ b/tests/hermes_cli/test_set_config_value.py
+@@ -680,6 +680,61 @@ class TestMappingGuard:
+         set_config_value("model", "gpt-5.6-sol")
+         assert "gpt-5.6-sol" in _read_config(_isolated_hermes_home)
+ 
++    @pytest.mark.parametrize("value", [
++        '{"provider": "openai-codex", "default": "gpt-6.1-sol"}',
++        '{provider: openai-codex, default: gpt-6.1-sol}',
++        'provider: openai-codex\ndefault: gpt-6.1-sol',
++    ])
++    def test_model_mapping_requires_force(self, _isolated_hermes_home, capsys, value):
++        self._write_config(_isolated_hermes_home, {
++            "model": {"default": "glm-5.3-flash", "provider": "zai"},
++        })
++        before = (_isolated_hermes_home / "config.yaml").read_bytes()
++
++        with pytest.raises(SystemExit) as exc:
++            set_config_value("model", value)
++
++        assert exc.value.code == 1
++        assert (_isolated_hermes_home / "config.yaml").read_bytes() == before
++        message = capsys.readouterr().err
++        assert "model.provider" in message
++        assert "model.default" in message
++        assert "--force" in message
++
++    @pytest.mark.parametrize("value", [
++        '{"provider": "openrouter", "default": "z-ai/glm-5.3-flash"}',
++        '{provider: openrouter, default: z-ai/glm-5.3-flash}',
++        'provider: openrouter\ndefault: z-ai/glm-5.3-flash',
++    ])
++    def test_model_mapping_force_replaces_section(self, _isolated_hermes_home, value):
++        self._write_config(_isolated_hermes_home, {
++            "model": {
++                "default": "glm-5.3-flash", "provider": "zai",
++                "context_length": 128_000, "base_url": "https://old.example/v1",
++            },
++            "agent": {"max_turns": 42},
++        })
++
++        set_config_value("model", value, force=True)
++
++        parsed = yaml.safe_load(_read_config(_isolated_hermes_home))
++        assert parsed == {
++            "model": {"provider": "openrouter", "default": "z-ai/glm-5.3-flash"},
++            "agent": {"max_turns": 42},
++        }
++
++    @pytest.mark.parametrize("key", ["model", "model.default"])
++    @pytest.mark.parametrize("model_id", ["gpt-5.6-sol", "z-ai/glm-5.3-flash"])
++    def test_plain_model_id_preserves_section(self, _isolated_hermes_home, key, model_id):
++        self._write_config(_isolated_hermes_home, {
++            "model": {"default": "glm-5.3-flash", "provider": "zai"},
++        })
++
++        set_config_value(key, model_id)
++
++        parsed = yaml.safe_load(_read_config(_isolated_hermes_home))
++        assert parsed["model"] == {"default": model_id, "provider": "zai"}
++
+     def test_non_model_mapping_is_refused(self, _isolated_hermes_home):
+         """hermes config set terminal bash → refuse, terminal has sub-keys."""
+         self._write_config(_isolated_hermes_home, {

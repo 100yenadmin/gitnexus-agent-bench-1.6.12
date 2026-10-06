@@ -1,0 +1,417 @@
+{
+ "description": "Per-arm aggregates over the PUBLIC subset only (tasks on three private repositories removed). Costs are USD per run: Claude = CLI total_cost_usd; Codex = notional, tokens x list price ($2/M uncached input, $0.10/M cached input, $10/M output).",
+ "per_arm_kind": {
+  "augH0/impact": {
+   "n": 4,
+   "mean_cost_usd": 0.3061,
+   "mean_wall_s": 21.6,
+   "mean_turns": 9.25,
+   "runs_using_gitnexus_tools": 0,
+   "mean_gitnexus_calls": 0.0,
+   "recall": "34/36",
+   "precision": "32/32",
+   "exact": "3/4"
+  },
+  "augH0/broad": {
+   "n": 10,
+   "mean_cost_usd": 0.408,
+   "mean_wall_s": 43.37,
+   "mean_turns": 14.6,
+   "runs_using_gitnexus_tools": 0,
+   "mean_gitnexus_calls": 0.0,
+   "mean_judge_correctness": 8.1,
+   "mean_judge_completeness": 7.6
+  },
+  "augHk/impact": {
+   "n": 4,
+   "mean_cost_usd": 0.3066,
+   "mean_wall_s": 28.025,
+   "mean_turns": 8.75,
+   "runs_using_gitnexus_tools": 0,
+   "mean_gitnexus_calls": 0.0,
+   "recall": "36/36",
+   "precision": "34/34",
+   "exact": "4/4",
+   "hook_calls": 18,
+   "hook_calls_with_context": 4,
+   "hook_lock_fallbacks": 0
+  },
+  "augHk/broad": {
+   "n": 10,
+   "mean_cost_usd": 0.3803,
+   "mean_wall_s": 46.79,
+   "mean_turns": 14.3,
+   "runs_using_gitnexus_tools": 0,
+   "mean_gitnexus_calls": 0.0,
+   "mean_judge_correctness": 8.2,
+   "mean_judge_completeness": 7.4,
+   "hook_calls": 70,
+   "hook_calls_with_context": 18,
+   "hook_lock_fallbacks": 0
+  },
+  "cxA/impact": {
+   "n": 4,
+   "mean_cost_usd": 0.106,
+   "mean_wall_s": 41.15,
+   "mean_turns": null,
+   "runs_using_gitnexus_tools": 0,
+   "mean_gitnexus_calls": 0.0,
+   "recall": "36/36",
+   "precision": "36/36",
+   "exact": "4/4"
+  },
+  "cxA/broad": {
+   "n": 10,
+   "mean_cost_usd": 0.1954,
+   "mean_wall_s": 91.65,
+   "mean_turns": null,
+   "runs_using_gitnexus_tools": 0,
+   "mean_gitnexus_calls": 0.0,
+   "mean_judge_correctness": 9.1,
+   "mean_judge_completeness": 7.8
+  },
+  "cxB/impact": {
+   "n": 4,
+   "mean_cost_usd": 0.1559,
+   "mean_wall_s": 55.275,
+   "mean_turns": null,
+   "runs_using_gitnexus_tools": 4,
+   "mean_gitnexus_calls": 2.5,
+   "recall": "36/36",
+   "precision": "36/36",
+   "exact": "4/4"
+  },
+  "cxB/broad": {
+   "n": 10,
+   "mean_cost_usd": 0.2736,
+   "mean_wall_s": 121.58,
+   "mean_turns": null,
+   "runs_using_gitnexus_tools": 10,
+   "mean_gitnexus_calls": 3.9,
+   "mean_judge_correctness": 8.6,
+   "mean_judge_completeness": 8.2
+  },
+  "gnx/find": {
+   "n": 13,
+   "mean_cost_usd": 0.0713,
+   "mean_wall_s": 10.5923,
+   "mean_turns": 4.2308,
+   "runs_using_gitnexus_tools": 1,
+   "mean_gitnexus_calls": 0.0769,
+   "top1": "13/13",
+   "in3": "13/13"
+  },
+  "gnx/callers": {
+   "n": 2,
+   "mean_cost_usd": 0.1043,
+   "mean_wall_s": 15.2,
+   "mean_turns": 7.0,
+   "runs_using_gitnexus_tools": 0,
+   "mean_gitnexus_calls": 0.0,
+   "recall": "8/8",
+   "precision": "8/8",
+   "exact": "2/2",
+   "def_ok": "2/2"
+  },
+  "gnx/impact": {
+   "n": 2,
+   "mean_cost_usd": 0.1254,
+   "mean_wall_s": 18.95,
+   "mean_turns": 9.5,
+   "runs_using_gitnexus_tools": 1,
+   "mean_gitnexus_calls": 1.5,
+   "recall": "18/18",
+   "precision": "18/18",
+   "exact": "2/2"
+  },
+  "gnxf/find": {
+   "n": 13,
+   "mean_cost_usd": 0.0701,
+   "mean_wall_s": 9.4923,
+   "mean_turns": 3.8462,
+   "runs_using_gitnexus_tools": 5,
+   "mean_gitnexus_calls": 0.3846,
+   "top1": "12/13",
+   "in3": "12/13"
+  },
+  "gnxf/callers": {
+   "n": 2,
+   "mean_cost_usd": 0.0644,
+   "mean_wall_s": 10.5,
+   "mean_turns": 5.0,
+   "runs_using_gitnexus_tools": 0,
+   "mean_gitnexus_calls": 0.0,
+   "recall": "8/8",
+   "precision": "8/8",
+   "exact": "2/2",
+   "def_ok": "2/2"
+  },
+  "gnxf/impact": {
+   "n": 2,
+   "mean_cost_usd": 0.1375,
+   "mean_wall_s": 16.8,
+   "mean_turns": 7.0,
+   "runs_using_gitnexus_tools": 2,
+   "mean_gitnexus_calls": 1.5,
+   "recall": "18/18",
+   "precision": "18/18",
+   "exact": "2/2"
+  },
+  "realA/broad": {
+   "n": 10,
+   "mean_cost_usd": 0.5096,
+   "mean_wall_s": 40.85,
+   "mean_turns": 13.7,
+   "runs_using_gitnexus_tools": 0,
+   "mean_gitnexus_calls": 0.0,
+   "mean_judge_correctness": 8.3,
+   "mean_judge_completeness": 7.4
+  },
+  "realB/broad": {
+   "n": 10,
+   "mean_cost_usd": 0.5482,
+   "mean_wall_s": 48.46,
+   "mean_turns": 14.4,
+   "runs_using_gitnexus_tools": 1,
+   "mean_gitnexus_calls": 0.1,
+   "mean_judge_correctness": 8.2,
+   "mean_judge_completeness": 7.7
+  },
+  "realF/broad": {
+   "n": 10,
+   "mean_cost_usd": 0.6166,
+   "mean_wall_s": 37.57,
+   "mean_turns": 14.2,
+   "runs_using_gitnexus_tools": 10,
+   "mean_gitnexus_calls": 2.3,
+   "mean_judge_correctness": 7.6,
+   "mean_judge_completeness": 7.2
+  },
+  "rg/find": {
+   "n": 13,
+   "mean_cost_usd": 0.0567,
+   "mean_wall_s": 9.6538,
+   "mean_turns": 3.8462,
+   "runs_using_gitnexus_tools": 0,
+   "mean_gitnexus_calls": 0.0,
+   "top1": "12/13",
+   "in3": "12/13"
+  },
+  "rg/callers": {
+   "n": 2,
+   "mean_cost_usd": 0.0666,
+   "mean_wall_s": 11.3,
+   "mean_turns": 5.0,
+   "runs_using_gitnexus_tools": 0,
+   "mean_gitnexus_calls": 0.0,
+   "recall": "8/8",
+   "precision": "8/8",
+   "exact": "2/2",
+   "def_ok": "2/2"
+  },
+  "rg/impact": {
+   "n": 2,
+   "mean_cost_usd": 0.1842,
+   "mean_wall_s": 20.3,
+   "mean_turns": 8.5,
+   "runs_using_gitnexus_tools": 0,
+   "mean_gitnexus_calls": 0.0,
+   "recall": "18/18",
+   "precision": "17/17",
+   "exact": "2/2"
+  }
+ },
+ "cost_comparisons": [
+  {
+   "kind": "find",
+   "arm": "gnx",
+   "baseline": "rg",
+   "mean_cost": 0.0713,
+   "baseline_mean_cost": 0.0567,
+   "delta_pct": 25.7,
+   "arm_runs_using_gitnexus_tools": 1,
+   "n": 13
+  },
+  {
+   "kind": "find",
+   "arm": "gnxf",
+   "baseline": "rg",
+   "mean_cost": 0.0701,
+   "baseline_mean_cost": 0.0567,
+   "delta_pct": 23.6,
+   "arm_runs_using_gitnexus_tools": 5,
+   "n": 13
+  },
+  {
+   "kind": "callers",
+   "arm": "gnx",
+   "baseline": "rg",
+   "mean_cost": 0.1043,
+   "baseline_mean_cost": 0.0666,
+   "delta_pct": 56.6,
+   "arm_runs_using_gitnexus_tools": 0,
+   "n": 2
+  },
+  {
+   "kind": "callers",
+   "arm": "gnxf",
+   "baseline": "rg",
+   "mean_cost": 0.0644,
+   "baseline_mean_cost": 0.0666,
+   "delta_pct": -3.3,
+   "arm_runs_using_gitnexus_tools": 0,
+   "n": 2
+  },
+  {
+   "kind": "broad",
+   "arm": "realB",
+   "baseline": "realA",
+   "mean_cost": 0.5482,
+   "baseline_mean_cost": 0.5096,
+   "delta_pct": 7.6,
+   "arm_runs_using_gitnexus_tools": 1,
+   "n": 10
+  },
+  {
+   "kind": "broad",
+   "arm": "realF",
+   "baseline": "realA",
+   "mean_cost": 0.6166,
+   "baseline_mean_cost": 0.5096,
+   "delta_pct": 21.0,
+   "arm_runs_using_gitnexus_tools": 10,
+   "n": 10
+  },
+  {
+   "kind": "broad",
+   "arm": "cxB",
+   "baseline": "cxA",
+   "mean_cost": 0.2736,
+   "baseline_mean_cost": 0.1954,
+   "delta_pct": 40.0,
+   "arm_runs_using_gitnexus_tools": 10,
+   "n": 10
+  },
+  {
+   "kind": "broad",
+   "arm": "augHk",
+   "baseline": "augH0",
+   "mean_cost": 0.3803,
+   "baseline_mean_cost": 0.408,
+   "delta_pct": -6.8,
+   "arm_runs_using_gitnexus_tools": 0,
+   "n": 10
+  },
+  {
+   "kind": "impact",
+   "arm": "gnx",
+   "baseline": "rg",
+   "mean_cost": 0.1254,
+   "baseline_mean_cost": 0.1842,
+   "delta_pct": -31.9,
+   "arm_runs_using_gitnexus_tools": 1,
+   "n": 2
+  },
+  {
+   "kind": "impact",
+   "arm": "gnxf",
+   "baseline": "rg",
+   "mean_cost": 0.1375,
+   "baseline_mean_cost": 0.1842,
+   "delta_pct": -25.4,
+   "arm_runs_using_gitnexus_tools": 2,
+   "n": 2
+  },
+  {
+   "kind": "impact",
+   "arm": "cxB",
+   "baseline": "cxA",
+   "mean_cost": 0.1559,
+   "baseline_mean_cost": 0.106,
+   "delta_pct": 47.1,
+   "arm_runs_using_gitnexus_tools": 4,
+   "n": 4
+  },
+  {
+   "kind": "impact",
+   "arm": "augHk",
+   "baseline": "augH0",
+   "mean_cost": 0.3066,
+   "baseline_mean_cost": 0.3061,
+   "delta_pct": 0.2,
+   "arm_runs_using_gitnexus_tools": 0,
+   "n": 4
+  }
+ ],
+ "multi_hop_impact_opus_n1": [
+  {
+   "task": "I01",
+   "cost_rg": 0.1850808,
+   "cost_gnx": 0.1454624,
+   "cost_gnxf": 0.11753040000000002,
+   "gnx_vs_rg_pct": -21.4,
+   "gnxf_vs_rg_pct": -36.5,
+   "gitnexus_calls_gnx": {
+    "context": 3
+   },
+   "gitnexus_calls_gnxf": {
+    "impact": 2
+   }
+  },
+  {
+   "task": "I03",
+   "cost_rg": 0.18334780000000003,
+   "cost_gnx": 0.1053568,
+   "cost_gnxf": 0.15739,
+   "gnx_vs_rg_pct": -42.5,
+   "gnxf_vs_rg_pct": -14.2,
+   "gitnexus_calls_gnx": {},
+   "gitnexus_calls_gnxf": {
+    "impact": 1
+   }
+  }
+ ],
+ "run_counts": {
+  "before_drop": {
+   "rg": 23,
+   "gnx": 23,
+   "gnxf": 23,
+   "realA": 10,
+   "realB": 10,
+   "realF": 10,
+   "augH0": 16,
+   "augHk": 16,
+   "cxA": 16,
+   "cxB": 16
+  },
+  "after_drop": {
+   "rg": 17,
+   "gnx": 17,
+   "gnxf": 17,
+   "realA": 10,
+   "realB": 10,
+   "realF": 10,
+   "augH0": 14,
+   "augHk": 14,
+   "cxA": 14,
+   "cxB": 14
+  },
+  "dropped": {
+   "rg": 6,
+   "gnx": 6,
+   "gnxf": 6,
+   "augH0": 2,
+   "augHk": 2,
+   "cxA": 2,
+   "cxB": 2
+  },
+  "total_before": 163,
+  "total_after": 137,
+  "total_dropped": 26,
+  "codex_failed_attempts_total": 16,
+  "codex_failed_attempts_public_included_as_excluded": 14
+ },
+ "hook_log": {
+  "lines_unmapped_to_a_run": 0
+ }
+}

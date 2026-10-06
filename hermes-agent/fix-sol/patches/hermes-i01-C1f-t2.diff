@@ -1,0 +1,120 @@
+diff --git a/agent/turn_final_response.py b/agent/turn_final_response.py
+index 6ebc4050..a1495bbd 100644
+--- a/agent/turn_final_response.py
++++ b/agent/turn_final_response.py
+@@ -97,9 +97,23 @@ def finish_text_response(
+     # ``api_content`` sidecar, so the next turn still replays it byte-identically.
+     _content = assistant_message.content
+     _promoted = None
++    # Claude's signed thinking is a summary, not an answer. Plugins may carry the
++    # native turn opaquely; both shapes belong on the thinking-prefill recovery path.
++    _native_thinking = any(
++        isinstance(detail, dict)
++        and (
++            str(detail.get("type", "")).endswith(".native_assistant")
++            or (
++                detail.get("type") in {"thinking", "redacted_thinking"}
++                and (detail.get("signature") or detail.get("data"))
++            )
++        )
++        for detail in (getattr(assistant_message, "reasoning_details", None) or [])
++    )
+     if (
+         finish_reason == "stop"
+         and not assistant_message.tool_calls
++        and not _native_thinking
+         and (_content is None or (isinstance(_content, str) and not _content.strip()))
+     ):
+         _promoted = agent._extract_reasoning(assistant_message) or None
+diff --git a/tests/agent/test_empty_terminal_reasoning_surface.py b/tests/agent/test_empty_terminal_reasoning_surface.py
+index 6711a329..b35d80a6 100644
+--- a/tests/agent/test_empty_terminal_reasoning_surface.py
++++ b/tests/agent/test_empty_terminal_reasoning_surface.py
+@@ -1,12 +1,13 @@
+ """Tests for reasoning-only final responses.
+ 
+ A clean-stop response (``finish_reason == "stop"``) with no ordinary content but
+-structured reasoning IS the answer: the reasoning is promoted to the visible reply and
+-persisted as assistant content without entering the empty-response recovery ladder
++ordinary structured reasoning IS the answer: it is promoted to the visible reply and
++replayed via an api_content sidecar without entering the empty-response recovery ladder
+ (every rung re-bills the full prompt). Idea credit: PR #48795 (@ligl0325).
+ 
+ Invariants pinned here:
+-- Clean-stop reasoning-only → returned and persisted after ONE API call.
++- Clean-stop ordinary reasoning-only → returned after ONE API call.
++- Signed Claude thinking and native-assistant carriers continue to visible text.
+ - ``finish_reason == "length"`` reasoning is unfinished: never promoted, the
+   continuation path still owns it.
+ - A truly empty response (no reasoning either) still reaches the ladder terminal.
+@@ -18,6 +19,8 @@ import sys
+ import types
+ from types import SimpleNamespace
+ 
++import pytest
++
+ # Stub optional heavy imports so run_agent imports cleanly in isolation.
+ sys.modules.setdefault("fire", types.SimpleNamespace(Fire=lambda *a, **k: None))
+ sys.modules.setdefault("firecrawl", types.SimpleNamespace(Firecrawl=object))
+@@ -148,3 +151,61 @@ def test_length_cut_reasoning_is_not_promoted(tmp_path, monkeypatch):
+ 
+     assert result["final_response"] == "42."
+     assert result["api_calls"] == 2
++
++
++@pytest.mark.parametrize("transport", ["anthropic_messages", "chat_completions"])
++@pytest.mark.parametrize("block", [
++    {"type": "thinking", "thinking": "I considered the factors.", "signature": "sig-abc"},
++    {"type": "redacted_thinking", "data": "opaque-thinking"},
++])
++def test_signed_thinking_continues_to_visible_answer(tmp_path, monkeypatch, transport, block):
++    agent = _build_agent(tmp_path, monkeypatch)
++    agent.api_mode = transport
++    if transport == "anthropic_messages":
++        agent.provider = "anthropic"
++        responses = [
++            SimpleNamespace(content=[SimpleNamespace(**block)], stop_reason="end_turn", usage=None),
++            SimpleNamespace(content=[SimpleNamespace(type="text", text="391 = 17 x 23.")],
++                            stop_reason="end_turn", usage=None),
++        ]
++    else:
++        first = _reasoning_only_response()
++        first.choices[0].message.reasoning_details = [block]
++        second = _truly_empty_response()
++        second.choices[0].message.content = "391 = 17 x 23."
++        responses = [first, second]
++    monkeypatch.setattr(agent, "_interruptible_api_call", lambda api_kwargs: responses.pop(0))
++
++    result = agent.run_conversation("factor 391")
++
++    assert result["final_response"] == "391 = 17 x 23."
++    assert result["api_calls"] == 2
++    assert result["messages"][-1]["content"] == "391 = 17 x 23."
++    assert not any(row.get("api_content") for row in result["messages"])
++
++
++@pytest.mark.parametrize("carrier_type, expected_calls", [
++    ("claude-subscription-directsdk-experimental.native_assistant", 2),
++    ("another-plugin.native_assistant", 2),
++    ("reasoning.text", 1),
++])
++def test_native_carrier_is_not_an_answer(tmp_path, monkeypatch, carrier_type, expected_calls):
++    agent = _build_agent(tmp_path, monkeypatch)
++    first = _reasoning_only_response()
++    first.choices[0].message.reasoning_details = [{
++        "type": carrier_type,
++        "messages": [{"role": "assistant", "content": [
++            {"type": "thinking", "thinking": "Summary", "signature": "sig-abc"},
++        ]}],
++    }]
++    second = _truly_empty_response()
++    second.choices[0].message.content = "391 = 17 x 23."
++    responses = [first, second]
++    monkeypatch.setattr(agent, "_interruptible_api_call", lambda api_kwargs: responses.pop(0))
++
++    result = agent.run_conversation("factor 391")
++
++    assert result["api_calls"] == expected_calls
++    assert result["final_response"] == (
++        "391 = 17 x 23." if expected_calls == 2 else first.choices[0].message.reasoning
++    )

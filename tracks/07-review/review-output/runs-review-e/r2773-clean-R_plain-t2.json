@@ -1,0 +1,30 @@
+{
+ "schema_version": 1,
+ "verdict": "request_changes",
+ "findings": [
+  {
+   "id": "queryfts-missing-index-counts-as-success",
+   "severity": "high",
+   "path": "gitnexus/src/core/lbug/lbug-adapter.ts",
+   "line": 3178,
+   "end_line": 3181,
+   "category": "correctness",
+   "scenario": "HTTP /api/search (bm25 mode, or hybrid with embedder not ready), hybrid-search, and any other caller of searchFTSFromLbug without a repoId run against a DB whose FTS indexes are missing. queryFTS now swallows the real missing-index error (\"Binder exception: Table X doesn't have an index with name Y\") and returns [], so the CLI branch of searchFTSFromLbug increments queriesSucceeded for every table and reports ftsAvailable=true. The degraded-FTS warning is suppressed and the caller gets empty keyword results with no signal, which is the #2767 silent-degradation the change is meant to fix.",
+   "evidence": "The old check was e.message.includes('does not exist'). The missing-index message the new doc comment confirms does not contain that phrase, so before this change it rethrew and the CLI loop counted the table as failed. Now classifyFtsQueryError(...) === 'missing-index' returns []. In bm25-index.ts lines ~176-179, `const result = await queryFTS(...); queriesSucceeded++;` counts that [] as success. api.ts:1280-1296 sets ftsAvailable from ftsResponse.ftsAvailable. The unit tests mock queryFTS, so they do not exercise this interaction.",
+   "recommendation": "Do not treat a missing index as a successful query in the CLI path. Either have queryFTS rethrow (or return a sentinel) for missing-index and have searchFTSFromLbug classify it as benign-but-failed without counting it, or call classifyFtsQueryError in the CLI catch the way the pool path does. Add a test that uses the real queryFTS with a missing-index error and asserts ftsAvailable=false.",
+   "blocking": true
+  },
+  {
+   "id": "query-failed-warning-mixed-benign",
+   "severity": "low",
+   "path": "gitnexus/src/mcp/local/local-backend.ts",
+   "line": 2626,
+   "end_line": 2630,
+   "category": "correctness",
+   "scenario": "No FTS table succeeds (ftsUsed=false), most tables fail because their index is missing, and one table hits a real query error. The response uses ftsQueryFailedWarning, which says every configured index query returned an error and that this is not a missing-index condition. It also drops the --repair-fts guidance that would fix the missing indexes.",
+   "evidence": "The branch is `ftsQueryErrors ? ftsQueryFailedWarning(...) : ftsDegradedWarning(...)`, which picks the query-failed message whenever any table produced a non-benign error. It does not check that every table failed with a non-benign error. nonBenignErrors excludes the benign missing-index failures, so the mixed case cannot be told apart.",
+   "recommendation": "Use ftsQueryFailedWarning only when nonBenignErrors.length equals the number of tables queried. Otherwise use ftsDegradedWarning with lastErrorRedacted attached.",
+   "blocking": false
+  }
+ ]
+}

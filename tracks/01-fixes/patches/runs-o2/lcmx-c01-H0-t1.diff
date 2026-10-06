@@ -1,0 +1,228 @@
+diff --git a/compaction.py b/compaction.py
+index 9f319c4..598d348 100644
+--- a/compaction.py
++++ b/compaction.py
+@@ -23,6 +23,7 @@ from collections import Counter
+ from typing import Any, Dict, List, Optional
+ 
+ from .dag import SummaryNode
++from .fresh_tail import tool_group_safe_end
+ from .lifecycle_state import LifecycleBindingChangedError, LifecyclePublicationConflictError
+ from .message_analysis import _matched_tool_call_ids
+ from .message_content import text_content_for_pattern_matching
+@@ -529,6 +530,13 @@ class CompactionMixin:
+                 break
+             selected.append(msg)
+             used += msg_tokens
++
++        # Ensure we don't split a tool-call group
++        end = len(selected)
++        safe_end = tool_group_safe_end(candidate_raw, end)
++        if safe_end != end:
++            return candidate_raw[: safe_end]
++
+         return selected
+ 
+     def compress(self, messages: List[Dict[str, Any]],
+diff --git a/fresh_tail.py b/fresh_tail.py
+index f9ae35c..eb8dd73 100644
+--- a/fresh_tail.py
++++ b/fresh_tail.py
+@@ -50,6 +50,110 @@ def _assistant_group_start(messages: Sequence[Dict[str, Any]], start: int) -> in
+     return start
+ 
+ 
++def tool_group_safe_end(messages: Sequence[Dict[str, Any]], end: int) -> int:
++    """Ensure an end index doesn't cut a message inside a tool-call group.
++
++    A tool-call group is an assistant message with tool_calls followed by its
++    tool result messages. Splitting a group leaves orphan rows that break compaction.
++
++    Args:
++        messages: The message sequence.
++        end: The proposed end index (exclusive).
++
++    Returns:
++        A safe end index that doesn't split a tool-call group:
++        - If messages[:end] stops inside a group, returns the group's assistant index
++        - If that would empty the prefix, extends end through the group's declared results
++        - If a result has no tool_call_id or id not in assistant, returns end unchanged
++        - If end is outside any group, returns end unchanged
++    """
++    if end <= 0 or end > len(messages):
++        return end
++
++    # Check if we're in the middle of a tool-call group by looking back from end-1
++    message_at_end_minus_1 = messages[end - 1]
++    if message_at_end_minus_1.get("role") != "tool":
++        # Not a tool result, so we're not in the middle of a group
++        return end
++
++    tool_result_id = str(message_at_end_minus_1.get("tool_call_id") or "").strip()
++    if not tool_result_id:
++        # Tool result without an id, not part of a group
++        return end
++
++    # Find the opening assistant message that declared this tool_call_id
++    group_start = None
++    for index in range(end - 2, -1, -1):
++        message = messages[index]
++        role = str(message.get("role") or "")
++
++        if role in {"user", "system"}:
++            # Reached a boundary without finding the assistant
++            return end
++
++        if role != "assistant":
++            continue
++
++        # Found an assistant, check if it has this tool_call_id
++        call_ids = {
++            _tool_call_id(tool_call)
++            for tool_call in (message.get("tool_calls") or [])
++        }
++
++        if tool_result_id in call_ids:
++            # This is the opening assistant of the group
++            group_start = index
++            break
++
++    if group_start is None:
++        # No opening assistant found, return unchanged
++        return end
++
++    # We found the group starts at group_start
++    # Check if we have all the declared results
++    assistant_msg = messages[group_start]
++    declared_ids = {
++        _tool_call_id(tc)
++        for tc in assistant_msg.get("tool_calls") or []
++    }
++
++    # Collect all tool result ids in the range [group_start+1, end)
++    result_ids_in_range = set()
++    for i in range(group_start + 1, end):
++        msg = messages[i]
++        if msg.get("role") == "tool":
++            result_id = str(msg.get("tool_call_id") or "").strip()
++            if result_id:
++                result_ids_in_range.add(result_id)
++        elif msg.get("role") != "assistant" or not msg.get("tool_calls"):
++            # Hit a non-assistant, non-tool message
++            break
++
++    # If we have all declared results in the range, we're complete - return end unchanged
++    if result_ids_in_range == declared_ids:
++        return end
++
++    # We're in the middle of the group
++    # If group_start == 0, we can't remove the group, so extend through results
++    if group_start == 0:
++        # Extend end through all declared tool results
++        extended_end = 1
++        for i in range(1, len(messages)):
++            msg = messages[i]
++            if msg.get("role") == "tool":
++                result_id = str(msg.get("tool_call_id") or "").strip()
++                if result_id and result_id in declared_ids:
++                    extended_end = i + 1
++                else:
++                    break
++            else:
++                break
++        return extended_end
++    else:
++        # Return the group_start to exclude the group
++        return group_start
++
++
+ def resolve_fresh_tail_boundary(
+     messages: Sequence[Dict[str, Any]],
+     *,
+diff --git a/tests/test_fresh_tail.py b/tests/test_fresh_tail.py
+index 9cf21bd..8883f9e 100644
+--- a/tests/test_fresh_tail.py
++++ b/tests/test_fresh_tail.py
+@@ -2,7 +2,7 @@
+ 
+ from hermes_lcm.config import LCMConfig
+ from hermes_lcm.engine import LCMEngine
+-from hermes_lcm.fresh_tail import resolve_fresh_tail_boundary
++from hermes_lcm.fresh_tail import resolve_fresh_tail_boundary, tool_group_safe_end
+ from hermes_lcm.tokens import count_message_tokens
+ 
+ 
+@@ -174,3 +174,73 @@ def test_rotate_uses_effective_token_bounded_tail(tmp_path):
+         assert preview["pre_tail_message_count"] == 2
+     finally:
+         engine.shutdown()
++
++
++def test_tool_group_safe_end_returns_unchanged_outside_group():
++    messages = [_user("old"), _user("new")]
++    assert tool_group_safe_end(messages, 2) == 2
++    assert tool_group_safe_end(messages, 1) == 1
++    assert tool_group_safe_end(messages, 0) == 0
++
++
++def test_tool_group_safe_end_returns_unchanged_empty_list():
++    messages = []
++    assert tool_group_safe_end(messages, 0) == 0
++    assert tool_group_safe_end(messages, 1) == 1
++
++
++def test_tool_group_safe_end_returns_unchanged_orphan_tool_result():
++    messages = [_user("old"), {"role": "tool", "tool_call_id": "missing", "content": "result"}]
++    assert tool_group_safe_end(messages, 2) == 2
++
++
++def test_tool_group_safe_end_retreats_to_assistant_when_in_middle_of_group():
++    messages = [_user("old"), *_tool_group(payload_a="a" * 100, payload_b="b")]
++    # messages[0] = user, messages[1] = assistant+toolcalls, messages[2] = tool(call-a), messages[3] = tool(call-b)
++    # If we stop at end=3, we're in the middle of the group (missing call-b result)
++    # Should retreat to index 1 (the assistant)
++    assert tool_group_safe_end(messages, 3) == 1
++
++
++def test_tool_group_safe_end_extends_when_group_at_start():
++    messages = _tool_group(payload_a="a" * 100, payload_b="b")
++    # messages[0] = assistant+toolcalls, messages[1] = tool(call-a), messages[2] = tool(call-b)
++    # If we stop at end=2, we're in the middle (missing call-b result)
++    # Since group starts at 0, should extend through all declared results
++    assert tool_group_safe_end(messages, 2) == 3
++
++
++def test_tool_group_safe_end_allows_complete_group():
++    messages = [_user("old"), *_tool_group(payload_a="a" * 100, payload_b="b")]
++    # If we include the complete group up to end=4, should return 4
++    assert tool_group_safe_end(messages, 4) == 4
++
++
++def test_tool_group_safe_end_handles_tool_result_without_id():
++    messages = [
++        _user("old"),
++        {
++            "role": "assistant",
++            "content": "calling tools",
++            "tool_calls": [{"id": "call-a", "function": {"name": "a", "arguments": "{}"}}],
++        },
++        {"role": "tool", "tool_call_id": None, "content": "result"},
++    ]
++    # Tool result without an id at position 2, should return unchanged
++    assert tool_group_safe_end(messages, 3) == 3
++
++
++def test_tool_group_safe_end_fixes_orphan_rows_on_leaf_chunk_cut():
++    """Verify the fix for issue #559: leaf chunk cut in middle of tool group."""
++    messages = [
++        _user("context " * 100),
++        *_tool_group(payload_a="a" * 1000, payload_b="b" * 1000),
++    ]
++    # messages[0] = user, messages[1] = assistant+toolcalls, messages[2] = tool, messages[3] = tool
++    # If we simulate a greedy token-based selection that stops at end=3 (missing the last tool result),
++    # tool_group_safe_end should retreat to keep the group intact
++    safe_end = tool_group_safe_end(messages, 3)
++    # Should either retreat to the assistant (1) or extend to include all results (4)
++    assert safe_end in (1, 4)
++    # In this case since the group doesn't start at 0, it should retreat to assistant
++    assert safe_end == 1

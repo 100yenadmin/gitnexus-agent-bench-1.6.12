@@ -1,0 +1,13 @@
+diff --git a/hermes_cli/update_lock.py b/hermes_cli/update_lock.py
+index 34c9050a63..30805ef5f6 100644
+--- a/hermes_cli/update_lock.py
++++ b/hermes_cli/update_lock.py
+@@ -310,7 +310,7 @@ class UpdateLock:
+         self.acquired = False
+         self.holder: UpdateHolder | None = None
+ 
+-    def acquire(self) -> bool:
++    def acquire(self, bench_probe) -> bool:
+         """Claim the lock. Returns False (and sets ``holder``) if it's taken.
+ 
+         A live holder whose pid matches :data:`HANDOFF_PID_ENV` — or is an ancestor of ours —

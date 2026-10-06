@@ -1,0 +1,30 @@
+{
+ "schema_version": 1,
+ "verdict": "request_changes",
+ "findings": [
+  {
+   "id": "fts-core-missing-index-counted-as-success",
+   "severity": "medium",
+   "path": "gitnexus/src/core/lbug/lbug-adapter.ts",
+   "line": 3179,
+   "end_line": 3180,
+   "category": "correctness",
+   "scenario": "With the FTS extension loaded but all configured indexes missing, HTTP /api/search in bm25 mode, or hybrid mode without an embedder, now returns empty results without the missing-index warning.",
+   "evidence": "The new catch returns [] for the real \"Table File doesn't have an index with name file_fts\" error. The non-pool branch of searchFTSFromLbug increments queriesSucceeded for every returned array, so ftsAvailable becomes true. api.ts:1388 emits its warning only when that flag is false. An in-memory probe executing the base and local adapter/search implementations with this error returned ftsAvailable:false at base ba3f56f and true locally.",
+   "recommendation": "Preserve missing-index failure information through the core adapter path and exclude it from queriesSucceeded, while keeping successful zero-match queries available. Add a non-pool missing-index regression case.",
+   "blocking": true
+  },
+  {
+   "id": "fts-global-capability-suppresses-healthy-pool",
+   "severity": "medium",
+   "path": "gitnexus/src/core/search/bm25-index.ts",
+   "line": 137,
+   "end_line": 138,
+   "category": "correctness",
+   "scenario": "A long-lived MCP process has FTS loaded on repository A. Loading FTS on a newly opened repository B later fails, for example after the extension library is replaced. Subsequent queries against A lose all keyword matches even though A's existing database still supports FTS.",
+   "evidence": "getExtensionCapabilities reads a process-wide singleton keyed only by extension name. ExtensionManager.ensure overwrites that entry on each database's LOAD attempt, while pool-adapter.ts tracks ftsLoaded separately per shared Database and reuses A's existing pool. The new global guard skips A's executor entirely after B's failed load. An in-memory probe using the real ExtensionManager and search implementation with a successful A executor returned one match before the failure and on the base implementation afterward, but zero matches with the local diff.",
+   "recommendation": "Gate query attempts on the resolved database's FTS state, or remove the process-wide short-circuit and classify errors from that database's queries. Cover a failed load on B followed by a query on an already healthy A pool.",
+   "blocking": true
+  }
+ ]
+}

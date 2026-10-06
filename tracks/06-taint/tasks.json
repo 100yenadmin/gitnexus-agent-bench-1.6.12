@@ -1,0 +1,9 @@
+[
+ {
+  "id": "p4-taint",
+  "statement": "Security review of the GitNexus HTTP server code in `gitnexus/src/server/`: find every flow where data from an HTTP request (Express `req.query`, `req.params` or `req.body`) reaches one of these sinks without effective validation or sanitization: shell command execution (child_process `exec`/`execSync`/`spawn` with a shell string), dynamic code evaluation (`eval`, `new Function`), or a filesystem path operation (fs reads or writes of a request-controlled path). Follow values through helper functions and across files. For each flow report the category, the source location (file and line where the request value is read) and the sink location (file and line of the dangerous call). Do not report flows that are effectively validated before the sink. Do not modify any repository files.\n\nWrite `.bench-review/answer.json` as UTF-8 JSON with exactly this shape:\n{\"flows\": [{\"category\": \"command-injection|code-injection|path-traversal\", \"source\": {\"path\": \"gitnexus/src/...\", \"line\": 1}, \"sink\": {\"path\": \"gitnexus/src/...\", \"line\": 1}}]}\nThen reply with a one-line summary.",
+  "base": "GitNexus c4ecf398 (gnxu-pdg index) + seed.patch, re-analyzed with --pdg",
+  "ground_truth": "gt.json",
+  "user_instruction_file_on_claude_arms": true
+ }
+]

@@ -1,0 +1,536 @@
+{
+ "description": "Public subset of the GitNexus vs ripgrep+reading A/B (2026-10-05). Tasks on three private repositories are omitted.",
+ "commit_source": "Commit at run time per repository, from the GitNexus index registry snapshot taken after the runs, cross-checked against the index refresh log and verified to exist on GitHub. The working directory of every run was that repository's index checkout at this commit.",
+ "kinds": {
+  "find": "find a function from a paraphrased description; answer up to 3 `path :: name` candidates",
+  "callers": "find the definition and every direct non-test call site",
+  "impact": "list hop-1 and hop-2 non-test functions affected by a signature change",
+  "broad": "open-ended code-understanding question, answer in at most 400 words, blind-graded"
+ },
+ "repos": [
+  {
+   "repo": "100yenadmin/clawsweeper",
+   "fork_of": "openclaw/clawsweeper",
+   "gitnexus_alias": "clawsweeper",
+   "commit_sha": "44d3b656300f647a20e1c82a48e84f8ad24225f9",
+   "index_stats": {
+    "files": 315,
+    "nodes": 11818,
+    "edges": 29911,
+    "communities": 493,
+    "processes": 898,
+    "embeddings": 10507
+   },
+   "note": null
+  },
+  {
+   "repo": "100yenadmin/hermes-lcm",
+   "fork_of": "stephenschoettler/hermes-lcm",
+   "gitnexus_alias": "hermes-lcm",
+   "commit_sha": "0dce04d8fae41df7aac8b083409eca13af867c7f",
+   "index_stats": {
+    "files": 248,
+    "nodes": 9945,
+    "edges": 25197,
+    "communities": 424,
+    "processes": 612,
+    "embeddings": 8726
+   },
+   "note": null
+  },
+  {
+   "repo": "electricsheephq/EverMemOS",
+   "fork_of": "EverMind-AI/EverOS",
+   "gitnexus_alias": "EverMemOS",
+   "commit_sha": "8cb6d0197503e2f0f0f439e1208efc4d3c429bcc",
+   "index_stats": {
+    "files": 552,
+    "nodes": 9091,
+    "edges": 18857,
+    "communities": 405,
+    "processes": 545,
+    "embeddings": 6298
+   },
+   "note": null
+  },
+  {
+   "repo": "100yenadmin/lossless-claw",
+   "fork_of": "Martian-Engineering/lossless-claw",
+   "gitnexus_alias": "lossless-claw",
+   "commit_sha": "988dee85592b9066ffe1c859542e8e18c23f2345",
+   "index_stats": {
+    "files": 305,
+    "nodes": 12873,
+    "edges": 36872,
+    "communities": 402,
+    "processes": 818,
+    "embeddings": 11715
+   },
+   "note": null
+  },
+  {
+   "repo": "electricsheephq/Smarter-Claw",
+   "fork_of": null,
+   "gitnexus_alias": "Smarter-Claw",
+   "commit_sha": "56ebde96e40552bb1717de979899452cc6bc8874",
+   "index_stats": {
+    "files": 171,
+    "nodes": 4736,
+    "edges": 11634,
+    "communities": 127,
+    "processes": 261,
+    "embeddings": 3732
+   },
+   "note": null
+  },
+  {
+   "repo": "100yenadmin/openwiki",
+   "fork_of": "langchain-ai/openwiki",
+   "gitnexus_alias": "openwiki",
+   "commit_sha": "6ffa7b6debaed25422398c73ccc4d21ad1438795",
+   "index_stats": {
+    "files": 513,
+    "nodes": 9953,
+    "edges": 25535,
+    "communities": 528,
+    "processes": 671,
+    "embeddings": 8626
+   },
+   "note": null
+  },
+  {
+   "repo": "NousResearch/hermes-agent",
+   "fork_of": null,
+   "gitnexus_alias": "hermes-agent",
+   "commit_sha": "d62fbea7e110c6008e1ffe1b226d1f593ba4bc28",
+   "index_stats": {
+    "files": 16746,
+    "nodes": 330628,
+    "edges": 831653,
+    "communities": 14151,
+    "processes": 1135,
+    "embeddings": 267728
+   },
+   "note": "Index refreshed to this commit at 2026-10-04T20:34Z; no later refresh before the runs."
+  },
+  {
+   "repo": "electricsheephq/evaOS-hermes-desktop-app-adapter",
+   "fork_of": "NousResearch/hermes-agent",
+   "gitnexus_alias": "hermes-adapter",
+   "commit_sha": "85db2b81a7fd9dcdc23e631b51a2189ab0444792",
+   "index_stats": {
+    "files": 14887,
+    "nodes": 306559,
+    "edges": 746767,
+    "communities": 12822,
+    "processes": 1228,
+    "embeddings": 245216
+   },
+   "note": "Index refreshed to this commit at 2026-10-05T10:52Z, about an hour before the runs; the checkout has moved since."
+  },
+  {
+   "repo": "electricsheephq/mission-control-paperclip",
+   "fork_of": "paperclipai/paperclip",
+   "gitnexus_alias": "mission-control-paperclip",
+   "commit_sha": "c99a5eb2ca5ae29e978cd03adb81ad1665693368",
+   "index_stats": {
+    "files": 3977,
+    "nodes": 120635,
+    "edges": 373660,
+    "communities": 2056,
+    "processes": 1441,
+    "embeddings": 115380
+   },
+   "note": null
+  },
+  {
+   "repo": "electricsheephq/eva-brain",
+   "fork_of": "garrytan/gbrain",
+   "gitnexus_alias": "eva-brain",
+   "commit_sha": "982a8386b39a6ee5659387f50bb46b32e86b5539",
+   "index_stats": {
+    "files": 2508,
+    "nodes": 51915,
+    "edges": 147620,
+    "communities": 1086,
+    "processes": 795,
+    "embeddings": 49606
+   },
+   "note": null
+  },
+  {
+   "repo": "electricsheephq/evaos-code-review-bot-neondiff",
+   "fork_of": null,
+   "gitnexus_alias": "evaos-code-review-bot-neondiff",
+   "commit_sha": "d9da83bd52c70e388adeb6f000e11e11442c6215",
+   "index_stats": {
+    "files": 837,
+    "nodes": 34639,
+    "edges": 108079,
+    "communities": 1010,
+    "processes": 799,
+    "embeddings": 33798
+   },
+   "note": null
+  },
+  {
+   "repo": "electricsheephq/WorldOS",
+   "fork_of": null,
+   "gitnexus_alias": "worldos",
+   "commit_sha": "466ae7324c74330716e5a0485fe67f4fddd16bce",
+   "index_stats": {
+    "files": 4251,
+    "nodes": 28956,
+    "edges": 59909,
+    "communities": 1051,
+    "processes": 585,
+    "embeddings": 20917
+   },
+   "note": "Sparse checkout: all files except *.jsonl, *.db, *.sqlite and image/audio/video files (png, jpg, jpeg, webp, gif, mp4, wav, mp3)."
+  },
+  {
+   "repo": "100yenadmin/unity-mcp",
+   "fork_of": "CoplayDev/unity-mcp",
+   "gitnexus_alias": "unity-mcp",
+   "commit_sha": "de30e09c92d02a644b896b432408411c4a77c483",
+   "index_stats": {
+    "files": 2094,
+    "nodes": 18294,
+    "edges": 42936,
+    "communities": 800,
+    "processes": 841,
+    "embeddings": 17576
+   },
+   "note": null
+  }
+ ],
+ "tasks": [
+  {
+   "id": "P01",
+   "kind": "find",
+   "repo": "100yenadmin/clawsweeper",
+   "fork_of": "openclaw/clawsweeper",
+   "gitnexus_alias": "clawsweeper",
+   "target": "trimMiddle",
+   "commit_sha": "44d3b656300f647a20e1c82a48e84f8ad24225f9",
+   "commit_note": null,
+   "prompt": "In this repository, find the function or method that does the following: \"shorten a long string by keeping its beginning and end while cutting out the center\".\nAnswer with up to 3 candidates, best first, one per line, formatted exactly as `path :: name` (path relative to the repository root, name = the function or method name only). No other text. Do not modify any files.",
+   "trials": {
+    "rg/gnx/gnxf": 1
+   }
+  },
+  {
+   "id": "P02",
+   "kind": "find",
+   "repo": "100yenadmin/hermes-lcm",
+   "fork_of": "stephenschoettler/hermes-lcm",
+   "gitnexus_alias": "hermes-lcm",
+   "target": "_fallback_token_estimate",
+   "commit_sha": "0dce04d8fae41df7aac8b083409eca13af867c7f",
+   "commit_note": null,
+   "prompt": "In this repository, find the function or method that does the following: \"approximate size of text without an encoder, adjusting for CJK character density\".\nAnswer with up to 3 candidates, best first, one per line, formatted exactly as `path :: name` (path relative to the repository root, name = the function or method name only). No other text. Do not modify any files.",
+   "trials": {
+    "rg/gnx/gnxf": 1
+   }
+  },
+  {
+   "id": "P03",
+   "kind": "find",
+   "repo": "electricsheephq/EverMemOS",
+   "fork_of": "EverMind-AI/EverOS",
+   "gitnexus_alias": "EverMemOS",
+   "target": "reciprocal_rank_fusion",
+   "commit_sha": "8cb6d0197503e2f0f0f439e1208efc4d3c429bcc",
+   "commit_note": null,
+   "prompt": "In this repository, find the function or method that does the following: \"combine two ordered search result lists by summing inverse position scores\".\nAnswer with up to 3 candidates, best first, one per line, formatted exactly as `path :: name` (path relative to the repository root, name = the function or method name only). No other text. Do not modify any files.",
+   "trials": {
+    "rg/gnx/gnxf": 1
+   }
+  },
+  {
+   "id": "P05",
+   "kind": "find",
+   "repo": "100yenadmin/lossless-claw",
+   "fork_of": "Martian-Engineering/lossless-claw",
+   "gitnexus_alias": "lossless-claw",
+   "target": "truncateTextToEstimatedTokens",
+   "commit_sha": "988dee85592b9066ffe1c859542e8e18c23f2345",
+   "commit_note": null,
+   "prompt": "In this repository, find the function or method that does the following: \"shorten a string so it fits within a given maximum count budget\".\nAnswer with up to 3 candidates, best first, one per line, formatted exactly as `path :: name` (path relative to the repository root, name = the function or method name only). No other text. Do not modify any files.",
+   "trials": {
+    "rg/gnx/gnxf": 1
+   }
+  },
+  {
+   "id": "P06",
+   "kind": "find",
+   "repo": "electricsheephq/Smarter-Claw",
+   "fork_of": null,
+   "gitnexus_alias": "Smarter-Claw",
+   "target": "sanitizeFeedbackForInjection",
+   "commit_sha": "56ebde96e40552bb1717de979899452cc6bc8874",
+   "commit_note": null,
+   "prompt": "In this repository, find the function or method that does the following: \"escape closing tag in user comments with a zero width space\".\nAnswer with up to 3 candidates, best first, one per line, formatted exactly as `path :: name` (path relative to the repository root, name = the function or method name only). No other text. Do not modify any files.",
+   "trials": {
+    "rg/gnx/gnxf": 1
+   }
+  },
+  {
+   "id": "P08",
+   "kind": "find",
+   "repo": "100yenadmin/openwiki",
+   "fork_of": "langchain-ai/openwiki",
+   "gitnexus_alias": "openwiki",
+   "target": "validateOAuthEndpointUrl",
+   "commit_sha": "6ffa7b6debaed25422398c73ccc4d21ad1438795",
+   "commit_note": null,
+   "prompt": "In this repository, find the function or method that does the following: \"reject insecure web address with username password or internal network host\".\nAnswer with up to 3 candidates, best first, one per line, formatted exactly as `path :: name` (path relative to the repository root, name = the function or method name only). No other text. Do not modify any files.",
+   "trials": {
+    "rg/gnx/gnxf": 1
+   }
+  },
+  {
+   "id": "P09",
+   "kind": "find",
+   "repo": "NousResearch/hermes-agent",
+   "fork_of": null,
+   "gitnexus_alias": "hermes-agent",
+   "target": "extract_tool_calls_from_text",
+   "commit_sha": "d62fbea7e110c6008e1ffe1b226d1f593ba4bc28",
+   "commit_note": "Index refreshed to this commit at 2026-10-04T20:34Z; no later refresh before the runs.",
+   "prompt": "In this repository, find the function or method that does the following: \"pull function invocation blocks out of a model reply and strip them from the message\".\nAnswer with up to 3 candidates, best first, one per line, formatted exactly as `path :: name` (path relative to the repository root, name = the function or method name only). No other text. Do not modify any files.",
+   "trials": {
+    "rg/gnx/gnxf": 1
+   }
+  },
+  {
+   "id": "P10",
+   "kind": "find",
+   "repo": "electricsheephq/evaOS-hermes-desktop-app-adapter",
+   "fork_of": "NousResearch/hermes-agent",
+   "gitnexus_alias": "hermes-adapter",
+   "target": "detect_provider",
+   "commit_sha": "85db2b81a7fd9dcdc23e631b51a2189ab0444792",
+   "commit_note": "Index refreshed to this commit at 2026-10-05T10:52Z, about an hour before the runs; the checkout has moved since.",
+   "prompt": "In this repository, find the function or method that does the following: \"find which model backend is currently active and has usable credentials\".\nAnswer with up to 3 candidates, best first, one per line, formatted exactly as `path :: name` (path relative to the repository root, name = the function or method name only). No other text. Do not modify any files.",
+   "trials": {
+    "rg/gnx/gnxf": 1
+   }
+  },
+  {
+   "id": "P11",
+   "kind": "find",
+   "repo": "electricsheephq/mission-control-paperclip",
+   "fork_of": "paperclipai/paperclip",
+   "gitnexus_alias": "mission-control-paperclip",
+   "target": "parseHostnameCsv",
+   "commit_sha": "c99a5eb2ca5ae29e978cd03adb81ad1665693368",
+   "commit_note": null,
+   "prompt": "In this repository, find the function or method that does the following: \"split a comma separated list of domain names into unique lowercase entries\".\nAnswer with up to 3 candidates, best first, one per line, formatted exactly as `path :: name` (path relative to the repository root, name = the function or method name only). No other text. Do not modify any files.",
+   "trials": {
+    "rg/gnx/gnxf": 1
+   }
+  },
+  {
+   "id": "P12",
+   "kind": "find",
+   "repo": "electricsheephq/eva-brain",
+   "fork_of": "garrytan/gbrain",
+   "gitnexus_alias": "eva-brain",
+   "target": "isoWeek",
+   "commit_sha": "982a8386b39a6ee5659387f50bb46b32e86b5539",
+   "commit_note": null,
+   "prompt": "In this repository, find the function or method that does the following: \"find calendar year and Monday based period number containing a given date\".\nAnswer with up to 3 candidates, best first, one per line, formatted exactly as `path :: name` (path relative to the repository root, name = the function or method name only). No other text. Do not modify any files.",
+   "trials": {
+    "rg/gnx/gnxf": 1
+   }
+  },
+  {
+   "id": "P14",
+   "kind": "find",
+   "repo": "electricsheephq/evaos-code-review-bot-neondiff",
+   "fork_of": null,
+   "gitnexus_alias": "evaos-code-review-bot-neondiff",
+   "target": "collectRightSideLines",
+   "commit_sha": "d9da83bd52c70e388adeb6f000e11e11442c6215",
+   "commit_note": null,
+   "prompt": "In this repository, find the function or method that does the following: \"parse unified patch hunks into new version row numbers per changed file\".\nAnswer with up to 3 candidates, best first, one per line, formatted exactly as `path :: name` (path relative to the repository root, name = the function or method name only). No other text. Do not modify any files.",
+   "trials": {
+    "rg/gnx/gnxf": 1
+   }
+  },
+  {
+   "id": "P15",
+   "kind": "find",
+   "repo": "electricsheephq/WorldOS",
+   "fork_of": null,
+   "gitnexus_alias": "worldos",
+   "target": "short_rest",
+   "commit_sha": "466ae7324c74330716e5a0485fe67f4fddd16bce",
+   "commit_note": "Sparse checkout: all files except *.jsonl, *.db, *.sqlite and image/audio/video files (png, jpg, jpeg, webp, gif, mp4, wav, mp3).",
+   "prompt": "In this repository, find the function or method that does the following: \"spend hit dice to heal a character and recover warlock pact slots\".\nAnswer with up to 3 candidates, best first, one per line, formatted exactly as `path :: name` (path relative to the repository root, name = the function or method name only). No other text. Do not modify any files.",
+   "trials": {
+    "rg/gnx/gnxf": 1
+   }
+  },
+  {
+   "id": "P16",
+   "kind": "find",
+   "repo": "100yenadmin/unity-mcp",
+   "fork_of": "CoplayDev/unity-mcp",
+   "gitnexus_alias": "unity-mcp",
+   "target": "FindAvailablePort",
+   "commit_sha": "de30e09c92d02a644b896b432408411c4a77c483",
+   "commit_note": null,
+   "prompt": "In this repository, find the function or method that does the following: \"search sequential socket numbers upward from the default until one can bind\".\nAnswer with up to 3 candidates, best first, one per line, formatted exactly as `path :: name` (path relative to the repository root, name = the function or method name only). No other text. Do not modify any files.",
+   "trials": {
+    "rg/gnx/gnxf": 1
+   }
+  },
+  {
+   "id": "C01",
+   "kind": "callers",
+   "repo": "100yenadmin/clawsweeper",
+   "fork_of": "openclaw/clawsweeper",
+   "gitnexus_alias": "clawsweeper",
+   "target": "terminateCodexProcessTree",
+   "commit_sha": "44d3b656300f647a20e1c82a48e84f8ad24225f9",
+   "commit_note": null,
+   "prompt": "In this repository, find the definition of `terminateCodexProcessTree` (the exported TypeScript function). Then list every place in NON-TEST code that calls it directly.\nOutput format, no other text: first line `DEF: <path>:<line>`; then one line per call site `CALL: <path>:<line> :: <enclosing function or method name>`. Exclude tests, docs, comments and string mentions. Paths relative to the repository root. Do not modify any files.",
+   "trials": {
+    "rg/gnx/gnxf": 1
+   }
+  },
+  {
+   "id": "C02",
+   "kind": "callers",
+   "repo": "NousResearch/hermes-agent",
+   "fork_of": null,
+   "gitnexus_alias": "hermes-agent",
+   "target": "build_anthropic_kwargs",
+   "commit_sha": "d62fbea7e110c6008e1ffe1b226d1f593ba4bc28",
+   "commit_note": "Index refreshed to this commit at 2026-10-04T20:34Z; no later refresh before the runs.",
+   "prompt": "In this repository, find the definition of `build_anthropic_kwargs` (the module-level Python function). Then list every place in NON-TEST code that calls it directly.\nOutput format, no other text: first line `DEF: <path>:<line>`; then one line per call site `CALL: <path>:<line> :: <enclosing function or method name>`. Exclude tests, docs, comments and string mentions. Paths relative to the repository root. Do not modify any files.",
+   "trials": {
+    "rg/gnx/gnxf": 1
+   }
+  },
+  {
+   "id": "I01",
+   "kind": "impact",
+   "repo": "100yenadmin/lossless-claw",
+   "fork_of": "Martian-Engineering/lossless-claw",
+   "gitnexus_alias": "lossless-claw",
+   "target": "truncateTextToEstimatedTokens",
+   "commit_sha": "988dee85592b9066ffe1c859542e8e18c23f2345",
+   "commit_note": null,
+   "prompt": "In this repository, suppose the signature of `truncateTextToEstimatedTokens` (the exported TypeScript function in src/estimate-tokens.ts) changes: a new required parameter is added. List every NON-TEST function or method that is affected: (1) functions that call it directly, and (2) functions that call those functions (one more hop).\nOutput one line per affected function, no other text: `<hop> :: <path> :: <function or method name>` where hop is 1 or 2. Paths relative to the repository root. Exclude tests. Do not modify any files.",
+   "trials": {
+    "rg/gnx/gnxf": 1,
+    "cxA/cxB": 2,
+    "augH0/augHk": 2
+   }
+  },
+  {
+   "id": "I03",
+   "kind": "impact",
+   "repo": "100yenadmin/openwiki",
+   "fork_of": "langchain-ai/openwiki",
+   "gitnexus_alias": "openwiki",
+   "target": "validateOAuthEndpointUrl",
+   "commit_sha": "6ffa7b6debaed25422398c73ccc4d21ad1438795",
+   "commit_note": null,
+   "prompt": "In this repository, suppose the signature of `validateOAuthEndpointUrl` (the exported TypeScript function in src/auth/oauth-discovery.ts) changes: a new required parameter is added. List every NON-TEST function or method that is affected: (1) functions that call it directly, and (2) functions that call those functions (one more hop).\nOutput one line per affected function, no other text: `<hop> :: <path> :: <function or method name>` where hop is 1 or 2. Paths relative to the repository root. Exclude tests. Do not modify any files.",
+   "trials": {
+    "rg/gnx/gnxf": 1,
+    "cxA/cxB": 2,
+    "augH0/augHk": 2
+   }
+  },
+  {
+   "id": "W1",
+   "kind": "broad",
+   "repo": "electricsheephq/WorldOS",
+   "fork_of": null,
+   "gitnexus_alias": "worldos",
+   "target": null,
+   "commit_sha": "466ae7324c74330716e5a0485fe67f4fddd16bce",
+   "commit_note": "Sparse checkout: all files except *.jsonl, *.db, *.sqlite and image/audio/video files (png, jpg, jpeg, webp, gif, mp4, wav, mp3).",
+   "prompt": "In this codebase, how is the combat action economy enforced: what limits a combatant's action, bonus action, reaction and movement each turn, and where is it reset? Name the key files and functions with line numbers. Answer in at most 400 words. Do not modify any files.",
+   "trials": {
+    "realA/realB/realF": 2,
+    "cxA/cxB": 2,
+    "augH0/augHk": 2
+   },
+   "judge_prompt_suffix_removed": " Answer in at most 400 words. Do not modify any files."
+  },
+  {
+   "id": "W2",
+   "kind": "broad",
+   "repo": "electricsheephq/WorldOS",
+   "fork_of": null,
+   "gitnexus_alias": "worldos",
+   "target": null,
+   "commit_sha": "466ae7324c74330716e5a0485fe67f4fddd16bce",
+   "commit_note": "Sparse checkout: all files except *.jsonl, *.db, *.sqlite and image/audio/video files (png, jpg, jpeg, webp, gif, mp4, wav, mp3).",
+   "prompt": "Trace what happens from the moment a player sends a chat message until the DM's reply is spoken aloud with text-to-speech. List each hop in order (file and function or script), with line numbers where possible. Answer in at most 400 words. Do not modify any files.",
+   "trials": {
+    "realA/realB/realF": 2,
+    "cxA/cxB": 2,
+    "augH0/augHk": 2
+   },
+   "judge_prompt_suffix_removed": " Answer in at most 400 words. Do not modify any files."
+  },
+  {
+   "id": "W3",
+   "kind": "broad",
+   "repo": "electricsheephq/WorldOS",
+   "fork_of": null,
+   "gitnexus_alias": "worldos",
+   "target": null,
+   "commit_sha": "466ae7324c74330716e5a0485fe67f4fddd16bce",
+   "commit_note": "Sparse checkout: all files except *.jsonl, *.db, *.sqlite and image/audio/video files (png, jpg, jpeg, webp, gif, mp4, wav, mp3).",
+   "prompt": "How does the bestiary load monster entries? Name the key files and functions with line numbers, and describe the loading order. Answer in at most 400 words. Do not modify any files.",
+   "trials": {
+    "realA/realB/realF": 2,
+    "cxA/cxB": 2,
+    "augH0/augHk": 2
+   },
+   "judge_prompt_suffix_removed": " Answer in at most 400 words. Do not modify any files."
+  },
+  {
+   "id": "H1",
+   "kind": "broad",
+   "repo": "NousResearch/hermes-agent",
+   "fork_of": null,
+   "gitnexus_alias": "hermes-agent",
+   "target": null,
+   "commit_sha": "d62fbea7e110c6008e1ffe1b226d1f593ba4bc28",
+   "commit_note": "Index refreshed to this commit at 2026-10-04T20:34Z; no later refresh before the runs.",
+   "prompt": "How does Hermes choose which model provider and model to use for a request, and what happens when a provider call fails (retries, fallback)? Name the key files and functions in order, with line numbers. Answer in at most 400 words. Do not modify any files.",
+   "trials": {
+    "realA/realB/realF": 2,
+    "cxA/cxB": 2,
+    "augH0/augHk": 2
+   },
+   "judge_prompt_suffix_removed": " Answer in at most 400 words. Do not modify any files."
+  },
+  {
+   "id": "L1",
+   "kind": "broad",
+   "repo": "100yenadmin/lossless-claw",
+   "fork_of": "Martian-Engineering/lossless-claw",
+   "gitnexus_alias": "lossless-claw",
+   "target": null,
+   "commit_sha": "988dee85592b9066ffe1c859542e8e18c23f2345",
+   "commit_note": null,
+   "prompt": "How is a compaction run triggered, and how is the summary produced and stored? Walk through the key files and functions in order, with line numbers. Answer in at most 400 words. Do not modify any files.",
+   "trials": {
+    "realA/realB/realF": 2,
+    "cxA/cxB": 2,
+    "augH0/augHk": 2
+   },
+   "judge_prompt_suffix_removed": " Answer in at most 400 words. Do not modify any files."
+  }
+ ]
+}

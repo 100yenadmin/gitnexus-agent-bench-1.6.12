@@ -1,0 +1,13 @@
+diff --git a/gateway/platforms/_shared.py b/gateway/platforms/_shared.py
+index cf220e0c41..c4ba18cef1 100644
+--- a/gateway/platforms/_shared.py
++++ b/gateway/platforms/_shared.py
+@@ -242,7 +242,7 @@ def env_is_connected(*names: str) -> Callable[[Any], bool]:
+     return is_connected
+ 
+ 
+-def coerce_port(value: Any, default: int) -> int:
++def coerce_port(value: Any, default: int, bench_probe) -> int:
+     """``int(value)`` or ``default`` when unparseable (incl. non-finite YAML like ``.inf``)."""
+     try:
+         return int(value)

@@ -1,0 +1,98 @@
+diff --git a/servers/engine/combat_loop.py b/servers/engine/combat_loop.py
+index f053808..1f2b243 100644
+--- a/servers/engine/combat_loop.py
++++ b/servers/engine/combat_loop.py
+@@ -622,11 +622,18 @@ def _apply_intent(server, campaign_id: str, actor_id: str, intent: Intent) -> di
+                             "save_made": save_made,
+                         }
+         elif intent.kind == "move":
++            move_result = None
+             if intent.to_cell is not None:
+-                server.move_to_coords(campaign_id, actor_id, intent.to_cell[0], intent.to_cell[1])
++                move_result = server.move_to_coords(campaign_id, actor_id, intent.to_cell[0], intent.to_cell[1])
+             elif intent.to_zone:
+-                server.move_to_zone(campaign_id, combatant_id=actor_id, zone=intent.to_zone)
++                move_result = server.move_to_zone(campaign_id, combatant_id=actor_id, zone=intent.to_zone)
+             entry["result"] = {"to_cell": intent.to_cell, "to_zone": intent.to_zone}
++            # Capture movement advisories from the move verb's response
++            if isinstance(move_result, dict):
++                if "move_blocked" in move_result:
++                    entry["result"]["move_blocked"] = move_result["move_blocked"]
++                if "movement_illegal" in move_result:
++                    entry["result"]["movement_illegal"] = move_result["movement_illegal"]
+         elif intent.kind == "disengage":
+             server.use_action(campaign_id, actor_id, kind="disengage")
+             if intent.to_cell is not None:
+diff --git a/servers/engine/tests/test_player_turn_arbiter.py b/servers/engine/tests/test_player_turn_arbiter.py
+index 475cf86..17d9302 100644
+--- a/servers/engine/tests/test_player_turn_arbiter.py
++++ b/servers/engine/tests/test_player_turn_arbiter.py
+@@ -22,6 +22,7 @@ import pytest
+ import combat_loop
+ import server
+ from combat_ai import Intent
++from store import save_campaign
+ 
+ 
+ @pytest.fixture
+@@ -184,3 +185,60 @@ def test_double_resolve_does_not_desync_initiative(grid_fight):
+     other = gob if cur == hero else hero
+     out2 = combat_loop.resolve_player_turn(cid, other, Intent(kind="move", to_cell=(7, 0)))
+     assert out2["ok"] is False
++
++
++# ── MOVEMENT ADVISORIES: movement_illegal + move_blocked are captured in the result ────
++
++
++def test_movement_illegal_over_budget_captured_in_result(grid_fight):
++    """When a move exceeds the mover's speed budget, move_to_coords returns movement_illegal.
++    This advisory should be captured in resolved['result']."""
++    cid, hero, gob = grid_fight
++    # Hero has speed 30 (6-cell budget at cell size 5). Move 7 cells (over budget).
++    out = combat_loop.resolve_player_turn(
++        cid, hero, Intent(kind="move", to_cell=(7, 0)), advance=False
++    )
++    assert out["ok"] is True, out
++    # The move still happened (advisory-not-block).
++    assert _cell(cid, hero) == (7, 0)
++    # The advisory should be in the result.
++    assert "movement_illegal" in out["resolved"]["result"]
++    assert out["resolved"]["result"]["movement_illegal"]["budget_cells"] == 6
++    assert out["resolved"]["result"]["movement_illegal"]["used_cells"] == 0
++    assert out["resolved"]["result"]["movement_illegal"]["cost_cells"] == 7
++
++
++def test_move_blocked_captured_in_result(grid_fight):
++    """When a move targets a blocked/impassable cell, move_to_coords returns move_blocked.
++    This advisory should be captured in resolved['result']."""
++    cid, hero, gob = grid_fight
++    # Add an impassable wall at (3, 0).
++    c = server._require(cid)
++    c.combat.grid_impassable = [[3, 0]]
++    save_campaign(c)
++    # Try to move to the blocked cell.
++    out = combat_loop.resolve_player_turn(
++        cid, hero, Intent(kind="move", to_cell=(3, 0)), advance=False
++    )
++    assert out["ok"] is True, out
++    # The hero should not have moved (it was blocked).
++    assert _cell(cid, hero) == (0, 0)
++    # The move_blocked advisory should be in the result.
++    assert "move_blocked" in out["resolved"]["result"]
++    assert out["resolved"]["result"]["move_blocked"]["target"] == [3, 0]
++
++
++def test_legal_move_has_no_advisories(grid_fight):
++    """A legal, in-budget move should have no extra advisory keys in the result."""
++    cid, hero, gob = grid_fight
++    # Move 2 cells (well within the 6-cell budget).
++    out = combat_loop.resolve_player_turn(
++        cid, hero, Intent(kind="move", to_cell=(2, 0)), advance=False
++    )
++    assert out["ok"] is True, out
++    assert _cell(cid, hero) == (2, 0)
++    # The result should only contain to_cell and to_zone, no advisories.
++    result = out["resolved"]["result"]
++    assert set(result.keys()) == {"to_cell", "to_zone"}
++    assert "movement_illegal" not in result
++    assert "move_blocked" not in result

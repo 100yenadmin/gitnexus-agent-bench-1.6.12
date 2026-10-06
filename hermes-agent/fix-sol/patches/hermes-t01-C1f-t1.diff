@@ -1,0 +1,54 @@
+diff --git a/gateway/run_inbound_consumer.py b/gateway/run_inbound_consumer.py
+index 4caa6959..405609d4 100644
+--- a/gateway/run_inbound_consumer.py
++++ b/gateway/run_inbound_consumer.py
+@@ -196,9 +196,7 @@ def decide_post_admission(results: Any) -> Tuple[str, Optional[str], Optional[st
+ 
+ def _snapshot_destination(source: Any) -> Dict[str, Any]:
+     return {
+-        "platform": getattr(getattr(source, "platform", None), "value", None)
+-        if hasattr(getattr(source, "platform", None), "value")
+-        else getattr(source, "platform", None),
++        "platform": getattr(source, "platform", None),
+         "chat_id": getattr(source, "chat_id", None),
+         "thread_id": getattr(source, "thread_id", None),
+         "chat_type": getattr(source, "chat_type", None),
+@@ -217,8 +215,6 @@ def _restore_destination_if_mutated(event: Any, source: Any, snapshot: Dict[str,
+     )
+     try:
+         for key, value in snapshot.items():
+-            if key == "platform":
+-                continue  # platform enum restore handled below
+             setattr(source, key, value)
+         # Restore the event's source reference when it was swapped wholesale.
+         if getattr(event, "source", None) is not source:
+diff --git a/tests/gateway/test_post_gateway_admission.py b/tests/gateway/test_post_gateway_admission.py
+index 027baedd..54c9271f 100644
+--- a/tests/gateway/test_post_gateway_admission.py
++++ b/tests/gateway/test_post_gateway_admission.py
+@@ -431,6 +431,7 @@ async def test_destination_mutation_is_restored(monkeypatch):
+         event = kwargs.get("event")
+         if name == POST_HOOK:
+             event.source.chat_id = "EVIL-CHAT"
++            event.source.platform = Platform.TELEGRAM
+             event.text = "mutated text is allowed"
+             return [{"action": "pass"}]
+         return []
+@@ -444,6 +445,17 @@ async def test_destination_mutation_is_restored(monkeypatch):
+     assert handled is False and reply is None
+     assert out_source.chat_id == "15551234567@s.whatsapp.net"
+     assert out_event.source.chat_id == "15551234567@s.whatsapp.net"
++    assert out_source.platform is Platform.WHATSAPP
++    assert out_event.source.platform is Platform.WHATSAPP
++    assert out_event.text == "mutated text is allowed"
++
++    assert await runner._handle_message(_make_event("original")) == "agent-ok"
++    runner._handle_message_with_agent.assert_awaited_once()
++    turn_event, turn_source, *_ = runner._handle_message_with_agent.await_args.args
++    assert turn_source.platform is Platform.WHATSAPP
++    assert turn_event.source.platform is Platform.WHATSAPP
++    assert turn_source.chat_id == "15551234567@s.whatsapp.net"
++    assert turn_event.text == "mutated text is allowed"
+ 
+ 
+ @pytest.mark.asyncio

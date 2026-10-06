@@ -1,0 +1,285 @@
+
+  GitNexus MCP (1.6.12)
+{"level":30,"time":1791221078995,"name":"gitnexus","repoCount":1,"repos":["gnxu-taint-named"],"msg":"GitNexus: MCP server starting"}
+{
+  "findings": [
+    {
+      "file": "gitnexus/src/server/repo-tools.ts",
+      "functionLine": 88,
+      "sinkKind": "command-injection",
+      "source": {
+        "variable": "req",
+        "line": 89
+      },
+      "sink": {
+        "line": 89
+      },
+      "hops": [
+        {
+          "variable": "req",
+          "line": 89
+        }
+      ]
+    },
+    {
+      "file": "gitnexus/src/server/sse-progress.ts",
+      "functionLine": 62,
+      "sinkKind": "xss",
+      "source": {
+        "variable": "jobId",
+        "line": 65
+      },
+      "sink": {
+        "line": 87
+      },
+      "hops": [
+        {
+          "variable": "jobId",
+          "line": 65,
+          "viaCall": true
+        },
+        {
+          "variable": "job",
+          "line": 71,
+          "viaCall": true
+        },
+        {
+          "variable": "job",
+          "line": 87,
+          "viaCall": true
+        }
+      ]
+    },
+    {
+      "file": "gitnexus/src/server/sse-progress.ts",
+      "functionLine": 62,
+      "sinkKind": "xss",
+      "source": {
+        "variable": "jobId",
+        "line": 65
+      },
+      "sink": {
+        "line": 92
+      },
+      "hops": [
+        {
+          "variable": "jobId",
+          "line": 65,
+          "viaCall": true
+        },
+        {
+          "variable": "job",
+          "line": 71,
+          "viaCall": true
+        },
+        {
+          "variable": "job",
+          "line": 92
+        }
+      ]
+    },
+    {
+      "interprocedural": true,
+      "file": "gitnexus/src/mcp/local/local-backend.ts",
+      "sinkKind": "sql-injection",
+      "source": {
+        "function": "callTool",
+        "line": 2719
+      },
+      "sink": {
+        "function": "callTool",
+        "line": 2719
+      },
+      "hops": [
+        {
+          "function": "callTool",
+          "line": 2719
+        },
+        {
+          "function": "readPersistedObjectiveCSurface",
+          "line": 106
+        },
+        {
+          "function": "callTool",
+          "line": 2719
+        }
+      ]
+    },
+    {
+      "interprocedural": true,
+      "file": "gitnexus/src/mcp/local/local-backend.ts",
+      "sinkKind": "sql-injection",
+      "source": {
+        "function": "callTool",
+        "line": 2719
+      },
+      "sink": {
+        "function": "ensureVectorExtension",
+        "line": 1009
+      },
+      "hops": [
+        {
+          "function": "callTool",
+          "line": 2719
+        },
+        {
+          "function": "readPersistedObjectiveCSurface",
+          "line": 106
+        },
+        {
+          "function": "callTool",
+          "line": 2719
+        },
+        {
+          "function": "query",
+          "line": 2914
+        },
+        {
+          "function": "semanticSearch",
+          "line": 3571
+        },
+        {
+          "function": "ensureVectorExtension",
+          "line": 1009
+        }
+      ]
+    },
+    {
+      "interprocedural": true,
+      "file": "gitnexus/src/mcp/local/local-backend.ts",
+      "sinkKind": "sql-injection",
+      "source": {
+        "function": "callTool",
+        "line": 2719
+      },
+      "sink": {
+        "function": "executeParameterized",
+        "line": 1233
+      },
+      "hops": [
+        {
+          "function": "callTool",
+          "line": 2719
+        },
+        {
+          "function": "readPersistedObjectiveCSurface",
+          "line": 106
+        },
+        {
+          "function": "callTool",
+          "line": 2719
+        },
+        {
+          "function": "query",
+          "line": 2914
+        },
+        {
+          "function": "executeParameterized",
+          "line": 1233
+        }
+      ]
+    },
+    {
+      "interprocedural": true,
+      "file": "gitnexus/src/mcp/local/local-backend.ts",
+      "sinkKind": "sql-injection",
+      "source": {
+        "function": "cypher",
+        "line": 3765
+      },
+      "sink": {
+        "function": "executeParameterized",
+        "line": 1233
+      },
+      "hops": [
+        {
+          "function": "cypher",
+          "line": 3765
+        },
+        {
+          "function": "executeParameterized",
+          "line": 1233
+        }
+      ]
+    },
+    {
+      "interprocedural": true,
+      "file": "gitnexus/src/server/repo-tools.ts",
+      "sinkKind": "command-injection",
+      "source": {
+        "function": "handleBlame",
+        "line": 56
+      },
+      "sink": {
+        "function": "runGit",
+        "line": 14
+      },
+      "hops": [
+        {
+          "function": "handleBlame",
+          "line": 56
+        },
+        {
+          "function": "blameSummary",
+          "line": 22
+        },
+        {
+          "function": "runGit",
+          "line": 14
+        }
+      ]
+    },
+    {
+      "interprocedural": true,
+      "file": "gitnexus/src/server/repo-tools.ts",
+      "sinkKind": "command-injection",
+      "source": {
+        "function": "handleCommitSubject",
+        "line": 66
+      },
+      "sink": {
+        "function": "runGit",
+        "line": 14
+      },
+      "hops": [
+        {
+          "function": "handleCommitSubject",
+          "line": 66
+        },
+        {
+          "function": "commitSubject",
+          "line": 34
+        },
+        {
+          "function": "runGit",
+          "line": 14
+        }
+      ]
+    },
+    {
+      "interprocedural": true,
+      "file": "gitnexus/src/server/repo-tools.ts",
+      "sinkKind": "path-traversal",
+      "source": {
+        "function": "handleSnippet",
+        "line": 61
+      },
+      "sink": {
+        "function": "readSnippet",
+        "line": 29
+      },
+      "hops": [
+        {
+          "function": "handleSnippet",
+          "line": 61
+        },
+        {
+          "function": "readSnippet",
+          "line": 29
+        }
+      ]
+    }
+  ],
+  "totalFindings": 10,
+  "note": "Intra-procedural (TAINTED, statement hops) AND cross-function (TAINT_PATH, function hops, `interprocedural: true`) flows are modeled. Closure/callback, property/field, and implicit flows are NOT modeled; absence of a finding is not proof of safety. Cross-function findings are context-insensitive and may over-attribute among same-named callees. SANITIZES (kill) edges are queryable via cypher."
+}

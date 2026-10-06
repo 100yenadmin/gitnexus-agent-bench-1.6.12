@@ -1,0 +1,82 @@
+{
+ "hermes-t01": {
+  "class": "trivial",
+  "pr": 133157,
+  "notes": "1 source file (gateway/run_inbound_consumer.py, 10 lines). Oracle is the whole tests/gateway/test_post_gateway_admission.py (16 tests); 1 is red at base (an assertion on the restored platform enum). Regression = the whole tests/gateway dir, because fewer than 20 gateway tests reference the touched module or its one importer.",
+  "deselect": [
+   "tests/gateway/test_update_streaming.py::TestCmdUpdateGatewayMode::test_gateway_flag_enables_gateway_prompt_for_stash"
+  ]
+ },
+ "hermes-t02": {
+  "class": "trivial",
+  "pr": 133012,
+  "notes": "1 source file (hermes_cli/plugins_cmd.py, 13 lines). Oracle is the whole tests/hermes_cli/test_plugins_cmd_activation_keys.py (4 tests); 1 is red at base. The test calls the existing _plugin_status/_discover_all_plugins, whose names the statement gives."
+ },
+ "hermes-i01": {
+  "class": "investigation",
+  "pr": 132997,
+  "notes": "Symptom is in the agent loop (run_conversation returns the thinking summary); the cause is the reasoning-only promotion branch in agent/turn_final_response.py (10 lines). The agent must tell signed Anthropic thinking / *.native_assistant carriers apart from the vLLM nemotron/DeepSeek case that must keep promoting. Oracle: tests/agent/test_reasoning_only_stop_persistence.py (9 tests, 2 red)."
+ },
+ "hermes-i02": {
+  "class": "investigation",
+  "pr": 133229,
+  "notes": "Regression hunt: the symptom is an e2e -q hang; the fix is an early decline in tools/approval_prompt.py::request_elicitation_consent that reuses approval_context's existing single-query/cron/unattended-platform predicates (7 lines). Oracle: tests/tools/test_mcp_trust_gating.py (18 tests; 3 parametrized cases red)."
+ },
+ "hermes-i03": {
+  "class": "investigation",
+  "pr": 133231,
+  "notes": "Bug report is the CLI behaviour; the cause spans the value-coercion step (model is seeded as a string, so a JSON literal stays a string) and _guard_section_overwrite's bare-model shorthand in hermes_cli/config.py (34 lines). Oracle: the whole tests/hermes_cli/test_set_config_value.py (101 tests, 2 red).",
+  "deselect": [
+   "tests/hermes_cli/test_doctor.py::TestGitHubTokenCheck::test_gh_authenticated_on_gh_without_authenticated_json_field",
+   "tests/hermes_cli/test_local_models_routes.py::test_download_resume_completes_bytes",
+   "tests/hermes_cli/test_local_models_routes.py::test_quickstart_pause_stops_the_sequence",
+   "tests/hermes_cli/test_local_models_routes.py::test_repeated_resume_never_spawns_concurrent_writers",
+   "tests/hermes_cli/test_plugin_validate.py::test_portable_validation_fails_orphan_and_reports_availability",
+   "tests/hermes_cli/test_shared_metrics_harness.py::test_foreground_terminal_commands_count_by_kind_and_outcome",
+   "tests/hermes_cli/test_update_channel.py::TestSetChannelCLI::test_metadata_commands_precede_managed_refusal_and_write_once",
+   "tests/hermes_cli/test_update_channel.py::TestSetChannelCLI::test_metadata_refusals_leave_config_unchanged",
+   "tests/hermes_cli/test_update_channel.py::TestSetChannelCLI::test_stable_switch_warns_about_state_without_requiring_a_newer_release",
+   "tests/hermes_cli/test_update_fleet_restart_pending.py::test_clean_update_defers_desktop_owned_serve_and_clears_marker",
+   "tests/hermes_cli/test_update_fleet_restart_pending.py::test_clean_update_escalates_surviving_serve_as_unaccounted",
+   "tests/hermes_cli/test_update_fleet_restart_pending.py::test_interrupt_between_pull_and_restart_leaves_marker",
+   "tests/hermes_cli/test_update_fleet_restart_pending.py::test_marker_written_after_pull_cleared_after_successful_restart",
+   "tests/hermes_cli/test_update_fleet_restart_pending.py::test_pending_fleet_restart_cleared_instead_of_exit_1",
+   "tests/hermes_cli/test_update_fleet_restart_pending.py::test_up_to_date_update_leaves_current_fleet_alone",
+   "tests/hermes_cli/test_update_fleet_restart_pending.py::test_up_to_date_update_still_restarts_a_stale_gateway",
+   "tests/hermes_cli/test_update_parked_branch_guard.py::test_switch_branch_flag_overrides_in_place_strategy",
+   "tests/hermes_cli/test_update_parked_branch_guard.py::test_update_auto_switches_clean_merged_parked_branch",
+   "tests/hermes_cli/test_update_parked_branch_guard.py::test_update_on_main_fast_path_unchanged",
+   "tests/hermes_cli/test_update_parked_branch_guard.py::test_update_skips_and_warns_on_dirty_parked_branch",
+   "tests/hermes_cli/test_update_parked_branch_guard.py::test_update_switches_unmerged_parked_branch_with_kept_notice",
+   "tests/hermes_cli/test_update_parked_branch_guard.py::test_update_up_to_date_path_does_not_repark_merged_branch",
+   "tests/hermes_cli/test_update_parked_branch_guard.py::test_update_updates_unmerged_branch_in_place_when_configured"
+  ]
+ },
+ "hermes-c01": {
+  "class": "cross-module",
+  "pr": 133004,
+  "notes": "Fix spans agent/anthropic_adapter.py (new find_claude_code_cli), agent/anthropic_credentials.py (run_oauth_setup_token) and hermes_cli/auth.py (_external_process_spec). The statement names the new helper and its module, because the updated tests/agent/test_anthropic_adapter.py monkeypatches agent.anthropic_adapter.find_claude_code_cli (4 base failures: 2 AttributeError on that patch target, 2 behavioural). The regression adds tests/test_managed_runtime_resolution.py (the repo's bare-which allowlist ratchet with a stale-row check; the fix removed a row from tests/fixtures/resolution_allowlist.json), which agents are likely to miss, like Track O's worldos-c02 taxonomy check.",
+  "extra_regression": [
+   "tests/test_managed_runtime_resolution.py"
+  ],
+  "deselect": [
+   "tests/hermes_cli/test_doctor.py::TestGitHubTokenCheck::test_gh_authenticated_on_gh_without_authenticated_json_field"
+  ]
+ },
+ "hermes-c02": {
+  "class": "cross-module",
+  "pr": 132773,
+  "notes": "Fix spans agent/turn_context.py, turn_empty_response.py and turn_finalizer.py (record the reuse and report response_reused) plus tui_gateway/prompt_turn.py and tui_gateway/contracts/events.py (carry it on message.complete); upstream also regenerated apps/shared contract files. The regression adds tests/tui_gateway/contracts/test_generated.py, which fails unless the generated TS/OpenRPC contract files are regenerated after a contract model change (a likely miss). Oracle: 2 files, 10 tests, 3 red.",
+  "extra_regression": [
+   "tests/tui_gateway/contracts/test_generated.py"
+  ]
+ },
+ "hermes-c03": {
+  "class": "cross-module",
+  "pr": 133289,
+  "notes": "First commit of upstream PR #133289. Fix spans gateway/run_adapters.py (watcher call site), gateway/run_plugin_rewire.py (runner hook) and hermes_cli/plugins_loader.py (PluginManager.rearm_failed_platform). The statement specifies rearm_failed_platform's name, owner and return contract and the get_plugin_manager() seam, because both hidden tests call/patch them (2 base failures: AttributeError on the new method; the watcher test fails because nothing is re-armed). Oracle: 2 files, 42 tests.",
+  "deselect": [
+   "tests/gateway/test_update_streaming.py::TestCmdUpdateGatewayMode::test_gateway_flag_enables_gateway_prompt_for_stash"
+  ]
+ }
+}

@@ -1,0 +1,17 @@
+{
+ "hermes-i04": {
+  "class": "investigation",
+  "pr": 133162,
+  "notes": "ALTERNATE. The gateway twins already fire the hooks; the two classic-CLI prompts live in tools/approval_prompt.py and tools/file_tools_write_guards.py (hermes_cli/plugins.py changes only a comment). Hidden tests pin the exact hook kwargs, which the statement lists. Oracle: tests/tools/test_approval_plugin_hooks.py (25 tests, 3 red)."
+ },
+ "hermes-c04": {
+  "class": "cross-module",
+  "pr": 131802,
+  "notes": "ALTERNATE (base is 372 first-parent commits after d62fbea7, beyond the preferred ~250). Fix spans utils.py (new sanitize_no_proxy_entries + normalize_proxy_env_vars), hermes_cli/auth_codex.py and hermes_cli/doctor_connectivity.py. The statement must specify the helper name and its full rewrite table, because the hidden tests import it (base: collection ImportError) and pin each rewrite.",
+  "deselect": [
+   "tests/hermes_cli/test_update_channel.py::TestSetChannelCLI::test_metadata_commands_precede_managed_refusal_and_write_once",
+   "tests/hermes_cli/test_update_channel.py::TestSetChannelCLI::test_metadata_refusals_leave_config_unchanged",
+   "tests/hermes_cli/test_update_channel.py::TestSetChannelCLI::test_stable_switch_warns_about_state_without_requiring_a_newer_release"
+  ]
+ }
+}

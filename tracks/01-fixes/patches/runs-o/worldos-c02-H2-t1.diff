@@ -1,0 +1,296 @@
+diff --git a/qa/assert_behavioral.py b/qa/assert_behavioral.py
+index 70aee15..665ef8a 100644
+--- a/qa/assert_behavioral.py
++++ b/qa/assert_behavioral.py
+@@ -456,6 +456,18 @@ def main() -> int:
+                         "action before advancing; Multiattack = all N attacks).",
+                         fatal=False)
+ 
++                # #1270: unresolved spell attack (WARN, not FATAL). An attack-roll spell
++                # (Guiding Bolt) was cast but never resolved by attack(). The spell slot was
++                # spent, but the attack hang-over suggests a DM drift (forgot to roll the hit).
++                # Only warn if pending_spell_attack is not None and the run is in combat.
++                if combat.get("pending_spell_attack"):
++                    pending = combat.get("pending_spell_attack") or {}
++                    chk("unresolved_spell_attack", False,
++                        f"attack-roll spell '{pending.get('spell', '?')}' cast but never "
++                        f"resolved via attack() — call attack() for each target before "
++                        f"advancing to next_turn.",
++                        fatal=False)
++
+         # COMBAT-WITHOUT-INITIATIVE (F01-14, audit 2026-06-11; WARN, NULL-GUARDED). The
+         # combat-integrity checks above all nest under `start_combat>0`, so a session that
+         # ran a whole FIGHT via raw attack()/cast_spell() calls and NEVER called start_combat
+diff --git a/servers/engine/models.py b/servers/engine/models.py
+index 21734e2..61d86d6 100644
+--- a/servers/engine/models.py
++++ b/servers/engine/models.py
+@@ -820,6 +820,26 @@ class PendingOnHitRider(_StrictModel):
+     until_long_rest: bool = False
+ 
+ 
++class PendingSpellAttack(_StrictModel):
++    """A spell that requires an attack roll, cast but not yet resolved by attack().
++
++    When cast_spell returns automated=False and attack_roll=True (e.g., Guiding Bolt),
++    the spell slot is consumed but the attack is NOT resolved until the DM calls attack().
++    The action economy gate would normally reject that attack as "already cast a spell",
++    but attack-roll spells are a SINGLE action in 5e (SRD 5.2: "spellcasting time" includes
++    the attack roll as part of the action). Record this pending spell on the caster so the
++    next attack() on a matching target bypasses the gate, then clears this record.
++
++    ADDITIVE: Combat.pending_spell_attack defaults to None, so every existing snapshot
++    deserializes unchanged and campaigns that never cast an attack-roll spell behave
++    identically."""
++
++    source_id: str  # the caster's character id (matched against attack()'s attacker)
++    target_ids: list[str]  # targets the spell can hit (matched against attack()'s target)
++    spell: str  # the spell's canonical name (for reference/debugging)
++    round: int  # the combat round when cast (so it clears on next_turn, not lingering across rounds)
++
++
+ class Character(_StrictModel):
+     id: str = Field(default_factory=lambda: _new_id("char"))
+     name: str
+@@ -1469,6 +1489,10 @@ class Combat(_StrictModel):
+     # costly); impassable cells are routed around entirely.
+     grid_difficult: list[list[int]] = Field(default_factory=list)
+     last_move_path: list[list[int]] = Field(default_factory=list)
++    # #1270: a spell requiring an attack roll (Guiding Bolt), cast this turn but not yet
++    # resolved. The action economy gate bypasses one attack() on a listed target; None when
++    # there's no pending spell attack. Additive; defaults to None for old snapshots.
++    pending_spell_attack: Optional[PendingSpellAttack] = None
+ 
+     @property
+     def current_combatant_id(self) -> Optional[str]:
+diff --git a/servers/engine/server.py b/servers/engine/server.py
+index f217812..a3345f6 100644
+--- a/servers/engine/server.py
++++ b/servers/engine/server.py
+@@ -94,6 +94,7 @@ from models import (
+     PendingAttackBonus,
+     PendingDamageBonus,
+     PendingOnHitRider,
++    PendingSpellAttack,
+     Quest,
+     RepeatSave,
+     SceneDebt,
+@@ -4981,6 +4982,9 @@ def next_turn(campaign_id: str) -> dict:
+         # Attack action's worth of strikes and no Action Surge spent yet.
+         c.combat.action_attacks_made = 0
+         c.combat.surge_actions = 0
++        # #1270: an unresolved spell attack expires at turn boundary. A new turn has no
++        # pending spell attack (it must be resolved in the casting turn or the record clears).
++        c.combat.pending_spell_attack = None
+         # LEAK GUARD (cs-1040val): a maneuver die / Guided Strike bonus rides the attack you
+         # spent it on (SRD: "add it to that attack's roll/damage"). If the outgoing combatant
+         # spent one but never attacked this turn, clear the orphaned pending rider so it can't
+@@ -5284,6 +5288,20 @@ def remove_combatant(campaign_id: str, character_id: str) -> dict:
+         if idx is None:
+             raise ValueError(f"{character_id!r} is not in the combat order")
+         order.pop(idx)
++        # #1270: if the removed combatant was the target of a pending spell attack, clear it
++        # (the target is dead, so the attack can't land). Also clear any on-hit riders that
++        # were waiting on this target.
++        ch = c.characters.get(character_id)
++        if ch is not None:
++            ch.pending_on_hit_riders = [
++                r for r in ch.pending_on_hit_riders
++                if r.target_id != character_id
++            ]
++        if (
++            c.combat.pending_spell_attack is not None
++            and character_id in c.combat.pending_spell_attack.target_ids
++        ):
++            c.combat.pending_spell_attack = None
+         remaining_kinds = {
+             c.characters[cb.character_id].kind for cb in order if cb.character_id in c.characters
+         }
+@@ -5609,6 +5627,7 @@ def attack(
+             (cb for cb in c.combat.order if cb.character_id == attacker_id), None
+         ) if c.combat.active else None
+         consume_reaction = False
++        spell_attack_gate_bypass = False  # #1270: set true if this attack resolves a pending spell
+         ma = 0  # multiattack count; set in action-attack branch below for monsters
+         if attacker_cb is not None:
+             is_current = c.combat.current_combatant_id == attacker_id
+@@ -5641,8 +5660,18 @@ def attack(
+                 # it would wrongly permit this). Reject unless an Action Surge action remains
+                 # (surge_actions>0), the escape hatch. action_purpose=="" (the Attack-action /
+                 # legacy path) is unaffected — this only fires on cast/skip.
++                # #1270: UNLESS this is the attack-roll leg of a spell cast earlier this turn
++                # (Guiding Bolt). The cast and attack are ONE action in 5e (the spell's casting
++                # time includes the attack roll). When pending_spell_attack matches the current
++                # attacker and target, bypass the gate and clear the record (consumed).
++                spell_attack_gate_bypass = (
++                    c.combat.pending_spell_attack is not None
++                    and c.combat.pending_spell_attack.source_id == attacker_id
++                    and target_id in c.combat.pending_spell_attack.target_ids
++                )
+                 if (
+-                    c.combat.action_purpose in ("cast", "skip")
++                    not spell_attack_gate_bypass
++                    and c.combat.action_purpose in ("cast", "skip")
+                     and c.combat.action_attacks_made == 0
+                     and c.combat.surge_actions <= 0
+                 ):
+@@ -5653,6 +5682,21 @@ def attack(
+                         f"(use_resource(resource='action_surge')) for a second action, or "
+                         f"advance with next_turn."
+                     )
++                # #1270: also reject when there's a pending spell attack for a DIFFERENT
++                # target (cast Guiding Bolt at A, try to attack B). The action was spent on the
++                # spell (including its attack roll), not on an Attack action, so no second attack.
++                if (
++                    c.combat.pending_spell_attack is not None
++                    and not spell_attack_gate_bypass
++                    and c.combat.action_attacks_made == 0
++                    and c.combat.surge_actions <= 0
++                ):
++                    raise ValueError(
++                        f"{attacker.name} already cast a spell this turn and cannot also attack — "
++                        f"one action per turn. Spend an Action Surge "
++                        f"(use_resource(resource='action_surge')) for a second action, or "
++                        f"advance with next_turn."
++                    )
+                 ma = _attacker_multiattack_count(attacker, c, attack_name)
+                 ok, reason = combat.check_action_attack(
+                     is_current=True,
+@@ -6413,6 +6457,16 @@ def attack(
+             },
+             speaker=attacker.name,
+         )
++        # #1270: clear pending spell attack if this strike resolved one. The pending record
++        # clears on HIT or MISS (the spell attack has resolved). If this was NOT the
++        # pending spell, the record stays (e.g., a second action on a different target).
++        if (
++            spell_attack_gate_bypass
++            and c.combat.pending_spell_attack is not None
++            and c.combat.pending_spell_attack.source_id == attacker_id
++            and target_id in c.combat.pending_spell_attack.target_ids
++        ):
++            c.combat.pending_spell_attack = None
+         # Persist regardless of hit/miss: a miss still consumed the action/reaction
+         # economy above, and that bookkeeping must survive (sole-writer discipline).
+         save_campaign(c)
+@@ -8222,7 +8276,12 @@ def cast_spell(
+                 if c.combat.action_used and c.combat.surge_actions > 0:
+                     c.combat.surge_actions -= 1
+                 c.combat.action_used = True
+-                c.combat.action_purpose = "cast"
++                # #1270: for attack-roll spells, don't set action_purpose="cast" yet. The spell's
++                # casting time includes the attack roll (SRD 5.2), so it's one action. The attack()
++                # call is part of the same action, and action_purpose="cast" would wrongly block it.
++                # Only set it for non-attack-roll spells where the action is fully spent here.
++                if not is_attack_roll_spell:
++                    c.combat.action_purpose = "cast"
+         save_campaign(c)
+         updated = c.characters[character_id]
+         result = {
+@@ -8319,6 +8378,23 @@ def cast_spell(
+             result["school"] = srd.get("school")
+             result["save_ability"] = srd.get("saving_throw_ability") or None
+             result["attack_roll"] = bool(srd.get("attack_roll"))
++            # #1270: an attack-roll spell (Guiding Bolt) requires a separate attack() call to
++            # resolve. Record it on the caster so attack() can bypass the action economy gate
++            # on a matching target. The spell slot is already spent and concentration set above.
++            # This record clears when attack() resolves (on hit or miss) or on next_turn.
++            if result["attack_roll"] and c.combat.active:
++                # Collect all targets: explicit target_id + AoE targets. If none, the spell
++                # was cast for effect (damage roll or setup); no pending attack needed.
++                spell_targets = [t.id for t in aoe_targets if t is not None]
++                if target_id and target_id not in spell_targets:
++                    spell_targets.append(target_id)
++                if spell_targets:
++                    c.combat.pending_spell_attack = PendingSpellAttack(
++                        source_id=character_id,
++                        target_ids=spell_targets,
++                        spell=canonical,
++                        round=c.combat.round,
++                    )
+             # Damage-cantrip tier scaling (F03-2 / #808): the srd record stores the
+             # LEVEL-1 dice, but the note below tells the DM to resolve with these
+             # values — so at caster levels 5/11/17 `base_damage` must carry the
+diff --git a/servers/engine/tests/test_action_economy.py b/servers/engine/tests/test_action_economy.py
+index a038766..e26ba03 100644
+--- a/servers/engine/tests/test_action_economy.py
++++ b/servers/engine/tests/test_action_economy.py
+@@ -208,6 +208,78 @@ def test_skip_then_cast_rejected(caster):
+         _cast(cid, wiz, "Fireball", target_id=gob)
+ 
+ 
++# ==================== #1270: spell attack bypass ============================
++
++def test_attack_roll_spell_followed_by_attack_allowed(caster):
++    """#1270 red-first: Guiding Bolt (attack-roll spell) followed by attack()
++    must bypass the action economy gate because in 5e the spell's casting time
++    includes the attack roll — they're one action, not two."""
++    cid, wiz, gob = caster
++    # Learn Guiding Bolt so we can cast it
++    server.learn_spells(cid, wiz, ["Guiding Bolt"])
++    server.prepare_spells(cid, wiz, ["Guiding Bolt"])
++    # Cast Guiding Bolt (SRD attack-roll spell)
++    cast_result = _cast(cid, wiz, "Guiding Bolt", target_id=gob)
++    assert cast_result["automated"] is False
++    assert cast_result["attack_roll"] is True
++    # Without the fix, the next attack() would fail with "already cast a spell"
++    # With the fix, it bypasses the gate and succeeds
++    atk = server.attack(cid, wiz, gob, attack_bonus=5, damage_dice="1d8+2")
++    assert atk["hit"] is not None  # attack resolved successfully
++
++
++def test_spell_attack_matches_target_requirement(caster):
++    """#1270: The spell-attack bypass only works when the attack()
++    target matches the pending spell attack's target."""
++    cid, wiz, gob = caster
++    server.learn_spells(cid, wiz, ["Guiding Bolt"])
++    server.prepare_spells(cid, wiz, ["Guiding Bolt"])
++    # Cast Guiding Bolt at the goblin
++    cast_result = _cast(cid, wiz, "Guiding Bolt", target_id=gob)
++    # Verify it's an attack-roll spell that's pending
++    assert cast_result["attack_roll"] is True
++    assert cast_result["automated"] is False
++    # Attack on the MATCHING target succeeds
++    atk = server.attack(cid, wiz, gob, attack_bonus=5, damage_dice="1d8+2")
++    assert atk["hit"] is not None
++
++
++def test_spell_attack_clears_after_resolution(caster):
++    """#1270: pending_spell_attack clears after attack() resolves on a
++    matching target. A second attack on ANY target is still rejected because
++    the action was already spent on the spell."""
++    cid, wiz, gob = caster
++    other_gob = server.create_character(cid, "Goblin2", kind="monster", max_hp=20)["id"]
++    server.add_combatant(cid, other_gob)
++    server.learn_spells(cid, wiz, ["Guiding Bolt"])
++    server.prepare_spells(cid, wiz, ["Guiding Bolt"])
++    # Cast and resolve first spell attack
++    _cast(cid, wiz, "Guiding Bolt", target_id=gob)
++    server.attack(cid, wiz, gob, attack_bonus=5, damage_dice="1d8+2")
++    # Now the pending record should be cleared, but the action is still spent
++    # so a second attack on another target is rejected with budget error
++    with pytest.raises(ValueError, match="already attacked|cannot attack"):
++        server.attack(cid, wiz, other_gob, attack_bonus=5, damage_dice="1d8+2")
++
++
++def test_spell_attack_clears_on_next_turn(caster):
++    """#1270: if a spell attack is cast but never resolved, it clears on
++    next_turn (the record doesn't carry over)."""
++    cid, wiz, gob = caster
++    server.learn_spells(cid, wiz, ["Guiding Bolt", "Fireball"])
++    server.prepare_spells(cid, wiz, ["Guiding Bolt", "Fireball"])
++    # Cast Guiding Bolt but DON'T resolve it
++    _cast(cid, wiz, "Guiding Bolt", target_id=gob)
++    # Advance to next turn
++    server.next_turn(cid)  # goblin's turn
++    server.next_turn(cid)  # back to wizard
++    # The pending spell should be cleared, so a fresh action is available
++    assert server.get_state(cid)["current_turn"] == wiz
++    # Should allow a new spell cast (not rejected for "already cast a spell")
++    fb = _cast(cid, wiz, "Fireball", target_id=gob)
++    assert fb["spell"] == "Fireball"
++
++
+ # ==================== #778: next_turn clears the purpose ====================
+ 
+ def test_next_turn_clears_action_purpose(caster):

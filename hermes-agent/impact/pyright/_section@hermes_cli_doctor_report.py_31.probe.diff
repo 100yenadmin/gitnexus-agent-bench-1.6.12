@@ -1,0 +1,13 @@
+diff --git a/hermes_cli/doctor_report.py b/hermes_cli/doctor_report.py
+index fc258dd4f9..c116823324 100644
+--- a/hermes_cli/doctor_report.py
++++ b/hermes_cli/doctor_report.py
+@@ -28,7 +28,7 @@ def check_bool(cond, ok, bad, *, fail: bool = False):
+     return bool(cond)
+ 
+ 
+-def _section(title: str) -> None:
++def _section(title: str, bench_probe) -> None:
+     """Print a doctor section banner: blank line + bold cyan ◆ title."""
+     print()
+     print(color(f"◆ {title}", Colors.CYAN, Colors.BOLD))

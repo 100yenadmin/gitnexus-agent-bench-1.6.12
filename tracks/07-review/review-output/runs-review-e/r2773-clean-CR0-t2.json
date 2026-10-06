@@ -1,0 +1,30 @@
+{
+ "schema_version": 1,
+ "verdict": "request_changes",
+ "findings": [
+  {
+   "id": "fts-process-wide-capability-suppresses-healthy-pool",
+   "severity": "medium",
+   "path": "gitnexus/src/core/search/bm25-index.ts",
+   "line": 137,
+   "end_line": 138,
+   "category": "correctness",
+   "scenario": "A long-lived MCP process has FTS loaded on database A, then a LOAD attempt on database B fails. Subsequent keyword searches on A return no matches even though its existing pool can still execute FTS queries.",
+   "evidence": "ExtensionManager stores capability state by extension name only, and markUnavailable overwrites the process-wide fts entry. The pool separately tracks shared.ftsLoaded per Database and reuses unchanged open pools without loading again. This new guard therefore treats B's failure as A's state. An in-memory base/local comparison using the actual registry and search source with a successful A executor returned one match and one executor call at HEAD, but zero matches and zero executor calls with the local diff.",
+   "recommendation": "Scope the unavailable check to the database/pool being searched, or keep attempting its FTS queries and classify extension-unavailable errors there; do not suppress a pool based on the last process-wide load result.",
+   "blocking": true
+  },
+  {
+   "id": "fts-missing-index-counted-as-success",
+   "severity": "medium",
+   "path": "gitnexus/src/core/lbug/lbug-adapter.ts",
+   "line": 3178,
+   "end_line": 3179,
+   "category": "correctness",
+   "scenario": "The FTS extension loads successfully, but the database has no configured FTS indexes. HTTP /api/search in bm25 mode or hybrid mode without an embedder returns empty results without the missing-index warning or repair guidance.",
+   "evidence": "The new catch converts the confirmed missing-index Binder exception into []. searchFTSFromLbug's non-pool branch unconditionally increments queriesSucceeded when queryFTS resolves, so it now reports ftsAvailable=true for absent indexes. api.ts only adds ftsDegradedWarning when that flag is false. An in-memory probe executing the base/local queryFTS and search source with the same missing-index exception changed the response from {results:[],ftsAvailable:false} at HEAD to {results:[],ftsAvailable:true} locally. Existing unit tests mock queryFTS and do not exercise this changed catch through the core search branch.",
+   "recommendation": "Preserve a distinct missing-index outcome through the core adapter and count only successfully executed queries as available. Keep genuine zero-match queries successful and benign missing-index failures out of nonBenignErrors.",
+   "blocking": true
+  }
+ ]
+}

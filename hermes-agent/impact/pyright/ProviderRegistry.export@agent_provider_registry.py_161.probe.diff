@@ -1,0 +1,13 @@
+diff --git a/agent/provider_registry.py b/agent/provider_registry.py
+index fa2a90c19a..500d8da5eb 100644
+--- a/agent/provider_registry.py
++++ b/agent/provider_registry.py
+@@ -158,7 +158,7 @@ class ProviderRegistry(Generic[P]):
+             self._scoped_generations.clear()
+             self._generation += 1
+ 
+-    def export(self, namespace: Dict[str, Any]) -> None:
++    def export(self, namespace: Dict[str, Any], bench_probe) -> None:
+         """Bind the historical module-level API (+ ``_providers``/``_scoped_providers``/
+         ``_lock`` test hooks) into a ``*_registry`` module namespace."""
+         namespace.update(

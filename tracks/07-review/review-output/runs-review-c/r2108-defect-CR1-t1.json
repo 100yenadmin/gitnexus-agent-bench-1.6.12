@@ -1,0 +1,18 @@
+{
+ "schema_version": 1,
+ "verdict": "request_changes",
+ "findings": [
+  {
+   "id": "R2108-FTS-RSS-001",
+   "severity": "medium",
+   "path": "gitnexus/scripts/bench/fts-evict-reload-rss.mjs",
+   "line": 273,
+   "end_line": 277,
+   "category": "correctness",
+   "scenario": "Running the recommended --via-pool memory benchmark against a repository whose FTS extension is unavailable or whose FTS indexes are missing can report PLATEAU and claim that the FTS arena is reclaimed, although no FTS query succeeded.",
+   "evidence": "Every QUERY_FTS_INDEX rejection is converted to an empty array, and runViaPool returns RSS samples without recording whether FTS ran. The pool intentionally continues when LOAD fails. A focused execution against a temporary LadybugDB with FTS unavailable confirmed QUERY_FTS_INDEX was undefined, yet all six benchmark samples were 173 MB, the machine verdict was PLATEAU, and the benchmark exited 0.",
+   "recommendation": "Track successful FTS queries in each cycle and require a working FTS workload before emitting CLIMB or PLATEAU. If extension loading fails or all index probes fail, stop with a nonzero exit or an explicit INCONCLUSIVE verdict; skip only individually absent indexes when other FTS probes succeed.",
+   "blocking": true
+  }
+ ]
+}

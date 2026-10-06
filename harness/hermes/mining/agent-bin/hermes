@@ -1,0 +1,10 @@
+#!/bin/sh
+# Track H bench shim (task path_prefix): `hermes` runs THIS checkout's CLI, never an installed Hermes on the
+# machine, against the per-run HERMES_HOME, with the
+# launch-time self-update tail disabled (HERMES_DISABLE_LAZY_INSTALLS=1: hermes_cli/venv_sync.prepare_launch
+# otherwise adopts the checkout and rebuilds/packages TUI, web and Desktop builds).
+py="${HERMES_PYTHON:-}"
+[ -x "$py" ] || { echo "hermes (bench): HERMES_PYTHON must point at the checkout's .venv/bin/python" >&2; exit 127; }
+[ -n "${HERMES_HOME:-}" ] || { echo "hermes (bench): refusing to run without HERMES_HOME" >&2; exit 2; }
+root="${py%/.venv/bin/python}"
+HERMES_DISABLE_LAZY_INSTALLS=1 PYTHONPATH="$root${PYTHONPATH:+:$PYTHONPATH}" exec "$py" -m hermes_cli.main "$@"

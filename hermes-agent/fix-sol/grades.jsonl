@@ -1,0 +1,32 @@
+{"run": "hermes-c01-C0-t1", "task": "hermes-c01", "arm": "C0", "trial": 1, "oracle": true, "regression": true}
+{"run": "hermes-c01-C0-t2", "task": "hermes-c01", "arm": "C0", "trial": 2, "oracle": true, "regression": false, "regression_failed_first": ["tests/test_managed_runtime_resolution.py::test_bare_which_and_known_path_tables_are_allowlisted", "tests/test_managed_runtime_resolution.py::test_resolution_allowlist_has_no_stale_rows"]}
+{"run": "hermes-c01-C1f-t1", "task": "hermes-c01", "arm": "C1f", "trial": 1, "oracle": true, "regression": false, "regression_failed_first": ["tests/test_managed_runtime_resolution.py::test_bare_which_and_known_path_tables_are_allowlisted", "tests/test_managed_runtime_resolution.py::test_resolution_allowlist_has_no_stale_rows"]}
+{"run": "hermes-c01-C1f-t2", "task": "hermes-c01", "arm": "C1f", "trial": 2, "oracle": true, "regression": false, "regression_failed_first": ["tests/test_managed_runtime_resolution.py::test_bare_which_and_known_path_tables_are_allowlisted", "tests/test_managed_runtime_resolution.py::test_resolution_allowlist_has_no_stale_rows"]}
+{"run": "hermes-c02-C0-t1", "task": "hermes-c02", "arm": "C0", "trial": 1, "oracle": true, "regression": true}
+{"run": "hermes-c02-C0-t2", "task": "hermes-c02", "arm": "C0", "trial": 2, "oracle": true, "regression": true}
+{"run": "hermes-c02-C1f-t1", "task": "hermes-c02", "arm": "C1f", "trial": 1, "oracle": true, "regression": true}
+{"run": "hermes-c02-C1f-t2", "task": "hermes-c02", "arm": "C1f", "trial": 2, "oracle": true, "regression": true}
+{"run": "hermes-c03-C0-t1", "task": "hermes-c03", "arm": "C0", "trial": 1, "oracle": true, "regression": true}
+{"run": "hermes-c03-C0-t2", "task": "hermes-c03", "arm": "C0", "trial": 2, "oracle": true, "regression": true}
+{"run": "hermes-c03-C1f-t1", "task": "hermes-c03", "arm": "C1f", "trial": 1, "oracle": true, "regression": true}
+{"run": "hermes-c03-C1f-t2", "task": "hermes-c03", "arm": "C1f", "trial": 2, "oracle": true, "regression": true}
+{"run": "hermes-i01-C0-t1", "task": "hermes-i01", "arm": "C0", "trial": 1, "oracle": true, "regression": true}
+{"run": "hermes-i01-C0-t2", "task": "hermes-i01", "arm": "C0", "trial": 2, "oracle": true, "regression": true}
+{"run": "hermes-i01-C1f-t1", "task": "hermes-i01", "arm": "C1f", "trial": 1, "oracle": true, "regression": true}
+{"run": "hermes-i01-C1f-t2", "task": "hermes-i01", "arm": "C1f", "trial": 2, "oracle": true, "regression": true}
+{"run": "hermes-i02-C0-t1", "task": "hermes-i02", "arm": "C0", "trial": 1, "oracle": true, "regression": true}
+{"run": "hermes-i02-C0-t2", "task": "hermes-i02", "arm": "C0", "trial": 2, "oracle": true, "regression": true}
+{"run": "hermes-i02-C1f-t1", "task": "hermes-i02", "arm": "C1f", "trial": 1, "oracle": true, "regression": true}
+{"run": "hermes-i02-C1f-t2", "task": "hermes-i02", "arm": "C1f", "trial": 2, "oracle": true, "regression": true}
+{"run": "hermes-i03-C0-t1", "task": "hermes-i03", "arm": "C0", "trial": 1, "oracle": true, "regression": true}
+{"run": "hermes-i03-C0-t2", "task": "hermes-i03", "arm": "C0", "trial": 2, "oracle": true, "regression": true}
+{"run": "hermes-i03-C1f-t1", "task": "hermes-i03", "arm": "C1f", "trial": 1, "oracle": true, "regression": true}
+{"run": "hermes-i03-C1f-t2", "task": "hermes-i03", "arm": "C1f", "trial": 2, "oracle": true, "regression": true}
+{"run": "hermes-t01-C0-t1", "task": "hermes-t01", "arm": "C0", "trial": 1, "oracle": true, "regression": true}
+{"run": "hermes-t01-C0-t2", "task": "hermes-t01", "arm": "C0", "trial": 2, "oracle": true, "regression": true}
+{"run": "hermes-t01-C1f-t1", "task": "hermes-t01", "arm": "C1f", "trial": 1, "oracle": true, "regression": true}
+{"run": "hermes-t01-C1f-t2", "task": "hermes-t01", "arm": "C1f", "trial": 2, "oracle": true, "regression": true}
+{"run": "hermes-t02-C0-t1", "task": "hermes-t02", "arm": "C0", "trial": 1, "oracle": true, "regression": true}
+{"run": "hermes-t02-C0-t2", "task": "hermes-t02", "arm": "C0", "trial": 2, "oracle": true, "regression": true}
+{"run": "hermes-t02-C1f-t1", "task": "hermes-t02", "arm": "C1f", "trial": 1, "oracle": true, "regression": true}
+{"run": "hermes-t02-C1f-t2", "task": "hermes-t02", "arm": "C1f", "trial": 2, "oracle": true, "regression": true}

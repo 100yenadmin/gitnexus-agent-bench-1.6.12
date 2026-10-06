@@ -1,0 +1,220 @@
+diff --git a/compaction.py b/compaction.py
+index 9f319c4..affa6a0 100644
+--- a/compaction.py
++++ b/compaction.py
+@@ -23,6 +23,7 @@ from collections import Counter
+ from typing import Any, Dict, List, Optional
+ 
+ from .dag import SummaryNode
++from .fresh_tail import tool_group_safe_end
+ from .lifecycle_state import LifecycleBindingChangedError, LifecyclePublicationConflictError
+ from .message_analysis import _matched_tool_call_ids
+ from .message_content import text_content_for_pattern_matching
+@@ -529,7 +530,10 @@ class CompactionMixin:
+                 break
+             selected.append(msg)
+             used += msg_tokens
+-        return selected
++        # Never end a leaf chunk inside an assistant/tool-call group: the
++        # results left raw would be orphans the host repair drops (#559).
++        end = tool_group_safe_end(candidate_raw, len(selected))
++        return list(candidate_raw[:end])
+ 
+     def compress(self, messages: List[Dict[str, Any]],
+                  current_tokens: int = None,
+diff --git a/engine.py b/engine.py
+index c659a44..1a21edd 100644
+--- a/engine.py
++++ b/engine.py
+@@ -128,7 +128,11 @@ from .message_analysis import (
+     _merge_adjacent_assistant_messages,
+     _tool_call_id,
+ )
+-from .fresh_tail import FreshTailBoundary, resolve_fresh_tail_boundary
++from .fresh_tail import (
++    FreshTailBoundary,
++    resolve_fresh_tail_boundary,
++    tool_group_safe_end,
++)
+ from .message_patterns import compile_message_patterns, matches_message_pattern
+ from .aux_session import AuxiliarySessionMixin
+ from .placeholder_ledger import PlaceholderLedgerMixin
+@@ -1828,7 +1832,8 @@ class LCMEngine(
+             if smaller and len(smaller) < len(current_chunk):
+                 return smaller
+ 
+-        return current_chunk[:-1]
++        end = tool_group_safe_end(current_chunk, len(current_chunk) - 1)
++        return list(current_chunk[:end])
+ 
+     def _summarize_leaf_chunk_with_rescue(
+         self,
+diff --git a/fresh_tail.py b/fresh_tail.py
+index f9ae35c..226d58e 100644
+--- a/fresh_tail.py
++++ b/fresh_tail.py
+@@ -50,6 +50,50 @@ def _assistant_group_start(messages: Sequence[Dict[str, Any]], start: int) -> in
+     return start
+ 
+ 
++def tool_group_safe_end(messages: Sequence[Dict[str, Any]], end: int) -> int:
++    """Move a prefix cut ``messages[:end]`` out of any assistant/tool group.
++
++    A group is an assistant row with ``tool_calls`` followed by its contiguous
++    tool results.  When the cut lands inside a group, retreat to the group's
++    assistant row; when that would empty the prefix, extend through the
++    group's declared results instead.  Unattributable groups (a result without
++    a ``tool_call_id`` or with an id the assistant did not declare) and cuts
++    outside any group return ``end`` unchanged.
++    """
++    message_count = len(messages)
++    if end <= 0 or end >= message_count:
++        return end
++    if messages[end].get("role") != "tool":
++        return end
++
++    group_start = -1
++    for index in range(end - 1, -1, -1):
++        role = str(messages[index].get("role") or "")
++        if role == "tool":
++            continue
++        if role == "assistant" and messages[index].get("tool_calls"):
++            group_start = index
++        break
++    if group_start < 0:
++        return end
++
++    declared = {
++        _tool_call_id(tool_call)
++        for tool_call in (messages[group_start].get("tool_calls") or [])
++    }
++    declared.discard("")
++    group_end = group_start + 1
++    while group_end < message_count and messages[group_end].get("role") == "tool":
++        result_id = str(messages[group_end].get("tool_call_id") or "").strip()
++        if not result_id or result_id not in declared:
++            return end
++        group_end += 1
++
++    if group_start > 0:
++        return group_start
++    return group_end
++
++
+ def resolve_fresh_tail_boundary(
+     messages: Sequence[Dict[str, Any]],
+     *,
+diff --git a/tests/test_fresh_tail.py b/tests/test_fresh_tail.py
+index 9cf21bd..d7f5c95 100644
+--- a/tests/test_fresh_tail.py
++++ b/tests/test_fresh_tail.py
+@@ -2,7 +2,7 @@
+ 
+ from hermes_lcm.config import LCMConfig
+ from hermes_lcm.engine import LCMEngine
+-from hermes_lcm.fresh_tail import resolve_fresh_tail_boundary
++from hermes_lcm.fresh_tail import resolve_fresh_tail_boundary, tool_group_safe_end
+ from hermes_lcm.tokens import count_message_tokens
+ 
+ 
+@@ -174,3 +174,100 @@ def test_rotate_uses_effective_token_bounded_tail(tmp_path):
+         assert preview["pre_tail_message_count"] == 2
+     finally:
+         engine.shutdown()
++
++
++# -- tool_group_safe_end (#559) ---------------------------------------------
++
++
++def _leaf_engine(tmp_path, **overrides):
++    config = LCMConfig(
++        fresh_tail_count=2,
++        leaf_chunk_tokens=1,
++        database_path=str(tmp_path / "lcm_tool_group_safe_end.db"),
++        **overrides,
++    )
++    return LCMEngine(config=config)
++
++
++def test_tool_group_safe_end_leaves_cut_outside_group_unchanged():
++    messages = [_user("u0"), *_tool_group(), _user("u1")]
++
++    assert tool_group_safe_end(messages, 1) == 1  # before the assistant
++    assert tool_group_safe_end(messages, 4) == 4  # after the last result
++    assert tool_group_safe_end(messages, 5) == 5  # whole sequence
++    assert tool_group_safe_end(messages, 0) == 0
++
++
++def test_tool_group_safe_end_retreats_to_assistant_row():
++    messages = [_user("u0"), *_tool_group(), _user("u1")]
++
++    # Right after the assistant row and between sibling results.
++    assert tool_group_safe_end(messages, 2) == 1
++    assert tool_group_safe_end(messages, 3) == 1
++
++
++def test_tool_group_safe_end_extends_when_group_starts_at_zero():
++    messages = [*_tool_group(), _user("u1"), _user("u2")]
++
++    assert tool_group_safe_end(messages, 1) == 3
++    assert tool_group_safe_end(messages, 2) == 3
++
++
++def test_tool_group_safe_end_extension_stops_at_declared_results():
++    messages = [*_tool_group(), *_tool_group(payload_a="x", payload_b="y")]
++    messages[3] = {**messages[3], "tool_calls": [
++        {"id": "call-c", "function": {"name": "c", "arguments": "{}"}},
++        {"id": "call-d", "function": {"name": "d", "arguments": "{}"}},
++    ]}
++    messages[4] = {**messages[4], "tool_call_id": "call-c"}
++    messages[5] = {**messages[5], "tool_call_id": "call-d"}
++
++    assert tool_group_safe_end(messages, 1) == 3
++    assert tool_group_safe_end(messages, 5) == 3
++
++
++def test_tool_group_safe_end_unattributable_results_return_end_unchanged():
++    missing_id = [_user("u0"), *_tool_group(), _user("u1")]
++    missing_id[3] = {"role": "tool", "content": "no id"}
++    assert tool_group_safe_end(missing_id, 2) == 2
++    assert tool_group_safe_end(missing_id, 3) == 3
++
++    undeclared = [_user("u0"), *_tool_group(), _user("u1")]
++    undeclared[3] = {**undeclared[3], "tool_call_id": "call-zzz"}
++    assert tool_group_safe_end(undeclared, 2) == 2
++    assert tool_group_safe_end(undeclared, 3) == 3
++
++    no_assistant = [_user("u0"), {"role": "tool", "tool_call_id": "call-a", "content": "x"},
++                    {"role": "tool", "tool_call_id": "call-b", "content": "y"}]
++    assert tool_group_safe_end(no_assistant, 2) == 2
++
++
++def test_select_oldest_leaf_chunk_never_ends_inside_tool_group(tmp_path):
++    engine = _leaf_engine(tmp_path)
++    candidate_raw = [_user("u0 " * 20), *_tool_group(payload_a="a " * 20, payload_b="b " * 20), _user("u1")]
++    budget = count_message_tokens(candidate_raw[0]) + count_message_tokens(candidate_raw[1])
++
++    chunk = engine._select_oldest_leaf_chunk(candidate_raw, budget)
++
++    assert chunk == candidate_raw[:1]
++
++
++def test_select_oldest_leaf_chunk_extends_group_at_start(tmp_path):
++    engine = _leaf_engine(tmp_path)
++    candidate_raw = [*_tool_group(payload_a="a " * 20, payload_b="b " * 20), _user("u1")]
++
++    chunk = engine._select_oldest_leaf_chunk(candidate_raw, 1)
++
++    assert chunk == candidate_raw[:3]
++
++
++def test_leaf_rescue_last_row_fallback_respects_tool_group(tmp_path):
++    engine = _leaf_engine(tmp_path)
++    chunk = [_user("u0"), *_tool_group()]
++
++    smaller = engine._next_leaf_rescue_chunk(chunk, 1)
++
++    assert smaller == chunk[:1]
++
++    whole_group = _tool_group()
++    assert engine._next_leaf_rescue_chunk(whole_group, 1) == whole_group

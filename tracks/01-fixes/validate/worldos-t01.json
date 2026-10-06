@@ -1,0 +1,41 @@
+{
+ "id": "worldos-t01",
+ "pr": 1448,
+ "base": "6b1413f55a491f91dbc7f7d124d7b818e1de71b4",
+ "fix": "82dd852c58f7c370ce3479dae02d6fcae012aa6e",
+ "tests": [
+  "servers/engine/tests/test_player_turn_arbiter.py"
+ ],
+ "oracle_files": [
+  "servers/engine/tests/test_player_turn_arbiter.py"
+ ],
+ "oracle_cmd": "uv run -q --directory servers/engine --group dev pytest -q -p no:cacheprovider tests/test_player_turn_arbiter.py",
+ "regression_cmd": "uv run -q --directory servers/engine --group dev pytest -q -p no:cacheprovider",
+ "setup_cmd": "uv sync -q --directory servers/engine --group dev",
+ "setup_rc": 0,
+ "base_rc": 1,
+ "base_secs": 6.2,
+ "base_tail": [
+  "FAILED tests/test_player_turn_arbiter.py::test_over_budget_move_surfaces_movement_illegal",
+  "FAILED tests/test_player_turn_arbiter.py::test_blocked_move_surfaces_move_blocked_and_position_unchanged",
+  "2 failed, 11 passed in 4.91s"
+ ],
+ "base_import_err": false,
+ "fix_rc1": 0,
+ "fix_secs1": 2.7,
+ "fix_tail1": [
+  "13 passed in 2.17s"
+ ],
+ "fix_rc2": 0,
+ "fix_secs2": 4.1,
+ "fix_tail2": [
+  "13 passed in 3.62s"
+ ],
+ "reg_rc": 0,
+ "reg_secs": 111.9,
+ "reg_tail": [
+  "3505 passed in 111.16s (0:01:51)"
+ ],
+ "mismatch": [],
+ "final_status": "* (HEAD detached at 6b1413f5)\n  main\n  remotes/origin/HEAD -> origin/main\n  remotes/origin/main"
+}

@@ -1,0 +1,70 @@
+--- upstream/eval/workflow_bench/oracles/cross-module-parse-retry.oracle.test.ts
++++ repaired/cross-module-parse-retry.oracle.test.ts
+@@ -19,7 +19,14 @@
+       .mockRejectedValueOnce(startupFailure('transient-exhausted'))
+       .mockRejectedValueOnce(startupFailure('transient-exhausted'))
+       .mockResolvedValueOnce([]);
+-    const pool = { size: 1, dispatch, terminate: vi.fn() } as unknown as WorkerPool;
++    const pool = {
++      size: 1,
++      dispatch,
++      // Bench adaptation: v1.6.12 routes dispatchChunkParse through dispatchGroups (one group per call).
++      dispatchGroups: (groups: Array<{ items: unknown[] }>) =>
++        Promise.all(groups.map((g) => dispatch(g.items))),
++      terminate: vi.fn(),
++    } as unknown as WorkerPool;
+ 
+     await expect(dispatchChunkParse(files, pool)).resolves.toEqual([]);
+     expect(dispatch).toHaveBeenCalledTimes(3);
+@@ -28,7 +35,14 @@
+   it('does not retry a deterministic parse-worker failure', async () => {
+     const failure = startupFailure('deterministic-startup');
+     const dispatch = vi.fn().mockRejectedValue(failure);
+-    const pool = { size: 1, dispatch, terminate: vi.fn() } as unknown as WorkerPool;
++    const pool = {
++      size: 1,
++      dispatch,
++      // Bench adaptation: v1.6.12 routes dispatchChunkParse through dispatchGroups (one group per call).
++      dispatchGroups: (groups: Array<{ items: unknown[] }>) =>
++        Promise.all(groups.map((g) => dispatch(g.items))),
++      terminate: vi.fn(),
++    } as unknown as WorkerPool;
+ 
+     await expect(dispatchChunkParse(files, pool)).rejects.toBe(failure);
+     expect(dispatch).toHaveBeenCalledTimes(1);
+--- upstream/eval/workflow_bench/oracles/inv-feature-list-repos-filter.oracle.test.ts
++++ repaired/inv-feature-list-repos-filter.oracle.test.ts
+@@ -1,7 +1,8 @@
+ import { describe, expect, it, vi } from 'vitest';
+ 
+ import { LocalBackend } from '../gitnexus/src/mcp/local/local-backend.js';
+-import { MCP_TOOLS } from '../gitnexus/src/mcp/tools.js';
++// Bench adaptation: v1.6.12 renamed MCP_TOOLS to GITNEXUS_TOOLS.
++import { GITNEXUS_TOOLS as MCP_TOOLS } from '../gitnexus/src/mcp/tools.js';
+ 
+ const repositories = [
+   { name: 'Alpha', path: '/repos/z-alpha' },
+--- upstream/eval/workflow_bench/oracles/trivial-status-json-alias.oracle.test.ts
++++ repaired/trivial-status-json-alias.oracle.test.ts
+@@ -15,7 +15,9 @@
+ 
+     expect(short.error).toBeUndefined();
+     expect(short.status).toBe(0);
+-    expect(short.stderr.trim()).toBe('');
++    // Bench adaptation: v1.6.12 writes a command banner to stderr for every command (incl. --json),
++    // so -j must match --json's stderr rather than be empty.
++    expect(short.stderr).toBe(long.stderr);
+     expect(long.status).toBe(0);
+ 
+     const shortPayload = JSON.parse(short.stdout) as Record<string, unknown>;
+--- upstream/eval/workflow_bench/oracles/vitest.config.mts
++++ repaired/vitest.config.mts
+@@ -8,6 +8,8 @@
+     setupFiles: [],
+     globalSetup: [],
+     passWithNoTests: false,
++    // Bench adaptation: a cold first `status` on a fresh checkout copy takes ~15 s (default 5 s timeout).
++    testTimeout: 120000,
+     include: ['../.wfbench-oracle-*/*.oracle.test.ts'],
+     exclude: [],
+   },

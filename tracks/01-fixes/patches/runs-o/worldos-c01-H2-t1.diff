@@ -1,0 +1,240 @@
+diff --git a/servers/engine/models.py b/servers/engine/models.py
+index 051e476..9df327f 100644
+--- a/servers/engine/models.py
++++ b/servers/engine/models.py
+@@ -1410,6 +1410,7 @@ class Combat(_StrictModel):
+     order: list[Combatant] = Field(default_factory=list)  # sorted desc by initiative
+     action_used: bool = False  # current turn's action economy
+     bonus_action_used: bool = False
++    action_purpose: Literal["", "cast", "skip"] = ""  # what the action was used for
+     # Attack-action economy for the CURRENT turn (additive; resets every next_turn):
+     #  * action_attacks_made — how many attack() calls have resolved under the
+     #    current combatant's Attack action(s) this turn. One Attack action grants
+diff --git a/servers/engine/server.py b/servers/engine/server.py
+index 8b44a5c..a7087cf 100644
+--- a/servers/engine/server.py
++++ b/servers/engine/server.py
+@@ -4880,6 +4880,7 @@ def next_turn(campaign_id: str) -> dict:
+         # recharges at the start of their turn.
+         c.combat.action_used = False
+         c.combat.bonus_action_used = False
++        c.combat.action_purpose = ""
+         # Reset the per-turn attack-action economy too: a new turn starts with one
+         # Attack action's worth of strikes and no Action Surge spent yet.
+         c.combat.action_attacks_made = 0
+@@ -5145,6 +5146,7 @@ def use_action(campaign_id: str, character_id: str, kind: str = "action") -> dic
+                 ok, reason = False, "action already used this turn (already acted or skipped)"
+             else:
+                 c.combat.action_used = True
++                c.combat.action_purpose = "skip"
+         elif kind in ("action", "bonus"):
+             if not is_current:
+                 ok, reason = False, f"it is not {ch.name}'s turn (only a reaction acts off-turn)"
+@@ -5537,6 +5539,19 @@ def attack(
+                 # and Multiattack-aware for monsters with a stat-block entry). The
+                 # named attack scopes the Multiattack budget to its composition
+                 # (a Ghoul Claw is NOT part of its 'two Bite' Multiattack — cs F-3).
++                # First, check if the action has already been used for a cast/skip (#778).
++                if c.combat.action_purpose == "cast":
++                    raise ValueError(
++                        f"{attacker.name} has already cast a spell this turn and cannot attack. "
++                        f"The 5e rule (PHB 202): if you cast a spell as an action, you can only "
++                        f"cast a cantrip as a bonus action (or vice versa), but NOT attack."
++                    )
++                if c.combat.action_purpose == "skip":
++                    raise ValueError(
++                        f"{attacker.name} skipped their action this turn and cannot attack. "
++                        f"Declare an action (attack, cast, Dash, Disengage, Dodge, Help, Hide, Ready, "
++                        f"Use Object, use_action) or skip again."
++                    )
+                 ma = _attacker_multiattack_count(attacker, c, attack_name)
+                 ok, reason = combat.check_action_attack(
+                     is_current=True,
+@@ -7494,6 +7509,46 @@ def cast_spell(
+                         f"advance with next_turn so the order stays in sync."
+                     )
+                 cast_consumes_reaction = True
++        # ACTION ECONOMY (#778): enforce that each spell's casting time is legal and
++        # consumes only the appropriate resource (action vs bonus action). An action-cast
++        # that comes after another cast/skip in the same turn is rejected; a bonus-action
++        # cast consumes only the bonus_action, leaving the action available.
++        casting_time_str = ""
++        if caster_cb is not None and c.combat.current_combatant_id == character_id and not cast_consumes_reaction:
++            # On-turn, non-reaction cast: check the spell's casting time
++            casting_time_str = (curated.get("casting_time") if curated else srd.get("casting_time") or "").lower() if curated or srd else ""
++            is_bonus_action_cast = "bonus action" in casting_time_str
++            # Minute/hour casting times are illegal in combat
++            if "minute" in casting_time_str or "hour" in casting_time_str:
++                raise ValueError(
++                    f"casting time {casting_time_str!r} is too long for active combat — the cast takes "
++                    f"longer than a turn (combat runs in 6-second rounds). Wait until combat ends "
++                    f"or cast a spell with a ≤1 action casting time."
++                )
++            # Action/bonus action binding
++            if is_bonus_action_cast:
++                # Bonus-action spell: consume bonus_action only
++                if c.combat.bonus_action_used:
++                    raise ValueError(f"{ch.name} has already used its bonus action this turn")
++                c.combat.bonus_action_used = True
++            else:
++                # Action-level spell (default): consume the action
++                if c.combat.action_purpose == "cast":
++                    raise ValueError(
++                        f"{ch.name} has already cast a spell this turn. The 5e rule (PHB 202): "
++                        f"if you cast a spell as an action, you can cast a cantrip as a bonus "
++                        f"action (or vice versa), but NOT two leveled spells in one turn."
++                    )
++                if c.combat.action_purpose == "skip":
++                    raise ValueError(
++                        f"{ch.name} skipped their action this turn and cannot cast a spell now. "
++                        f"Declare an action (attack, cast, Dash, Disengage, Dodge, Help, Hide, Ready, "
++                        f"Use Object, use_action) or skip again."
++                    )
++                if c.combat.action_used:
++                    raise ValueError(f"{ch.name} has already used its action this turn")
++                c.combat.action_used = True
++                c.combat.action_purpose = "cast"
+         # KNOWN / PREPARED GATE (F03-7 + F03-8). Compare CASE-INSENSITIVELY (F03-7): the
+         # cast-side `canonical` is the proper-cased SRD name, but legacy snapshots may carry
+         # raw-cased strings (learn_spells/prepare_spells now canonicalize on write, but old
+@@ -7831,8 +7886,14 @@ def cast_spell(
+             caster_cb.reaction_used = True
+         # An on-turn cast consumes the combatant's action (mirrors attack()'s action_used
+         # bookkeeping). Required so next_turn's PC-skip guard recognises a spell as "acted".
++        # The action economy check above already set action_used + action_purpose for
++        # action-level casts, and bonus_action_used for bonus-action casts. Both satisfy
++        # next_turn's "acted" check, so we don't need to set action_used here.
+         elif caster_cb is not None and not cast_consumes_reaction:
+-            c.combat.action_used = True
++            # Action-level spells already set action_used in the action economy check.
++            # Bonus-action spells already set bonus_action_used, which also satisfies the
++            # "acted" guard in next_turn. No need to set action_used here.
++            pass
+         save_campaign(c)
+         updated = c.characters[character_id]
+         result = {
+diff --git a/servers/engine/tests/test_combat_core.py b/servers/engine/tests/test_combat_core.py
+index e5405ee..3cade91 100644
+--- a/servers/engine/tests/test_combat_core.py
++++ b/servers/engine/tests/test_combat_core.py
+@@ -1147,3 +1147,120 @@ def test_v2c_sneak_attack_is_once_per_turn_in_the_loop(tmp_path, monkeypatch):
+     # After it LANDS the loop nulls view.sneak_attack -> a second strike THAT SAME TURN does NOT re-tag.
+     i2 = combat_ai.pick_action(object(), replace(eligible, sneak_attack=None))
+     assert i2.kind == "attack" and i2.sneak_attack == (), "Sneak re-tagged after it was used this turn"
++
++
++# ── Action economy (#778): spell casting, skip, and attack ordering ──────────────────
++
++def test_action_economy_double_cast_rejected(tmp_path, monkeypatch):
++    """#778: casting twice in one turn is forbidden by 5e RAW. A second action-cast after an
++    action-cast is rejected with 'already cast a spell this turn'."""
++    import pytest
++    monkeypatch.setenv("WORLDOS_STATE_DIR", str(tmp_path))
++    import server
++    dice_mod.reseed_process_rng(7)
++    cid, cleric, fighter, mons = _seed_healer_fight(server, store)
++
++    # Pin the cleric's turn with a fresh action economy.
++    c = server._require(cid)
++    idx = next(i for i, cb in enumerate(c.combat.order) if cb.character_id == cleric)
++    c.combat.turn_index = idx
++    c.combat.action_used = False
++    c.combat.action_purpose = ""
++    c.combat.bonus_action_used = False
++    store.save_campaign(c)
++
++    # First cast succeeds (Cure Wounds is action-level).
++    res1 = server.cast_spell(cid, cleric, "Cure Wounds", target_id=fighter)
++    assert res1.get("ok") or "ok" not in res1, "first cast should succeed"
++
++    # Second action-cast on the same turn is rejected.
++    c = server._require(cid)
++    with pytest.raises(ValueError, match="already cast a spell this turn"):
++        server.cast_spell(cid, cleric, "Sacred Flame", target_id=fighter)
++
++
++def test_action_economy_cast_after_skip_rejected(tmp_path, monkeypatch):
++    """#778: casting after skip is forbidden. A skip sets action_purpose='skip', so any
++    following action-level cast is rejected."""
++    import pytest
++    monkeypatch.setenv("WORLDOS_STATE_DIR", str(tmp_path))
++    import server
++    dice_mod.reseed_process_rng(7)
++    cid, cleric, fighter, mons = _seed_healer_fight(server, store)
++
++    # Pin the cleric's turn with a fresh action economy.
++    c = server._require(cid)
++    idx = next(i for i, cb in enumerate(c.combat.order) if cb.character_id == cleric)
++    c.combat.turn_index = idx
++    c.combat.action_used = False
++    c.combat.action_purpose = ""
++    c.combat.bonus_action_used = False
++    store.save_campaign(c)
++
++    # Skip the action.
++    skip_res = server.use_action(cid, cleric, "skip")
++    assert skip_res["ok"], "skip should succeed"
++
++    # Following cast is rejected.
++    c = server._require(cid)
++    with pytest.raises(ValueError, match="skipped.*cannot cast"):
++        server.cast_spell(cid, cleric, "Sacred Flame", target_id=fighter)
++
++
++def test_action_economy_attack_after_cast_rejected(tmp_path, monkeypatch):
++    """#778: attacking after a cast is forbidden. If action_purpose='cast', an attack is
++    rejected with 'already cast a spell this turn'."""
++    import pytest
++    monkeypatch.setenv("WORLDOS_STATE_DIR", str(tmp_path))
++    import server
++    dice_mod.reseed_process_rng(7)
++    cid, cleric, fighter, mons = _seed_healer_fight(server, store)
++
++    # Pin the cleric's turn and cast a spell.
++    c = server._require(cid)
++    idx = next(i for i, cb in enumerate(c.combat.order) if cb.character_id == cleric)
++    c.combat.turn_index = idx
++    c.combat.action_used = False
++    c.combat.action_purpose = ""
++    c.combat.bonus_action_used = False
++    store.save_campaign(c)
++
++    # Cast a spell.
++    server.cast_spell(cid, cleric, "Sacred Flame", target_id=fighter)
++
++    # Attack after cast is rejected.
++    c = server._require(cid)
++    with pytest.raises(ValueError, match="already cast a spell.*cannot attack"):
++        server.attack(cid, cleric, fighter, attack_bonus=3, damage_dice="1d8")
++
++
++def test_action_economy_bonus_action_spell_does_not_consume_action(tmp_path, monkeypatch):
++    """#778: bonus-action spells consume only the bonus_action, not the action. After a
++    bonus-action cast, action_purpose should be '' (not set to 'cast'), so an attack or
++    action-cast is still legal."""
++    monkeypatch.setenv("WORLDOS_STATE_DIR", str(tmp_path))
++    import server
++    dice_mod.reseed_process_rng(7)
++    cid, cleric, fighter, mons = _seed_healer_fight(server, store)
++
++    # Pin the cleric's turn with a fresh action economy.
++    c = server._require(cid)
++    idx = next(i for i, cb in enumerate(c.combat.order) if cb.character_id == cleric)
++    c.combat.turn_index = idx
++    c.combat.action_used = False
++    c.combat.action_purpose = ""
++    c.combat.bonus_action_used = False
++    store.save_campaign(c)
++
++    # Cast Healing Word (bonus action spell).
++    server.cast_spell(cid, cleric, "Healing Word", target_id=fighter)
++
++    # After bonus-action spell, action should still be available (attack should succeed).
++    c = server._require(cid)
++    assert c.combat.action_used is False, "action should not be consumed by bonus-action spell"
++    assert c.combat.bonus_action_used is True, "bonus_action should be consumed"
++    assert c.combat.action_purpose == "", "action_purpose should be empty after bonus-action cast"
++
++    # An action-level attack after a bonus-action spell succeeds.
++    res = server.attack(cid, cleric, fighter, attack_bonus=3, damage_dice="1d8")
++    assert "ok" not in res or res.get("ok"), "attack after bonus-action spell should succeed"

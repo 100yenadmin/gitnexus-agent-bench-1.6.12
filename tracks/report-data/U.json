@@ -1,0 +1,290 @@
+{
+ "dirs": [
+  "runs-u",
+  "runs-u-nomcp-clean",
+  "runs-u-pdg"
+ ],
+ "excluded": [
+  "runs-u/u-cbug-U_nomcp-t1",
+  "runs-u/u-feat-U_nomcp-t1",
+  "runs-u/u-trivial-U_nomcp-t1",
+  "runs-u/u-xmod-U_nomcp-t1"
+ ],
+ "cells": [
+  {
+   "task": "u-cbug",
+   "arm": "U_direct",
+   "n": 2,
+   "graded": 2,
+   "oracle": 0,
+   "regression": 1,
+   "regression_graded": 2,
+   "clean": 0,
+   "cost": 1.8493258000000004,
+   "turns": 44.0,
+   "wall": 878.8499999999999,
+   "gnx": 5.5,
+   "skills": 2,
+   "churn": 81.5,
+   "runs": [
+    "u-cbug-U_direct-t1",
+    "u-cbug-U_direct-t1"
+   ]
+  },
+  {
+   "task": "u-cbug",
+   "arm": "U_mcp",
+   "n": 2,
+   "graded": 2,
+   "oracle": 0,
+   "regression": 2,
+   "regression_graded": 2,
+   "clean": 0,
+   "cost": 1.5875475,
+   "turns": 37.0,
+   "wall": 519.5,
+   "gnx": 3.0,
+   "skills": 0,
+   "churn": 80.0,
+   "runs": [
+    "u-cbug-U_mcp-t1",
+    "u-cbug-U_mcp-t1"
+   ]
+  },
+  {
+   "task": "u-cbug",
+   "arm": "U_nomcp",
+   "n": 2,
+   "graded": 2,
+   "oracle": 0,
+   "regression": 2,
+   "regression_graded": 2,
+   "clean": 0,
+   "cost": 1.1519257999999999,
+   "turns": 25.5,
+   "wall": 349.0,
+   "gnx": 0.5,
+   "skills": 0,
+   "churn": 77.5,
+   "runs": [
+    "u-cbug-U_nomcp-t1",
+    "u-cbug-U_nomcp-t1"
+   ]
+  },
+  {
+   "task": "u-feat",
+   "arm": "U_direct",
+   "n": 2,
+   "graded": 2,
+   "oracle": 2,
+   "regression": 2,
+   "regression_graded": 2,
+   "clean": 2,
+   "cost": 1.2621538,
+   "turns": 36.5,
+   "wall": 530.5,
+   "gnx": 6.0,
+   "skills": 2,
+   "churn": 267.5,
+   "runs": [
+    "u-feat-U_direct-t1",
+    "u-feat-U_direct-t1"
+   ]
+  },
+  {
+   "task": "u-feat",
+   "arm": "U_mcp",
+   "n": 2,
+   "graded": 2,
+   "oracle": 2,
+   "regression": 2,
+   "regression_graded": 2,
+   "clean": 2,
+   "cost": 0.9148183000000001,
+   "turns": 27.5,
+   "wall": 125.0,
+   "gnx": 4.0,
+   "skills": 0,
+   "churn": 309.0,
+   "runs": [
+    "u-feat-U_mcp-t1",
+    "u-feat-U_mcp-t1"
+   ]
+  },
+  {
+   "task": "u-feat",
+   "arm": "U_nomcp",
+   "n": 2,
+   "graded": 2,
+   "oracle": 2,
+   "regression": 2,
+   "regression_graded": 2,
+   "clean": 2,
+   "cost": 0.8451784000000001,
+   "turns": 23.5,
+   "wall": 252.35,
+   "gnx": 0.5,
+   "skills": 0,
+   "churn": 296.0,
+   "runs": [
+    "u-feat-U_nomcp-t1",
+    "u-feat-U_nomcp-t1"
+   ]
+  },
+  {
+   "task": "u-trivial",
+   "arm": "U_direct",
+   "n": 2,
+   "graded": 2,
+   "oracle": 2,
+   "regression": 2,
+   "regression_graded": 2,
+   "clean": 2,
+   "cost": 1.0212079000000003,
+   "turns": 30.5,
+   "wall": 235.7,
+   "gnx": 3.5,
+   "skills": 2,
+   "churn": 51.0,
+   "runs": [
+    "u-trivial-U_direct-t1",
+    "u-trivial-U_direct-t1"
+   ]
+  },
+  {
+   "task": "u-trivial",
+   "arm": "U_mcp",
+   "n": 2,
+   "graded": 2,
+   "oracle": 2,
+   "regression": 2,
+   "regression_graded": 2,
+   "clean": 2,
+   "cost": 0.7110312999999999,
+   "turns": 14.5,
+   "wall": 103.15,
+   "gnx": 1.0,
+   "skills": 0,
+   "churn": 53.0,
+   "runs": [
+    "u-trivial-U_mcp-t1",
+    "u-trivial-U_mcp-t1"
+   ]
+  },
+  {
+   "task": "u-trivial",
+   "arm": "U_nomcp",
+   "n": 2,
+   "graded": 2,
+   "oracle": 2,
+   "regression": 2,
+   "regression_graded": 2,
+   "clean": 2,
+   "cost": 0.49745100000000003,
+   "turns": 16.0,
+   "wall": 171.8,
+   "gnx": 0.0,
+   "skills": 0,
+   "churn": 53.5,
+   "runs": [
+    "u-trivial-U_nomcp-t1",
+    "u-trivial-U_nomcp-t1"
+   ]
+  },
+  {
+   "task": "u-xmod",
+   "arm": "U_direct",
+   "n": 2,
+   "graded": 2,
+   "oracle": 0,
+   "regression": 2,
+   "regression_graded": 2,
+   "clean": 0,
+   "cost": 2.970686100000001,
+   "turns": 72.5,
+   "wall": 2343.6,
+   "gnx": 4.5,
+   "skills": 2,
+   "churn": 445.0,
+   "runs": [
+    "u-xmod-U_direct-t1",
+    "u-xmod-U_direct-t1"
+   ]
+  },
+  {
+   "task": "u-xmod",
+   "arm": "U_mcp",
+   "n": 2,
+   "graded": 2,
+   "oracle": 0,
+   "regression": 2,
+   "regression_graded": 2,
+   "clean": 0,
+   "cost": 1.6631234000000001,
+   "turns": 33.0,
+   "wall": 1268.7,
+   "gnx": 3.5,
+   "skills": 0,
+   "churn": 504.0,
+   "runs": [
+    "u-xmod-U_mcp-t1",
+    "u-xmod-U_mcp-t1"
+   ]
+  },
+  {
+   "task": "u-xmod",
+   "arm": "U_nomcp",
+   "n": 2,
+   "graded": 2,
+   "oracle": 0,
+   "regression": 2,
+   "regression_graded": 2,
+   "clean": 0,
+   "cost": 1.851969,
+   "turns": 34.0,
+   "wall": 974.55,
+   "gnx": 0.5,
+   "skills": 0,
+   "churn": 516.0,
+   "runs": [
+    "u-xmod-U_nomcp-t1",
+    "u-xmod-U_nomcp-t1"
+   ]
+  }
+ ],
+ "arms": {
+  "U_direct": {
+   "runs": 8,
+   "graded": 8,
+   "resolved": 4,
+   "clean": 4,
+   "cost": 1.7758434000000003,
+   "cost_total": 14.206747200000002,
+   "turns": 45.875,
+   "wall": 997.1624999999999,
+   "gnx": 4.875
+  },
+  "U_mcp": {
+   "runs": 8,
+   "graded": 8,
+   "resolved": 4,
+   "clean": 4,
+   "cost": 1.219130125,
+   "cost_total": 9.753041,
+   "turns": 28.0,
+   "wall": 504.0875,
+   "gnx": 2.875
+  },
+  "U_nomcp": {
+   "runs": 8,
+   "graded": 8,
+   "resolved": 4,
+   "clean": 4,
+   "cost": 1.08663105,
+   "cost_total": 8.6930484,
+   "turns": 24.75,
+   "wall": 436.92500000000007,
+   "gnx": 0.375
+  }
+ }
+}

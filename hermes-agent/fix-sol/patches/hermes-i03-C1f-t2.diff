@@ -1,0 +1,109 @@
+diff --git a/hermes_cli/config.py b/hermes_cli/config.py
+index 49a2980a..78123eae 100644
+--- a/hermes_cli/config.py
++++ b/hermes_cli/config.py
+@@ -3380,8 +3380,11 @@ def _coerce_config_set_value(key: str, value: str) -> Any:
+     """Auto-coerce a ``hermes config set`` string to bool/None/int/float/list/dict.
+     String-typed settings (per ``DEFAULT_CONFIG``) are preserved verbatim so enum members such as
+     ``approvals.mode="off"`` never become booleans. List/mapping literals are parsed so
+-    isinstance-gated readers see real structures; the trigger is conservative."""
+-    if isinstance(_default_value_for_key(key), str):
++    isinstance-gated readers see real structures; the trigger is conservative. Bare ``model``
++    accepts both a model id and a structured route section despite its string default."""
++    if isinstance(_default_value_for_key(key), str) and (
++        key != "model" or not _looks_structured_value(value)
++    ):
+         return value
+     stripped = value.strip()
+     lower = stripped.lower()
+@@ -3524,15 +3527,22 @@ def _exit_if_key_managed(key: str, action: str) -> None:
+ 
+ def _guard_section_overwrite(key: str, value: Any, user_config: Dict[str, Any], force: bool) -> str:
+     """Refuse (or with ``force`` allow) a single-segment key overwriting a mapping with a scalar.
+-    Bare ``model`` is a documented shorthand — redirected to ``model.default`` so siblings survive.
++    Bare scalar ``model`` is redirected to ``model.default`` so siblings survive; replacing an
++    existing model section with a mapping requires ``force``.
+     Returns the (possibly redirected) key."""
+     existing = user_config.get(key)
+     if "." in key or not isinstance(existing, dict):
+         return key
+     if key == "model":
++        if isinstance(value, dict) and not force:
++            _exit_invalid(
++                "✗ Cannot replace the existing 'model' section — nothing was written.\n"
++                "  Set model.provider / model.default individually, or use --force "
++                "to replace the entire section.")
+         if force:
++            kind = "mapping" if isinstance(value, dict) else "scalar"
+             print(
+-                f"⚠ Replacing entire 'model' section with a scalar "
++                f"⚠ Replacing entire 'model' section with a {kind} "
+                 f"(discarding {len(existing)} existing sub-key(s))")
+             return key
+         print(
+diff --git a/tests/hermes_cli/test_set_config_value.py b/tests/hermes_cli/test_set_config_value.py
+index a6ff5221..6986aded 100644
+--- a/tests/hermes_cli/test_set_config_value.py
++++ b/tests/hermes_cli/test_set_config_value.py
+@@ -734,6 +734,61 @@ class TestMappingGuard:
+         parsed = _yaml.safe_load(_read_config(_isolated_hermes_home))
+         assert parsed["model"] == "claude-opus-4"
+ 
++    @pytest.mark.parametrize("literal", [
++        '{"provider": "openai-codex", "default": "gpt-6.1-sol"}',
++        '{provider: openai-codex, default: gpt-6.1-sol}',
++        'provider: openai-codex\ndefault: gpt-6.1-sol',
++    ])
++    def test_model_mapping_requires_force(self, _isolated_hermes_home, capsys, literal):
++        self._write_config(_isolated_hermes_home, {
++            "model": {"default": "glm-5.3-flash", "provider": "zai"},
++        })
++        before = (_isolated_hermes_home / "config.yaml").read_bytes()
++
++        with pytest.raises(SystemExit) as exc:
++            set_config_value("model", literal)
++
++        assert exc.value.code == 1
++        message = capsys.readouterr().err
++        assert "model.provider" in message
++        assert "model.default" in message
++        assert "--force" in message
++        assert (_isolated_hermes_home / "config.yaml").read_bytes() == before
++
++    @pytest.mark.parametrize("literal", [
++        '{"provider": "openrouter", "default": "z-ai/glm-5.3-flash"}',
++        '{provider: openrouter, default: z-ai/glm-5.3-flash}',
++        'provider: openrouter\ndefault: z-ai/glm-5.3-flash',
++    ])
++    def test_model_mapping_force_replaces_section(self, _isolated_hermes_home, literal):
++        self._write_config(_isolated_hermes_home, {
++            "model": {
++                "default": "glm-5.3-flash", "provider": "zai",
++                "context_length": 128_000, "base_url": "https://old.example/v1",
++            },
++            "agent": {"max_turns": 42},
++        })
++
++        set_config_value("model", literal, force=True)
++
++        parsed = yaml.safe_load(_read_config(_isolated_hermes_home))
++        assert parsed == {
++            "model": {"provider": "openrouter", "default": "z-ai/glm-5.3-flash"},
++            "agent": {"max_turns": 42},
++        }
++
++    @pytest.mark.parametrize("key", ["model", "model.default"])
++    @pytest.mark.parametrize("model_id", ["gpt-5.6-sol", "z-ai/glm-5.3-flash"])
++    def test_plain_model_ids_preserve_provider(self, _isolated_hermes_home, key, model_id):
++        self._write_config(_isolated_hermes_home, {
++            "model": {"default": "glm-5.3-flash", "provider": "zai"},
++        })
++
++        set_config_value(key, model_id)
++
++        parsed = yaml.safe_load(_read_config(_isolated_hermes_home))
++        assert parsed["model"] == {"default": model_id, "provider": "zai"}
++
+ 
+ class TestScalarModelSubKeyPreservation:
+     """#75426: setting model.provider when model is a scalar must not lose the model id."""

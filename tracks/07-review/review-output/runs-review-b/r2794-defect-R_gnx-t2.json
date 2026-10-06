@@ -1,0 +1,18 @@
+{
+ "schema_version": 1,
+ "verdict": "comment",
+ "findings": [
+  {
+   "id": "cpp-qualified-ns-no-cross-file-reopened-namespace-coverage",
+   "severity": "low",
+   "path": "gitnexus/test/unit/cpp-qualified-ns-index.test.ts",
+   "line": 131,
+   "end_line": 291,
+   "category": "tests",
+   "scenario": "In real C++, a namespace is usually reopened across many files (`namespace outer { void foo(); }` in a.h and again in b.cpp, as std does). The new index merges every file's scopes into one shared `byReceiver[nsName][member]` bucket, and the cross-file `seen` dedup and file-major ordering are load-bearing, because the caller returns `allHits[0]` and `narrowOverloadCandidates` takes the first match. Suppose a later edit made the bucket build per file and overwrite (for example `byReceiver.set(nsName, new Map())` per scope), or reordered files. Cross-file `outer::foo()` would then resolve to the wrong def, or drop from 'ambiguous' to a single wrong hit, and every new gate would still pass.",
+   "evidence": "Every unit test builds a one-file `parsedFiles` through `makeParsedFiles`/`outerWithInlineChild`. The only multi-file test uses two separate arrays, which tests cache invalidation, not merging. The bench corpus (`bench/cpp-qualified-ns/measure.mjs` `buildCorpus`) gives each file its own `ns_${f}` namespace, so the 'correctness gate' fingerprint never covers a receiver whose scopes span more than one file. I ran the HEAD legacy implementation and the new one through the bench at a reduced 50/120 scale and got the same fingerprint (e14b3812…). So current behavior matches, but the bench and tests could not detect a cross-file merge regression.",
+   "recommendation": "Add a unit test with two ParsedFiles in ONE array that both declare `namespace outer` with a `foo` (expect 'ambiguous') and with different members (expect each to resolve). Optionally make the bench corpus reopen a shared namespace across files so the fingerprint covers cross-file bucket merging and ordering.",
+   "blocking": false
+  }
+ ]
+}

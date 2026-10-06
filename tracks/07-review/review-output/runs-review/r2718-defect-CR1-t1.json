@@ -1,0 +1,30 @@
+{
+ "schema_version": 1,
+ "verdict": "request_changes",
+ "findings": [
+  {
+   "id": "R2718-RUBY-CLOSURE-CALLER-ALIAS",
+   "severity": "medium",
+   "path": "gitnexus/src/core/ingestion/languages/ruby/query.ts",
+   "line": 102,
+   "end_line": 107,
+   "category": "correctness",
+   "scenario": "A Ruby file defines a method handler(x), then binds a different local handler = lambda { |x| target(x) }. Calls inside that closure are attributed to the unrelated handler method. The new proc {...} declaration has the same missing-node problem.",
+   "evidence": "The new patterns attach a Function definition to the closure block, but RUBY_QUERIES in tree-sitter-queries.ts only emits closure Function nodes for right: (lambda), which represents -> syntax; lambda {...} and proc {...} are call nodes. Running the current source parse worker and runScopeResolution on def handler(x); x; end; def target(x); x; end; handler = lambda { |x| target(x) }; handler.call(1) produced only Method:collision.rb:handler#1 and Method:collision.rb:target#1, then emitted CALLS from the former to the latter. resolveDefGraphId misses the nonexistent closure Function node and falls through to the label-agnostic simpleKey for the method. Before these declaration captures, the block had no callable definition and this call originated from the File node.",
+   "recommendation": "Emit matching distinct Function graph nodes for the lambda/proc call forms before making their blocks callable owners, or omit these declaration patterns until that graph support exists. Cover a closure binding that shares its name with a method and assert the exact caller ID.",
+   "blocking": true
+  },
+  {
+   "id": "R2718-PARAMETER-PROPERTY-LOCAL-ID",
+   "severity": "medium",
+   "path": "gitnexus/src/core/ingestion/workers/parse-worker.ts",
+   "line": 2310,
+   "end_line": 2313,
+   "category": "correctness",
+   "scenario": "Two TypeScript classes on the same source line each declare constructor(public name: string), and a function reads a.name and b.name. Both previously resolvable field-access edges disappear because these class members are now assigned function-local identities.",
+   "evidence": "The expanded label gate includes Property, and enclosingCallablePrefix walks through formal_parameters to the constructor, despite the existing parameter-list exemption in isFunctionLocalProperty. A current-source probe with class A { constructor(public name: string) {} } class B { constructor(public name: string) {} } emitted Property:props.ts:A.constructor.name@0:22 and Property:props.ts:B.constructor.name@0:70 and zero ACCESSES edges from use(a: A, b: B) { return a.name + b.name; }. The same graph with the pre-diff IDs A.name and B.name restored emitted both expected ACCESSES edges. The new position lookup marks their shared line/name ambiguous, and localNameKey prevents fallback; scope ownership still qualifies these fields as A.name and B.name.",
+   "recommendation": "Apply the existing constructor parameter-property exemption to local-ID qualification so parameter properties retain their class-qualified IDs. Add a regression case with same-named parameter properties in two classes on one line and verify both field-access targets.",
+   "blocking": true
+  }
+ ]
+}

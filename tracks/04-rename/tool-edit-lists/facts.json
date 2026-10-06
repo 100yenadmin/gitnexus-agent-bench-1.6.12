@@ -1,0 +1,179 @@
+{
+ "source_run": "runs-p2/p2-facts-H2-t1",
+ "tool": "rename",
+ "calls": [
+  {
+   "status": "success",
+   "old_name": "facts",
+   "new_name": "collectFacts",
+   "files_affected": 2,
+   "total_edits": 25,
+   "graph_edits": 25,
+   "text_search_edits": 0,
+   "changes": [
+    {
+     "file_path": "gitnexus/src/core/ingestion/cfg/visitors/java-harvest.ts",
+     "edits": [
+      {
+       "line": 7,
+       "old_text": "* variable definition/use facts that ride the side channel for the reaching-defs",
+       "new_text": "* variable definition/use collectFacts that ride the side channel for the reaching-defs",
+       "confidence": "graph"
+      },
+      {
+       "line": 185,
+       "old_text": "/** Def/use facts for one statement (or construct-header expression) node. */",
+       "new_text": "/** Def/use collectFacts for one statement (or construct-header expression) node. */",
+       "confidence": "graph"
+      },
+      {
+       "line": 186,
+       "old_text": "facts(node: SyntaxNode): StatementFacts {",
+       "new_text": "collectFacts(node: SyntaxNode): StatementFacts {",
+       "confidence": "graph"
+      },
+      {
+       "line": 200,
+       "old_text": "* Def-ONLY facts for a value-position binding carrier (`var x = switch (…) {…}`,",
+       "new_text": "* Def-ONLY collectFacts for a value-position binding carrier (`var x = switch (…) {…}`,",
+       "confidence": "graph"
+      },
+      {
+       "line": 203,
+       "old_text": "* onto the branch's own blocks ({@link facts} on each arm), so this must NOT",
+       "new_text": "* onto the branch's own blocks ({@link collectFacts} on each arm), so this must NOT",
+       "confidence": "graph"
+      },
+      {
+       "line": 239,
+       "old_text": "/** ENTRY-block facts for the function's parameters (defs only). */",
+       "new_text": "/** ENTRY-block collectFacts for the function's parameters (defs only). */",
+       "confidence": "graph"
+      }
+     ]
+    },
+    {
+     "file_path": "gitnexus/src/core/ingestion/cfg/visitors/java.ts",
+     "edits": [
+      {
+       "line": 215,
+       "old_text": "this.harvest.facts(stmt),",
+       "new_text": "this.harvest.collectFacts(stmt),",
+       "confidence": "graph"
+      },
+      {
+       "line": 226,
+       "old_text": "this.harvest.facts(stmt),",
+       "new_text": "this.harvest.collectFacts(stmt),",
+       "confidence": "graph"
+      },
+      {
+       "line": 308,
+       "old_text": "this.harvest.facts(stmt),",
+       "new_text": "this.harvest.collectFacts(stmt),",
+       "confidence": "graph"
+      },
+      {
+       "line": 331,
+       "old_text": "this.harvest.facts(stmt),",
+       "new_text": "this.harvest.collectFacts(stmt),",
+       "confidence": "graph"
+      },
+      {
+       "line": 351,
+       "old_text": "this.harvest.facts(stmt),",
+       "new_text": "this.harvest.collectFacts(stmt),",
+       "confidence": "graph"
+      },
+      {
+       "line": 362,
+       "old_text": "* carrying the yielded value's def/use facts. (Reusing the statement `visitSwitch`",
+       "new_text": "* carrying the yielded value's def/use collectFacts. (Reusing the statement `visitSwitch`",
+       "confidence": "graph"
+      },
+      {
+       "line": 372,
+       "old_text": "this.harvest.facts(stmt),",
+       "new_text": "this.harvest.collectFacts(stmt),",
+       "confidence": "graph"
+      },
+      {
+       "line": 466,
+       "old_text": "this.harvest.facts(cond),",
+       "new_text": "this.harvest.collectFacts(cond),",
+       "confidence": "graph"
+      },
+      {
+       "line": 510,
+       "old_text": "this.harvest.facts(cond),",
+       "new_text": "this.harvest.collectFacts(cond),",
+       "confidence": "graph"
+      },
+      {
+       "line": 538,
+       "old_text": "this.harvest.facts(cond),",
+       "new_text": "this.harvest.collectFacts(cond),",
+       "confidence": "graph"
+      },
+      {
+       "line": 564,
+       "old_text": "cond ? this.harvest.facts(cond) : undefined,",
+       "new_text": "cond ? this.harvest.collectFacts(cond) : undefined,",
+       "confidence": "graph"
+      },
+      {
+       "line": 575,
+       "old_text": "this.harvest.facts(incr),",
+       "new_text": "this.harvest.collectFacts(incr),",
+       "confidence": "graph"
+      },
+      {
+       "line": 602,
+       "old_text": "this.harvest.facts(init),",
+       "new_text": "this.harvest.collectFacts(init),",
+       "confidence": "graph"
+      },
+      {
+       "line": 612,
+       "old_text": "// Header text is SYNTHESIZED, so facts come from the name/value nodes",
+       "new_text": "// Header text is SYNTHESIZED, so collectFacts come from the name/value nodes",
+       "confidence": "graph"
+      },
+      {
+       "line": 652,
+       "old_text": "const releaseFacts = lockExpr ? this.harvest.facts(lockExpr) : undefined;",
+       "new_text": "const releaseFacts = lockExpr ? this.harvest.collectFacts(lockExpr) : undefined;",
+       "confidence": "graph"
+      },
+      {
+       "line": 686,
+       "old_text": "this.harvest.facts(value),",
+       "new_text": "this.harvest.collectFacts(value),",
+       "confidence": "graph"
+      },
+      {
+       "line": 806,
+       "old_text": "* rejoin its arms at a facts-only continuation carrying ONLY the bound name's",
+       "new_text": "* rejoin its arms at a collectFacts-only continuation carrying ONLY the bound name's",
+       "confidence": "graph"
+      },
+      {
+       "line": 886,
+       "old_text": "// has no AST node), carrying the resource bindings' facts as uses.",
+       "new_text": "// has no AST node), carrying the resource bindings' collectFacts as uses.",
+       "confidence": "graph"
+      },
+      {
+       "line": 1073,
+       "old_text": "harvest.facts(body),",
+       "new_text": "harvest.collectFacts(body),",
+       "confidence": "graph"
+      }
+     ]
+    }
+   ],
+   "applied": true
+  }
+ ],
+ "used_by_apply_and_check": "calls[0]"
+}

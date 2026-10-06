@@ -1,0 +1,123 @@
+diff --git a/hermes_cli/config.py b/hermes_cli/config.py
+index 49a2980a..a8a7ee36 100644
+--- a/hermes_cli/config.py
++++ b/hermes_cli/config.py
+@@ -3381,7 +3381,11 @@ def _coerce_config_set_value(key: str, value: str) -> Any:
+     String-typed settings (per ``DEFAULT_CONFIG``) are preserved verbatim so enum members such as
+     ``approvals.mode="off"`` never become booleans. List/mapping literals are parsed so
+     isinstance-gated readers see real structures; the trigger is conservative."""
+-    if isinstance(_default_value_for_key(key), str):
++    # Bare model accepts both the legacy string id and a whole route mapping.
++    if (
++        isinstance(_default_value_for_key(key), str)
++        and (key != "model" or not _looks_structured_value(value))
++    ):
+         return value
+     stripped = value.strip()
+     lower = stripped.lower()
+@@ -3524,15 +3528,22 @@ def _exit_if_key_managed(key: str, action: str) -> None:
+ 
+ def _guard_section_overwrite(key: str, value: Any, user_config: Dict[str, Any], force: bool) -> str:
+     """Refuse (or with ``force`` allow) a single-segment key overwriting a mapping with a scalar.
+-    Bare ``model`` is a documented shorthand — redirected to ``model.default`` so siblings survive.
++    Bare ``model`` ids redirect to ``model.default`` so siblings survive; mapping replacements
++    require ``force``.
+     Returns the (possibly redirected) key."""
+     existing = user_config.get(key)
+     if "." in key or not isinstance(existing, dict):
+         return key
+     if key == "model":
++        if isinstance(value, dict) and not force:
++            _exit_invalid(
++                "✗ Cannot replace the 'model' configuration section — nothing was written.\n"
++                "  Set model.provider / model.default individually, or use --force to replace "
++                "the entire section.")
+         if force:
++            shape = "a mapping" if isinstance(value, dict) else "a scalar"
+             print(
+-                f"⚠ Replacing entire 'model' section with a scalar "
++                f"⚠ Replacing entire 'model' section with {shape} "
+                 f"(discarding {len(existing)} existing sub-key(s))")
+             return key
+         print(
+@@ -3614,7 +3625,8 @@ def set_config_value(key: str, value: str, force: bool = False):
+     ``discord.foo`` is known; otherwise refused — any other unknown path under a known section
+     is written with a did-you-mean notice), skips the unknown-top-level-key notice AND
+     authorizes replacing a mapping section with a scalar. Without it, scalar writes over mappings are refused and bare ``model`` is redirected
+-    to ``model.default``."""
++    to ``model.default`` for model ids; replacing an existing ``model`` section with a mapping
++    also requires ``force``."""
+     if is_managed():
+         managed_error("set configuration values")
+         return
+diff --git a/tests/hermes_cli/test_set_config_value.py b/tests/hermes_cli/test_set_config_value.py
+index a6ff5221..8aa3fb10 100644
+--- a/tests/hermes_cli/test_set_config_value.py
++++ b/tests/hermes_cli/test_set_config_value.py
+@@ -656,7 +656,51 @@ class TestMappingGuard:
+         import hermes_yaml as _yaml
+         (tmp_path / "config.yaml").write_text(_yaml.safe_dump(data))
+ 
+-    def test_bare_model_shorthand_preserves_siblings(self, _isolated_hermes_home):
++    @pytest.mark.parametrize("literal", [
++        '{"provider": "openai-codex", "default": "gpt-6.1-sol"}',
++        '{provider: openai-codex, default: gpt-6.1-sol}',
++        'provider: openai-codex\ndefault: gpt-6.1-sol',
++    ])
++    def test_model_mapping_requires_force(self, _isolated_hermes_home, capsys, literal):
++        self._write_config(_isolated_hermes_home, {
++            "model": {"default": "glm-5.3-flash", "provider": "zai"},
++        })
++        before = (_isolated_hermes_home / "config.yaml").read_bytes()
++
++        with pytest.raises(SystemExit) as exc:
++            set_config_value("model", literal)
++
++        assert exc.value.code == 1
++        assert (_isolated_hermes_home / "config.yaml").read_bytes() == before
++        message = capsys.readouterr().err
++        assert "model.provider" in message
++        assert "model.default" in message
++        assert "--force" in message
++
++    @pytest.mark.parametrize("literal", [
++        '{"provider": "openrouter", "default": "z-ai/glm-5.3-flash"}',
++        '{provider: openrouter, default: z-ai/glm-5.3-flash}',
++        'provider: openrouter\ndefault: z-ai/glm-5.3-flash',
++    ])
++    def test_model_mapping_force_replaces_section(self, _isolated_hermes_home, literal):
++        self._write_config(_isolated_hermes_home, {
++            "model": {
++                "default": "glm-5.3-flash", "provider": "zai",
++                "context_length": 128_000, "base_url": "https://api.example.com/v1",
++            },
++            "agent": {"max_turns": 42},
++        })
++
++        set_config_value("model", literal, force=True)
++
++        parsed = yaml.safe_load(_read_config(_isolated_hermes_home))
++        assert parsed == {
++            "model": {"provider": "openrouter", "default": "z-ai/glm-5.3-flash"},
++            "agent": {"max_turns": 42},
++        }
++
++    @pytest.mark.parametrize("model_id", ["gpt-5.6-sol", "z-ai/glm-5.3-flash"])
++    def test_bare_model_shorthand_preserves_siblings(self, _isolated_hermes_home, model_id):
+         """hermes config set model <id> → model.default, siblings survive."""
+         self._write_config(_isolated_hermes_home, {
+             "model": {
+@@ -666,11 +710,11 @@ class TestMappingGuard:
+                 "base_url": "https://api.example.com/v1",
+             }
+         })
+-        set_config_value("model", "claude-sonnet-4-20250514")
++        set_config_value("model", model_id)
+         config_text = _read_config(_isolated_hermes_home)
+         import hermes_yaml as _yaml
+         parsed = _yaml.safe_load(config_text)
+-        assert parsed["model"]["default"] == "claude-sonnet-4-20250514"
++        assert parsed["model"]["default"] == model_id
+         assert parsed["model"]["provider"] == "openai-api"
+         assert parsed["model"]["context_length"] == 128_000
+         assert parsed["model"]["base_url"] == "https://api.example.com/v1"

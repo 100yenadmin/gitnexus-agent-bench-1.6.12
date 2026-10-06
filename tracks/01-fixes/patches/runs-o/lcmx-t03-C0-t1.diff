@@ -1,0 +1,143 @@
+diff --git a/command.py b/command.py
+index a012a1c..d1677b6 100644
+--- a/command.py
++++ b/command.py
+@@ -2849,11 +2849,22 @@ def _embedding_current_profile(conn: sqlite3.Connection) -> sqlite3.Row | None:
+         raise
+ 
+ 
++def _register_embedding_summary_filter(conn: sqlite3.Connection) -> None:
++    # SQLite TRIM does not share Python's Unicode whitespace definition.
++    # Filter in SQL so counts and LIMIT apply only to embeddable summaries.
++    conn.create_function(
++        "lcm_summary_has_text", 1,
++        lambda text: text is not None and bool(text.strip()),
++        deterministic=True,
++    )
++
++
+ def _embedding_pending_rows(
+     conn: sqlite3.Connection,
+     identity_hash: str,
+     limit: int,
+ ) -> tuple[int, list[sqlite3.Row]]:
++    _register_embedding_summary_filter(conn)
+     # Discovery excludes both recorded rows and every durable in-flight state.
+     # A dispatched/uncertain row may already have been accepted remotely, so it
+     # must never be silently resent; only explicit --retry-uncertain operator
+@@ -2875,6 +2886,7 @@ def _embedding_pending_rows(
+     )
+     where = """
+         n.depth = 0
++        AND lcm_summary_has_text(n.summary)
+         AND NOT EXISTS (
+             SELECT 1
+             FROM lcm_embedding_meta AS m
+@@ -2909,10 +2921,12 @@ def _embedding_authorized_uncertain_rows(
+     limit: int,
+ ) -> tuple[int, list[sqlite3.Row]]:
+     """Select exact uncertain rows without consuming their durable markers."""
++    _register_embedding_summary_filter(conn)
+     where = """
+         f.identity_hash = ?
+         AND f.state = 'uncertain'
+         AND n.depth = 0
++        AND lcm_summary_has_text(n.summary)
+         AND NOT EXISTS (
+             SELECT 1
+             FROM lcm_embedding_meta AS m
+diff --git a/tests/test_embedding_backfill.py b/tests/test_embedding_backfill.py
+index 673dbdd..43568b6 100644
+--- a/tests/test_embedding_backfill.py
++++ b/tests/test_embedding_backfill.py
+@@ -151,6 +151,90 @@ def _inflight_rows(engine) -> list[tuple[str, str]]:
+         conn.close()
+ 
+ 
++@pytest.mark.parametrize("blank", ["", " \t\r\n", "\v\f", "\u0085\u00a0\u2003\u2028\u2029\u3000"])
++@pytest.mark.parametrize("retry_uncertain", [False, True])
++def test_backfill_skips_blank_summaries(monkeypatch, tmp_path, blank, retry_uncertain):
++    engine = _engine(tmp_path)
++    node_ids = _seed(engine, 3)
++    with sqlite3.connect(engine._store.db_path) as conn:
++        conn.execute(
++            "UPDATE summary_nodes SET summary = ? WHERE node_id = ?",
++            (blank, node_ids[2]),
++        )
++    if retry_uncertain:
++        # Put the blank first in retry order so it cannot consume --limit.
++        _mark_uncertain(engine, [node_ids[2], node_ids[0], node_ids[1]])
++    provider = FakeProvider()
++    monkeypatch.setattr(command_mod, "resolve_provider", lambda _config, **_kw: provider)
++
++    preview = handle_lcm_command("embed backfill --limit 2", engine)
++    assert f"pending: {0 if retry_uncertain else 2}" in preview
++    assert f"selected: {0 if retry_uncertain else 2}" in preview
++    assert provider.calls == []
++
++    with sqlite3.connect(engine._store.db_path) as conn:
++        before_markers = conn.execute(
++            "SELECT * FROM lcm_embedding_backfill_inflight WHERE embedded_id = ?",
++            (str(node_ids[2]),),
++        ).fetchall() if retry_uncertain else []
++    command = "embed backfill --apply --limit 2"
++    if retry_uncertain:
++        command += " --retry-uncertain"
++    result = handle_lcm_command(command, engine)
++
++    assert "pending: 2" in result
++    assert "selected: 2" in result
++    assert "embedded: 2" in result
++    assert "failed: 0" in result
++    assert "remaining: 0" in result
++    expected = ["summary-0", "summary-1"] if retry_uncertain else ["summary-1", "summary-0"]
++    assert provider.calls == [expected]
++    assert _meta_ids(engine) == [str(node_id) for node_id in node_ids[:2]]
++    with sqlite3.connect(engine._store.db_path) as conn:
++        if retry_uncertain:
++            assert conn.execute(
++                "SELECT * FROM lcm_embedding_backfill_inflight WHERE embedded_id = ?",
++                (str(node_ids[2]),),
++            ).fetchall() == before_markers
++        assert conn.execute(
++            "SELECT summary FROM summary_nodes WHERE node_id = ?", (node_ids[2],)
++        ).fetchone()[0] == blank
++
++
++@pytest.mark.parametrize("retry_uncertain", [False, True])
++def test_backfill_discovery_skips_null_summary(retry_uncertain):
++    # Older/imported databases may permit NULL despite the current NOT NULL schema.
++    conn = sqlite3.connect(":memory:")
++    conn.row_factory = sqlite3.Row
++    try:
++        conn.executescript("""
++            CREATE TABLE summary_nodes (
++                node_id INTEGER PRIMARY KEY, summary TEXT, depth INTEGER,
++                latest_at REAL, created_at REAL
++            );
++            CREATE TABLE lcm_embedding_meta (
++                embedded_id TEXT, embedded_kind TEXT, identity_hash TEXT
++            );
++            INSERT INTO summary_nodes VALUES (1, NULL, 0, 2, 2);
++            INSERT INTO summary_nodes VALUES (2, 'real summary', 0, 1, 1);
++        """)
++        discover = command_mod._embedding_pending_rows
++        if retry_uncertain:
++            command_mod._ensure_inflight_table(conn)
++            conn.executemany(
++                "INSERT INTO lcm_embedding_backfill_inflight "
++                "(embedded_id, identity_hash, lease_id, generation, claimed_at, state, updated_at) "
++                "VALUES (?, 'identity', 'prior', 1, 1, 'uncertain', ?)",
++                [("1", 1), ("2", 2)],
++            )
++            discover = command_mod._embedding_authorized_uncertain_rows
++        total, rows = discover(conn, "identity", 1)
++        assert total == 1
++        assert [(row["node_id"], row["summary"]) for row in rows] == [(2, "real summary")]
++    finally:
++        conn.close()
++
++
+ def test_dry_run_reports_counts_tokens_and_cost_without_calls_or_writes(
+     monkeypatch, tmp_path
+ ):

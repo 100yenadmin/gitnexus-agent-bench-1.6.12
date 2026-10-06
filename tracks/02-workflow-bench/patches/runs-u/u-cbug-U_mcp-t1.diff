@@ -1,0 +1,118 @@
+diff --git a/gitnexus/src/core/ingestion/languages/c/import-target.ts b/gitnexus/src/core/ingestion/languages/c/import-target.ts
+index 5590bb2..2852483 100644
+--- a/gitnexus/src/core/ingestion/languages/c/import-target.ts
++++ b/gitnexus/src/core/ingestion/languages/c/import-target.ts
+@@ -44,9 +44,29 @@ const suffixIndex = perFileSet((allFilePaths: ReadonlySet<string>) => {
+   return index;
+ });
+ 
++/**
++ * Is `targetRaw` the angle-bracket spelling of a system include
++ * (`<stdio.h>`)?
++ *
++ * `#include <…>` searches only the compiler's system/`-I` include paths, never
++ * the including file's directory, and the repository's file set says nothing
++ * about which of its directories (if any) are on that path. A repo file that
++ * merely shares the header's name — `src/stdio.h` beside `#include <stdio.h>` —
++ * is therefore not evidence of anything, and resolving to it fabricates an
++ * IMPORTS edge into unrelated code (#2953). The quoted spelling (`"stdio.h"`,
++ * passed bare as `stdio.h`) is unaffected and keeps the lookup below.
++ */
++export function isCSystemIncludeTarget(targetRaw: string): boolean {
++  return targetRaw.length > 2 && targetRaw.startsWith('<') && targetRaw.endsWith('>');
++}
++
+ /**
+  * Resolve a C #include path to a file in the workspace.
+  *
++ * A system include, spelled with its angle brackets (`<stdio.h>`), never
++ * resolves — see {@link isCSystemIncludeTarget}. Quoted/local includes are
++ * passed bare (`util.h`) and use the strategy below.
++ *
+  * Strategy:
+  * 1. Check for a same-directory sibling relative to the including file
+  *    (matches C compiler `#include "…"` relative-lookup semantics).
+@@ -63,6 +83,7 @@ export function resolveCImportTarget(
+   allFilePaths: ReadonlySet<string>,
+ ): string | null {
+   if (!targetRaw) return null;
++  if (isCSystemIncludeTarget(targetRaw)) return null;
+ 
+   const normalizedTarget = targetRaw.replace(/\\/g, '/');
+ 
+diff --git a/gitnexus/test/unit/scope-resolution/external-import-conformance.test.ts b/gitnexus/test/unit/scope-resolution/external-import-conformance.test.ts
+index c1932e0..9c5e4a0 100644
+--- a/gitnexus/test/unit/scope-resolution/external-import-conformance.test.ts
++++ b/gitnexus/test/unit/scope-resolution/external-import-conformance.test.ts
+@@ -345,9 +345,14 @@ const CASES: ReadonlyMap<SupportedLanguages, ConformanceCase> = new Map([
+       files: ['src/stdio.h', 'include/util.h', 'src/main.c'],
+       fromFile: 'src/main.c',
+       resolutionConfig: undefined,
+-      external: 'stdio.h',
++      // `#include <stdio.h>` reaches the resolver with its angle brackets and
++      // searches only the system include path, so the same-directory
++      // `src/stdio.h` is not a candidate. The quoted `#include "stdio.h"`
++      // (passed bare) DOES search the includer's directory and lands on that
++      // same file — the two spellings differ only in what C says they mean.
++      external: '<stdio.h>',
+       decoy: 'src/stdio.h',
+-      reachesDecoy: 'util.h',
++      reachesDecoy: 'stdio.h',
+     },
+   ],
+   [
+@@ -418,7 +423,6 @@ const CASES: ReadonlyMap<SupportedLanguages, ConformanceCase> = new Map([
+ const KNOWN_GAPS: ReadonlyMap<SupportedLanguages, string> = new Map<SupportedLanguages, string>([
+   [SupportedLanguages.Dart, '`package:http/http.dart` -> `lib/http.dart`'],
+   [SupportedLanguages.Swift, '`Foundation` -> `Sources/Foundation/Thing.swift`'],
+-  [SupportedLanguages.C, '`stdio.h` -> `src/stdio.h`'],
+   [SupportedLanguages.CPlusPlus, '`cstdio.h` -> `src/cstdio.h`'],
+ ]);
+ 
+@@ -442,6 +446,10 @@ const KNOWN_GAPS: ReadonlyMap<SupportedLanguages, string> = new Map<SupportedLan
+  *     `src/de.rs`. The decoy-reachability arm proves the file IS reachable via
+  *     `crate::de`, so this is a real pass — but it is contingent on the
+  *     separator, not on Rust knowing what a crate is.
++ *   - C holds it by the include's own syntax: `<stdio.h>` reaches the resolver
++ *     with its angle brackets and names the system include path, which no
++ *     repo file is evidence of, while a quoted include keeps the sibling /
++ *     exact / suffix lookup.
+  */
+ 
+ function resolveWith(
+@@ -529,3 +537,35 @@ describe('external imports never resolve into the repository (#2953)', () => {
+     ).toEqual([]);
+   });
+ });
++
++describe('C: system includes stay outside the repository, quoted includes resolve', () => {
++  // Every decoy is reachable through the quoted spelling in the same workspace,
++  // so each `<…>` miss is a refusal rather than an empty corpus.
++  const files = ['src/main.c', 'src/stdio.h', 'include/sys/types.h', 'include/util.h'];
++  const resolve = (targetRaw: string): readonly string[] =>
++    filesOf(
++      SCOPE_RESOLVERS.get(SupportedLanguages.C)!.resolveImportTarget(
++        targetRaw,
++        'src/main.c',
++        new Set(files),
++        undefined,
++        { parsedFiles: [] },
++      ),
++    );
++
++  it.each([
++    ['<stdio.h>', 'same-directory sibling'],
++    ['<sys/types.h>', 'nested-path suffix'],
++    ['<util.h>', 'basename suffix'],
++  ])('%s does not resolve to the %s', (system) => {
++    expect(resolve(system)).toEqual([]);
++  });
++
++  it.each([
++    ['stdio.h', 'src/stdio.h'],
++    ['sys/types.h', 'include/sys/types.h'],
++    ['util.h', 'include/util.h'],
++  ])('quoted %s resolves to %s', (quoted, expected) => {
++    expect(resolve(quoted)).toEqual([expected]);
++  });
++});

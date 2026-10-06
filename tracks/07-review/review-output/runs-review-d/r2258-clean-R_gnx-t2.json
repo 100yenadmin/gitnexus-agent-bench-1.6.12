@@ -1,0 +1,18 @@
+{
+ "schema_version": 1,
+ "verdict": "comment",
+ "findings": [
+  {
+   "id": "impact-pdg-measure-stale-dist-preferred",
+   "severity": "low",
+   "path": "gitnexus/bench/impact-pdg/measure.mjs",
+   "line": 128,
+   "end_line": 130,
+   "category": "tests",
+   "scenario": "A developer edits PDG/CFG/impact emit code under gitnexus/src, with an older gitnexus/dist/ still on disk from a previous build, then runs `node --import tsx bench/impact-pdg/measure.mjs --check` (or re-baselines). cliChildArgs selects dist/cli/index.js only because the file exists, so the whole child `analyze` (including the main-process PDG layer emission that previously ran from src via tsx) runs the stale compiled code. Meanwhile the parent's LocalBackend/impact still loads from src. The harness reports F1/recall for code that is not the code under test, and it can write baselines.json from that stale build without any warning.",
+   "evidence": "measure.mjs:128-130 `return fs.existsSync(DIST_CLI) ? [DIST_CLI, ...rest] : [TSX_CLI, CLI_ENTRY, ...rest];` There is no freshness check against src. Before this diff the child always ran `node --import tsx src/cli/index.ts`; only the parse workers came from dist (parse-impl.ts:432-451). CI is unaffected because impact-pdg-mutation-report.yml builds dist first, so the risk is limited to local and re-baseline runs. The graph shows analyzeAndImpact has a single caller, run, so every measure mode goes through this path.",
+   "recommendation": "Make the dist choice explicit (for example an env var or flag such as IMPACT_PDG_CLI=dist set by the workflow), or warn and fall back to the tsx path when any src file is newer than dist/cli/index.js. Also print which CLI path was used in the report header.",
+   "blocking": false
+  }
+ ]
+}

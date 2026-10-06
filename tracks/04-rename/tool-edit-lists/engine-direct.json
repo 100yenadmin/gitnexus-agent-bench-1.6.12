@@ -1,0 +1,122 @@
+{
+ "close": {
+  "edits": 10,
+  "applied": 10,
+  "skipped": 0,
+  "passed": false,
+  "checks": {
+   "no_new_type_errors": false,
+   "renamed_symbol_found": true,
+   "all_references_kept": false,
+   "namesakes_untouched": false,
+   "nothing_else_renamed": false
+  },
+  "errors": 1147,
+  "detail": {
+   "refs": 4,
+   "old_idents": 357,
+   "new_idents": 6,
+   "decl_found": true
+  }
+ },
+ "declare": {
+  "edits": 28,
+  "applied": 28,
+  "skipped": 0,
+  "passed": false,
+  "checks": {
+   "no_new_type_errors": false,
+   "renamed_symbol_found": true,
+   "all_references_kept": false,
+   "namesakes_untouched": false,
+   "nothing_else_renamed": true
+  },
+  "errors": 1145,
+  "detail": {
+   "refs": 21,
+   "old_idents": 73,
+   "new_idents": 22,
+   "decl_found": true
+  }
+ },
+ "drainFinalizerPending": {
+  "edits": 29,
+  "applied": 29,
+  "skipped": 0,
+  "passed": true,
+  "checks": {
+   "no_new_type_errors": true,
+   "renamed_symbol_found": true,
+   "all_references_kept": true,
+   "namesakes_untouched": true,
+   "nothing_else_renamed": true
+  },
+  "errors": 1144,
+  "detail": {
+   "refs": 27,
+   "old_idents": 0,
+   "new_idents": 26,
+   "decl_found": true
+  }
+ },
+ "facts": {
+  "edits": 25,
+  "applied": 25,
+  "skipped": 0,
+  "passed": true,
+  "checks": {
+   "no_new_type_errors": true,
+   "renamed_symbol_found": true,
+   "all_references_kept": true,
+   "namesakes_untouched": true,
+   "nothing_else_renamed": true
+  },
+  "errors": 1144,
+  "detail": {
+   "refs": 16,
+   "old_idents": 834,
+   "new_idents": 16,
+   "decl_found": true
+  }
+ },
+ "getPhaseOutput": {
+  "edits": 63,
+  "applied": 63,
+  "skipped": 0,
+  "passed": false,
+  "checks": {
+   "no_new_type_errors": false,
+   "renamed_symbol_found": true,
+   "all_references_kept": false,
+   "namesakes_untouched": true,
+   "nothing_else_renamed": false
+  },
+  "errors": 1146,
+  "detail": {
+   "refs": 49,
+   "old_idents": 1,
+   "new_idents": 57,
+   "decl_found": true
+  }
+ },
+ "resolve": {
+  "edits": 30,
+  "applied": 30,
+  "skipped": 0,
+  "passed": false,
+  "checks": {
+   "no_new_type_errors": false,
+   "renamed_symbol_found": true,
+   "all_references_kept": true,
+   "namesakes_untouched": false,
+   "nothing_else_renamed": false
+  },
+  "errors": 1145,
+  "detail": {
+   "refs": 15,
+   "old_idents": 1147,
+   "new_idents": 17,
+   "decl_found": true
+  }
+ }
+}

@@ -1,0 +1,233 @@
+diff --git a/compaction.py b/compaction.py
+index 9f319c4..dd6eee7 100644
+--- a/compaction.py
++++ b/compaction.py
+@@ -23,6 +23,7 @@ from collections import Counter
+ from typing import Any, Dict, List, Optional
+ 
+ from .dag import SummaryNode
++from .fresh_tail import tool_group_safe_end
+ from .lifecycle_state import LifecycleBindingChangedError, LifecyclePublicationConflictError
+ from .message_analysis import _matched_tool_call_ids
+ from .message_content import text_content_for_pattern_matching
+@@ -529,7 +530,8 @@ class CompactionMixin:
+                 break
+             selected.append(msg)
+             used += msg_tokens
+-        return selected
++        end = tool_group_safe_end(candidate_raw, len(selected))
++        return candidate_raw[:end]
+ 
+     def compress(self, messages: List[Dict[str, Any]],
+                  current_tokens: int = None,
+diff --git a/engine.py b/engine.py
+index c659a44..eb75c14 100644
+--- a/engine.py
++++ b/engine.py
+@@ -128,7 +128,7 @@ from .message_analysis import (
+     _merge_adjacent_assistant_messages,
+     _tool_call_id,
+ )
+-from .fresh_tail import FreshTailBoundary, resolve_fresh_tail_boundary
++from .fresh_tail import FreshTailBoundary, resolve_fresh_tail_boundary, tool_group_safe_end
+ from .message_patterns import compile_message_patterns, matches_message_pattern
+ from .aux_session import AuxiliarySessionMixin
+ from .placeholder_ledger import PlaceholderLedgerMixin
+@@ -1828,7 +1828,8 @@ class LCMEngine(
+             if smaller and len(smaller) < len(current_chunk):
+                 return smaller
+ 
+-        return current_chunk[:-1]
++        end = tool_group_safe_end(current_chunk, len(current_chunk) - 1)
++        return current_chunk[:end] if end < len(current_chunk) else []
+ 
+     def _summarize_leaf_chunk_with_rescue(
+         self,
+diff --git a/fresh_tail.py b/fresh_tail.py
+index f9ae35c..c071c73 100644
+--- a/fresh_tail.py
++++ b/fresh_tail.py
+@@ -50,6 +50,44 @@ def _assistant_group_start(messages: Sequence[Dict[str, Any]], start: int) -> in
+     return start
+ 
+ 
++def tool_group_safe_end(messages: Sequence[Dict[str, Any]], end: int) -> int:
++    """Keep an oldest-prefix cut outside a declared assistant/tool group.
++
++    Retreat to the opening assistant, or include its results when retreating
++    would leave no prefix. Ambiguous result ownership leaves the cut unchanged.
++    """
++    if end <= 0 or end >= len(messages) or messages[end].get("role") != "tool":
++        return end
++
++    start = end - 1
++    while start >= 0 and messages[start].get("role") == "tool":
++        start -= 1
++    if start < 0 or messages[start].get("role") != "assistant":
++        return end
++    call_ids = {
++        call_id
++        for call in (messages[start].get("tool_calls") or [])
++        if (call_id := _tool_call_id(call))
++    }
++    if not call_ids:
++        return end
++
++    pending = set(call_ids)
++    group_end = start + 1
++    while group_end < len(messages) and messages[group_end].get("role") == "tool":
++        result_id = str(messages[group_end].get("tool_call_id") or "").strip()
++        if not result_id or result_id not in call_ids:
++            return end
++        pending.discard(result_id)
++        group_end += 1
++        if not pending:
++            break
++
++    if end >= group_end:
++        return end
++    return start if start > 0 else group_end
++
++
+ def resolve_fresh_tail_boundary(
+     messages: Sequence[Dict[str, Any]],
+     *,
+diff --git a/tests/test_tool_group_safe_end.py b/tests/test_tool_group_safe_end.py
+new file mode 100644
+index 0000000..9038f4e
+--- /dev/null
++++ b/tests/test_tool_group_safe_end.py
+@@ -0,0 +1,133 @@
++"""Leaf boundaries must not strand parallel tool results (#559)."""
++
++import pytest
++
++from hermes_lcm import fresh_tail
++from hermes_lcm.config import LCMConfig
++from hermes_lcm.engine import LCMEngine
++from hermes_lcm.tokens import count_messages_tokens
++
++
++def _user(content="old"):
++    return {"role": "user", "content": content}
++
++
++def _group():
++    return [
++        {
++            "role": "assistant",
++            "content": "calling tools",
++            "tool_calls": [
++                {"id": "a", "function": {"name": "a", "arguments": "{}"}},
++                {"id": "b", "function": {"name": "b", "arguments": "{}"}},
++            ],
++        },
++        {"role": "tool", "tool_call_id": "a", "content": "first result"},
++        {"role": "tool", "tool_call_id": "b", "content": "second result"},
++    ]
++
++
++@pytest.mark.parametrize("end", [2, 3])
++def test_safe_end_retreats_before_group(end):
++    messages = [_user(), *_group(), _user("new")]
++    assert fresh_tail.tool_group_safe_end(messages, end) == 1
++
++
++@pytest.mark.parametrize("end", [1, 2])
++def test_safe_end_extends_group_at_zero(end):
++    messages = [*_group(), _user("new")]
++    assert fresh_tail.tool_group_safe_end(messages, end) == 3
++
++
++@pytest.mark.parametrize("end", [0, 1, 4, 5])
++def test_safe_end_keeps_boundaries_outside_group(end):
++    messages = [_user(), *_group(), _user("new")]
++    assert fresh_tail.tool_group_safe_end(messages, end) == end
++
++
++@pytest.mark.parametrize("result_id", [None, "", "undeclared"])
++@pytest.mark.parametrize("end", [1, 2])
++def test_safe_end_keeps_ambiguous_results(result_id, end):
++    messages = _group()
++    messages[2]["tool_call_id"] = result_id
++    assert fresh_tail.tool_group_safe_end(messages, end) == end
++
++
++def test_safe_end_handles_reversed_results_and_separate_groups():
++    group = _group()
++    messages = [*group, _user(), group[0], group[2], group[1]]
++    assert fresh_tail.tool_group_safe_end(messages, 6) == 4
++    assert fresh_tail.tool_group_safe_end(messages, 3) == 3
++
++
++def test_safe_end_does_not_attach_orphan_to_completed_group():
++    messages = [*_group(), {"role": "tool", "tool_call_id": "orphan"}]
++    assert fresh_tail.tool_group_safe_end(messages, 3) == 3
++
++
++@pytest.fixture
++def engine(tmp_path):
++    instance = LCMEngine(
++        config=LCMConfig(
++            database_path=str(tmp_path / "leaf.db"),
++            fresh_tail_count=1,
++            leaf_chunk_tokens=1,
++            dynamic_leaf_chunk_enabled=True,
++            dynamic_leaf_chunk_max=1,
++        ),
++        hermes_home=str(tmp_path / "hermes"),
++    )
++    instance.on_session_start("leaf-session", context_length=200_000)
++    yield instance
++    instance.shutdown()
++
++
++@pytest.mark.parametrize("end", [2, 3])
++def test_selector_retreats_before_parallel_group(engine, end):
++    messages = [_user(), *_group(), _user("new")]
++    budget = count_messages_tokens(messages[:end])
++    assert engine._select_oldest_leaf_chunk(messages, budget) == messages[:1]
++
++
++@pytest.mark.parametrize("end", [1, 2])
++def test_selector_extends_parallel_group_at_zero(engine, end):
++    messages = [*_group(), _user("new")]
++    budget = count_messages_tokens(messages[:end])
++    assert engine._select_oldest_leaf_chunk(messages, budget) == messages[:3]
++
++
++def test_rescue_fallback_retreats_before_parallel_group(engine):
++    messages = [_user(), *_group()]
++    engine._config.leaf_chunk_tokens = count_messages_tokens(messages)
++    assert engine._next_leaf_rescue_chunk(messages, count_messages_tokens(messages)) == messages[:1]
++
++
++def test_rescue_cannot_shrink_indivisible_parallel_group(engine):
++    messages = _group()
++    assert engine._next_leaf_rescue_chunk(messages, count_messages_tokens(messages)) == []
++
++
++def test_selector_allows_later_compaction_with_contiguous_coverage(engine, monkeypatch):
++    import hermes_lcm.engine as engine_module
++
++    monkeypatch.setattr(
++        engine_module,
++        "summarize_with_escalation",
++        lambda **kwargs: ("Leaf summary. Expand for details about: tools", 1),
++    )
++    messages = [_user(), *_group(), _user("fresh")]
++    engine._config.leaf_chunk_tokens = count_messages_tokens(messages[:3])
++    engine._config.dynamic_leaf_chunk_max = engine._config.leaf_chunk_tokens
++
++    first = engine.compress(messages, force=True)
++    nodes = engine._dag.get_session_nodes("leaf-session")
++    assert len(nodes) == 1
++    assert len(nodes[0].source_ids) == 1
++    assert first[-4:] == messages[1:]
++
++    second = engine.compress(first, force=True)
++    nodes = engine._dag.get_session_nodes("leaf-session")
++    assert len(nodes) == 2
++    assert sorted(len(node.source_ids) for node in nodes) == [1, 3]
++    assert len(engine._store.get_session_messages("leaf-session")) == len(messages)
++    assert second[-1] == messages[-1]

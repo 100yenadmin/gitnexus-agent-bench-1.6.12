@@ -1,0 +1,52 @@
+{
+ "locations": [
+  {
+   "path": "gitnexus/src/server/api.ts",
+   "line": 964
+  },
+  {
+   "path": "gitnexus/src/server/api.ts",
+   "line": 992
+  },
+  {
+   "path": "gitnexus/src/server/api.ts",
+   "line": 1066
+  },
+  {
+   "path": "gitnexus/src/server/api.ts",
+   "line": 1090
+  },
+  {
+   "path": "gitnexus/src/server/api.ts",
+   "line": 1283
+  },
+  {
+   "path": "gitnexus/src/cli/mcp.ts",
+   "line": 139
+  },
+  {
+   "path": "gitnexus/src/cli/group.ts",
+   "line": 117
+  },
+  {
+   "path": "gitnexus/src/cli/group.ts",
+   "line": 371
+  },
+  {
+   "path": "gitnexus/src/cli/group.ts",
+   "line": 489
+  },
+  {
+   "path": "gitnexus/src/cli/group.ts",
+   "line": 534
+  },
+  {
+   "path": "gitnexus/src/cli/eval-server.ts",
+   "line": 836
+  },
+  {
+   "path": "gitnexus/src/cli/tool.ts",
+   "line": 28
+  }
+ ]
+}

@@ -1,0 +1,116 @@
+{
+ "locations": [
+  {
+   "path": "gitnexus/src/core/ingestion/pipeline.ts",
+   "line": 427
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/pipeline.ts",
+   "line": 437
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/pipeline.ts",
+   "line": 451
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/pipeline.ts",
+   "line": 452
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/pipeline.ts",
+   "line": 516
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/pipeline.ts",
+   "line": 522
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/pipeline-phases/communities.ts",
+   "line": 34
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/pipeline-phases/spring-destinations.ts",
+   "line": 530
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/pipeline-phases/spring-auto-configuration.ts",
+   "line": 243
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/pipeline-phases/cobol.ts",
+   "line": 33
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/pipeline-phases/mro.ts",
+   "line": 34
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/pipeline-phases/markdown.ts",
+   "line": 34
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/pipeline-phases/structure.ts",
+   "line": 38
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/pipeline-phases/parse.ts",
+   "line": 128
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/pipeline-phases/tools.ts",
+   "line": 39
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/pipeline-phases/routes.ts",
+   "line": 192
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/pipeline-phases/orm.ts",
+   "line": 33
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/pipeline-phases/call-summaries.ts",
+   "line": 46
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/pipeline-phases/processes.ts",
+   "line": 70
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/pipeline-phases/processes.ts",
+   "line": 71
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/pipeline-phases/processes.ts",
+   "line": 72
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/pipeline-phases/processes.ts",
+   "line": 73
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/pipeline-phases/processes.ts",
+   "line": 103
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/pipeline-phases/spring-config.ts",
+   "line": 519
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/pipeline-phases/taint-summaries.ts",
+   "line": 59
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/pipeline-phases/cross-file.ts",
+   "line": 53
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/scope-resolution/pipeline/phase.ts",
+   "line": 179
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/scope-resolution/pipeline/phase.ts",
+   "line": 180
+  }
+ ]
+}

@@ -1,0 +1,122 @@
+diff --git a/servers/engine/combat_ai.py b/servers/engine/combat_ai.py
+index de6e1bc..05d60bb 100644
+--- a/servers/engine/combat_ai.py
++++ b/servers/engine/combat_ai.py
+@@ -417,15 +417,21 @@ def _nearest_foe(view: CombatView) -> Optional[CombatantView]:
+ 
+ def _step_toward(view: CombatView, target: CombatantView, reach_ft: int) -> Optional[tuple[int, int]]:
+     """Pick the reachable cell (within this turn's movement budget) that gets the actor as
+-    close as possible to `target` — ideally into reach. Returns a cell or None (can't improve
+-    / off-grid). Pure: combat_grid.reachable + Chebyshev distance, no state."""
++    close as possible to `target` — ideally into reach. Routes around walls and difficult
++    terrain when present. Returns a cell or None (can't improve / off-grid). Pure: combat_grid.reachable
++    + Chebyshev distance, no state."""
+     if not view.grid_enabled or view.actor_cell is None or target.cell is None:
+         return None
+     budget = combat_grid.movement_budget_cells(view.speed, view.cell_size, view.dashed)
+     if budget <= 0:
+         return None
+     occupied = _occupied_cells(view) - {view.actor_cell}
+-    reach = combat_grid.reachable(view.actor_cell, budget, occupied, view.grid_width, view.grid_height)
++    blocking = _blocking_set(view)
++    difficult = _difficult_set(view)
++    reach = combat_grid.reachable(
++        view.actor_cell, budget, occupied, view.grid_width, view.grid_height,
++        impassable=blocking, difficult=difficult,
++    )
+     if not reach:
+         return None
+     best = min(
+@@ -1155,8 +1161,11 @@ def pick_action(
+             if threat is not None and view.grid_enabled and view.actor_cell is not None:
+                 budget = combat_grid.movement_budget_cells(view.speed, view.cell_size, view.dashed)
+                 occupied = _occupied_cells(view) - {view.actor_cell}
++                blocking = _blocking_set(view)
++                difficult = _difficult_set(view)
+                 reach = combat_grid.reachable(
+-                    view.actor_cell, budget, occupied, view.grid_width, view.grid_height
++                    view.actor_cell, budget, occupied, view.grid_width, view.grid_height,
++                    impassable=blocking, difficult=difficult,
+                 )
+                 if reach and threat.cell is not None:
+                     flee_cell = max(
+diff --git a/servers/engine/tests/test_combat_core.py b/servers/engine/tests/test_combat_core.py
+index e5405ee..cee78fd 100644
+--- a/servers/engine/tests/test_combat_core.py
++++ b/servers/engine/tests/test_combat_core.py
+@@ -49,6 +49,9 @@ def _mk_view(actor_attacks, foes, grid=False, actor_cell=None, **kw) -> CombatVi
+         bonus_action_available=bool(kw.get("bonus_action_available", True)),
+         is_raging=bool(kw.get("is_raging", False)),
+         bonus_spell_used=bool(kw.get("bonus_spell_used", False)),  # #1106 bonus-action-spell rule
++        # Tactical positioning (grid-only).
++        blocking=tuple(kw.get("blocking", ())),
++        difficult=tuple(kw.get("difficult", ())),
+     )
+ 
+ 
+@@ -156,6 +159,65 @@ def test_pick_action_attacks_in_reach_on_grid():
+     assert intent.target_id == "t"
+ 
+ 
++def test_pick_action_routes_around_walls_when_moving():
++    # Greedy-v1 should route around walls, not try to move through them.
++    # Setup: 12x12 grid, monster at (2, 5), foe at (8, 5), wall at x=5 for y=1..10.
++    # The monster should move to a cell it can actually reach without crossing the wall.
++    import combat_grid
++    atks = [AttackOption(name="Bite", to_hit=4, damage_expr="1d8", reach_ft=5)]
++    wall_cells = [(5, y) for y in range(1, 11)]  # wall at x=5 for y=1..10
++    view = _mk_view(
++        atks,
++        [_foe("t", cell=(8, 5))],
++        grid=True,
++        actor_cell=(2, 5),
++        w=12,
++        h=12,
++        blocking=tuple(wall_cells),
++    )
++    intent = combat_ai.pick_action(actor=object(), combat_state=view)
++    assert intent.kind == "move"
++    assert intent.to_cell is not None
++    # Verify the chosen cell is reachable without crossing the wall
++    budget = combat_grid.movement_budget_cells(30, 5, False)
++    occupied = {(8, 5)}  # only the foe is occupied
++    blocking = set(wall_cells)
++    reachable = combat_grid.reachable(
++        (2, 5), budget, occupied, 12, 12, impassable=blocking
++    )
++    assert intent.to_cell in reachable, f"Move to {intent.to_cell} should be reachable without crossing wall"
++    # Verify it didn't pick a cell that requires crossing the wall (on the far side)
++    assert intent.to_cell[0] < 5, f"Should not move beyond wall at x=5, got {intent.to_cell}"
++
++
++def test_pick_action_prefers_clear_ground_over_difficult_terrain():
++    # Greedy-v1 should prefer a clear path over difficult terrain when available (terrain-aware routing).
++    import combat_grid
++    atks = [AttackOption(name="Bite", to_hit=4, damage_expr="1d8", reach_ft=5)]
++    # Difficult cells on the left side of the foe; a clear path exists on the right
++    difficult_cells = [(8, 0), (8, 1), (8, 2), (8, 3), (8, 4)]
++    view = _mk_view(
++        atks,
++        [_foe("t", cell=(8, 6))],
++        grid=True,
++        actor_cell=(2, 6),
++        w=12,
++        h=12,
++        difficult=tuple(difficult_cells),
++    )
++    intent = combat_ai.pick_action(actor=object(), combat_state=view)
++    assert intent.kind == "move"
++    assert intent.to_cell is not None
++    # The chosen cell should be reachable using terrain-aware routing
++    budget = combat_grid.movement_budget_cells(30, 5, False)
++    occupied = {(8, 6)}
++    difficult = set(difficult_cells)
++    reachable = combat_grid.reachable(
++        (2, 6), budget, occupied, 12, 12, difficult=difficult
++    )
++    assert intent.to_cell in reachable, f"Move to {intent.to_cell} should respect difficult terrain"
++
++
+ def test_pick_action_dodges_when_nothing_reachable_no_grid_path():
+     # Grid, foe far, but speed 0 -> cannot move, cannot reach -> Dodge fallback.
+     atks = [AttackOption(name="Bite", to_hit=4, damage_expr="1d8", reach_ft=5)]

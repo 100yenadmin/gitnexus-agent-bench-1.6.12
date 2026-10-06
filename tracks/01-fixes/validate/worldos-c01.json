@@ -1,0 +1,49 @@
+{
+ "id": "worldos-c01",
+ "pr": 1246,
+ "base": "b1b6f36a9b356243c2e82f33d0ce63c381bddd0f",
+ "fix": "fb5e179a37b20fdd23d271e271d7943c5a8bb7d9",
+ "tests": [
+  "servers/engine/tests/test_action_economy.py"
+ ],
+ "oracle_files": [
+  "servers/engine/tests/test_action_economy.py"
+ ],
+ "oracle_cmd": "uv run -q --directory servers/engine --group dev pytest -q -p no:cacheprovider tests/test_action_economy.py",
+ "regression_cmd": "uv run -q --directory servers/engine --group dev pytest -q -p no:cacheprovider",
+ "setup_cmd": "uv sync -q --directory servers/engine --group dev",
+ "setup_rc": 0,
+ "base_rc": 1,
+ "base_secs": 2.7,
+ "base_tail": [
+  "FAILED tests/test_action_economy.py::test_cast_then_cast_rejected - Failed: D...",
+  "FAILED tests/test_action_economy.py::test_cast_then_attack_rejected - Failed:...",
+  "FAILED tests/test_action_economy.py::test_attack_then_cast_rejected - Failed:...",
+  "FAILED tests/test_action_economy.py::test_healing_word_then_use_action_allowed",
+  "FAILED tests/test_action_economy.py::test_healing_word_burns_only_bonus_action",
+  "FAILED tests/test_action_economy.py::test_surge_actions_enable_a_second_cast",
+  "FAILED tests/test_action_economy.py::test_minute_and_hour_casts_refused_in_active_combat",
+  "FAILED tests/test_action_economy.py::test_skip_then_attack_rejected - Failed:...",
+  "FAILED tests/test_action_economy.py::test_skip_then_cast_rejected - Failed: D...",
+  "FAILED tests/test_action_economy.py::test_old_snapshot_without_action_purpose_defaults_empty",
+  "10 failed, 8 passed in 1.54s"
+ ],
+ "base_import_err": true,
+ "fix_rc1": 0,
+ "fix_secs1": 1.6,
+ "fix_tail1": [
+  "18 passed in 0.98s"
+ ],
+ "fix_rc2": 0,
+ "fix_secs2": 1.5,
+ "fix_tail2": [
+  "18 passed in 0.91s"
+ ],
+ "reg_rc": 0,
+ "reg_secs": 418.5,
+ "reg_tail": [
+  "3242 passed in 417.71s (0:06:57)"
+ ],
+ "mismatch": [],
+ "final_status": "* (HEAD detached at b1b6f36a)\n  main\n  remotes/origin/HEAD -> origin/main\n  remotes/origin/main"
+}

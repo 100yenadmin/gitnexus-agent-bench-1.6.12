@@ -1,0 +1,18 @@
+{
+ "schema_version": 1,
+ "verdict": "request_changes",
+ "findings": [
+  {
+   "id": "fts-rss-verdict-without-successful-workload",
+   "severity": "medium",
+   "path": "gitnexus/scripts/bench/fts-evict-reload-rss.mjs",
+   "line": 280,
+   "end_line": 282,
+   "category": "correctness",
+   "scenario": "A --via-pool run against an existing invalid database path, or a database whose FTS extension/indexes cannot be queried, can report PLATEAU and exit successfully without exercising any FTS evict/reload workload.",
+   "evidence": "runViaPool logs initialization errors and continues collecting RSS samples; line 277 also converts every FTS query error to an empty result. Reproduced with $BREW_PREFIX/bin/node --expose-gc scripts/bench/fts-evict-reload-rss.mjs --via-pool package.json --cycles 6: all six opens failed with 'not a valid Lbug database file', yet the process exited 0, emitted MACHINE verdict PLATEAU, and claimed db.close() reclaims the FTS arena.",
+   "recommendation": "Track successful initialization and FTS queries per cycle. Abort on initialization failures and unexpected query errors; allow missing individual indexes only when at least one FTS query succeeds. Emit a failed or INCONCLUSIVE result when the workload was not exercised, rather than a memory-reclamation verdict.",
+   "blocking": true
+  }
+ ]
+}

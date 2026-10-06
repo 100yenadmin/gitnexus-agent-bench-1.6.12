@@ -1,0 +1,224 @@
+{
+ "source_run": "runs-p2/p2-resolve-H2-t1",
+ "tool": "rename",
+ "calls": [
+  {
+   "status": "success",
+   "old_name": "resolve",
+   "new_name": "resolveBinding",
+   "files_affected": 5,
+   "total_edits": 30,
+   "graph_edits": 30,
+   "text_search_edits": 0,
+   "changes": [
+    {
+     "file_path": "gitnexus/src/core/ingestion/cfg/visitors/scope-tree-harvest.ts",
+     "edits": [
+      {
+       "line": 11,
+       "old_text": "* the `openScope` / `nearestScopeOf` / `resolve` / `def` / `use` / `conditional`",
+       "new_text": "* the `openScope` / `nearestScopeOf` / `resolveBinding` / `def` / `use` / `conditional`",
+       "confidence": "graph"
+      },
+      {
+       "line": 20,
+       "old_text": "* the walk would mis-resolve. Phase 1 (`prescan`, per-language) pre-scans the",
+       "new_text": "* the walk would mis-resolveBinding. Phase 1 (`prescan`, per-language) pre-scans the",
+       "confidence": "graph"
+      },
+      {
+       "line": 22,
+       "old_text": "* (`resolve`) resolves defs/uses against that finished tree from any walk order.",
+       "new_text": "* (`resolveBinding`) resolves defs/uses against that finished tree from any walk order.",
+       "confidence": "graph"
+      },
+      {
+       "line": 25,
+       "old_text": "* resolve to a SYNTHETIC module-level binding (`name@module`), created on first",
+       "new_text": "* resolveBinding to a SYNTHETIC module-level binding (`name@module`), created on first",
+       "confidence": "graph"
+      },
+      {
+       "line": 123,
+       "old_text": "protected resolve(nameNode: SyntaxNode): number {",
+       "new_text": "protected resolveBinding(nameNode: SyntaxNode): number {",
+       "confidence": "graph"
+      },
+      {
+       "line": 154,
+       "old_text": "if (this.conditionalDepth > 0) acc.addMayDef(this.resolve(nameNode));",
+       "new_text": "if (this.conditionalDepth > 0) acc.addMayDef(this.resolveBinding(nameNode));",
+       "confidence": "graph"
+      },
+      {
+       "line": 155,
+       "old_text": "else acc.addDef(this.resolve(nameNode));",
+       "new_text": "else acc.addDef(this.resolveBinding(nameNode));",
+       "confidence": "graph"
+      },
+      {
+       "line": 159,
+       "old_text": "acc.addUse(this.resolve(nameNode));",
+       "new_text": "acc.addUse(this.resolveBinding(nameNode));",
+       "confidence": "graph"
+      }
+     ]
+    },
+    {
+     "file_path": "gitnexus/src/core/ingestion/cfg/visitors/go-harvest.ts",
+     "edits": [
+      {
+       "line": 31,
+       "old_text": "* names against a scope stack populated *during* the walk would mis-resolve.",
+       "new_text": "* names against a scope stack populated *during* the walk would mis-resolveBinding.",
+       "confidence": "graph"
+      },
+      {
+       "line": 62,
+       "old_text": "* names, functions) resolve to a SYNTHETIC module-level binding (`name@module`),",
+       "new_text": "* names, functions) resolveBinding to a SYNTHETIC module-level binding (`name@module`),",
+       "confidence": "graph"
+      },
+      {
+       "line": 350,
+       "old_text": "if (this.conditionalDepth > 0) acc.addMayDef(this.resolve(nameNode));",
+       "new_text": "if (this.conditionalDepth > 0) acc.addMayDef(this.resolveBinding(nameNode));",
+       "confidence": "graph"
+      },
+      {
+       "line": 351,
+       "old_text": "else acc.addDef(this.resolve(nameNode));",
+       "new_text": "else acc.addDef(this.resolveBinding(nameNode));",
+       "confidence": "graph"
+      },
+      {
+       "line": 357,
+       "old_text": "acc.addUse(this.resolve(nameNode));",
+       "new_text": "acc.addUse(this.resolveBinding(nameNode));",
+       "confidence": "graph"
+      },
+      {
+       "line": 560,
+       "old_text": "defs.push(this.resolve(n));",
+       "new_text": "defs.push(this.resolveBinding(n));",
+       "confidence": "graph"
+      },
+      {
+       "line": 585,
+       "old_text": "if (callee.text !== '_') acc.addUseWithoutOccurrence(this.resolve(callee));",
+       "new_text": "if (callee.text !== '_') acc.addUseWithoutOccurrence(this.resolveBinding(callee));",
+       "confidence": "graph"
+      },
+      {
+       "line": 650,
+       "old_text": "resolve: (n) => this.resolve(n),",
+       "new_text": "resolveBinding: (n) => this.resolveBinding(n),",
+       "confidence": "graph"
+      }
+     ]
+    },
+    {
+     "file_path": "gitnexus/src/core/ingestion/cfg/visitors/c-cpp-harvest.ts",
+     "edits": [
+      {
+       "line": 19,
+       "old_text": "* scope stack populated *during* the walk would mis-resolve. Phase 1 pre-scans",
+       "new_text": "* scope stack populated *during* the walk would mis-resolveBinding. Phase 1 pre-scans",
+       "confidence": "graph"
+      },
+      {
+       "line": 42,
+       "old_text": "* enclosing scope) resolve to a SYNTHETIC module-level binding (`name@module`),",
+       "new_text": "* enclosing scope) resolveBinding to a SYNTHETIC module-level binding (`name@module`),",
+       "confidence": "graph"
+      },
+      {
+       "line": 474,
+       "old_text": "if (callee.type === 'identifier') acc.addUseWithoutOccurrence(this.resolve(callee));",
+       "new_text": "if (callee.type === 'identifier') acc.addUseWithoutOccurrence(this.resolveBinding(callee));",
+       "confidence": "graph"
+      },
+      {
+       "line": 520,
+       "old_text": "// Collect field accesses outer→inner (unshift), then resolve the root.",
+       "new_text": "// Collect field accesses outer→inner (unshift), then resolveBinding the root.",
+       "confidence": "graph"
+      },
+      {
+       "line": 537,
+       "old_text": "rootIdx = this.resolve(cur);",
+       "new_text": "rootIdx = this.resolveBinding(cur);",
+       "confidence": "graph"
+      }
+     ]
+    },
+    {
+     "file_path": "gitnexus/src/core/ingestion/cfg/visitors/csharp-harvest.ts",
+     "edits": [
+      {
+       "line": 14,
+       "old_text": "* a scope stack populated *during* the walk would mis-resolve. Phase 1 pre-scans",
+       "new_text": "* a scope stack populated *during* the walk would mis-resolveBinding. Phase 1 pre-scans",
+       "confidence": "graph"
+      },
+      {
+       "line": 41,
+       "old_text": "* namespaced names) resolve to a SYNTHETIC module-level binding (`name@module`),",
+       "new_text": "* namespaced names) resolveBinding to a SYNTHETIC module-level binding (`name@module`),",
+       "confidence": "graph"
+      },
+      {
+       "line": 160,
+       "old_text": "// by the callee; declare it so its def + later uses resolve to a real",
+       "new_text": "// by the callee; declare it so its def + later uses resolveBinding to a real",
+       "confidence": "graph"
+      },
+      {
+       "line": 480,
+       "old_text": "if (kind === 'call') acc.addUseWithoutOccurrence(this.resolve(callee));",
+       "new_text": "if (kind === 'call') acc.addUseWithoutOccurrence(this.resolveBinding(callee));",
+       "confidence": "graph"
+      },
+      {
+       "line": 557,
+       "old_text": "rootIdx = this.resolve(cur);",
+       "new_text": "rootIdx = this.resolveBinding(cur);",
+       "confidence": "graph"
+      }
+     ]
+    },
+    {
+     "file_path": "gitnexus/src/core/ingestion/cfg/visitors/java-harvest.ts",
+     "edits": [
+      {
+       "line": 14,
+       "old_text": "* a scope stack populated *during* the walk would mis-resolve. Phase 1 pre-scans",
+       "new_text": "* a scope stack populated *during* the walk would mis-resolveBinding. Phase 1 pre-scans",
+       "confidence": "graph"
+      },
+      {
+       "line": 38,
+       "old_text": "* resolve to a SYNTHETIC module-level binding (`name@module`), applied",
+       "new_text": "* resolveBinding to a SYNTHETIC module-level binding (`name@module`), applied",
+       "confidence": "graph"
+      },
+      {
+       "line": 437,
+       "old_text": "acc.addUseWithoutOccurrence(this.resolve(nameNode));",
+       "new_text": "acc.addUseWithoutOccurrence(this.resolveBinding(nameNode));",
+       "confidence": "graph"
+      },
+      {
+       "line": 511,
+       "old_text": "rootIdx = this.resolve(cur);",
+       "new_text": "rootIdx = this.resolveBinding(cur);",
+       "confidence": "graph"
+      }
+     ]
+    }
+   ],
+   "applied": true
+  }
+ ],
+ "used_by_apply_and_check": "calls[0]"
+}

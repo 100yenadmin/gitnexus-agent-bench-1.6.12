@@ -1,0 +1,207 @@
+{
+ "source_run": "runs-p2/p2-declare-H2-t1",
+ "tool": "rename",
+ "calls": [
+  {
+   "status": "success",
+   "old_name": "declare",
+   "new_name": "declareBinding",
+   "files_affected": 4,
+   "total_edits": 28,
+   "graph_edits": 28,
+   "text_search_edits": 0,
+   "changes": [
+    {
+     "file_path": "gitnexus/src/core/ingestion/cfg/visitors/scope-tree-harvest.ts",
+     "edits": [
+      {
+       "line": 15,
+       "old_text": "* of `declare` / `def` / `use`.",
+       "new_text": "* of `declareBinding` / `def` / `use`.",
+       "confidence": "graph"
+      },
+      {
+       "line": 52,
+       "old_text": "* `prescan`; Go additionally overrides `declare` / `def` / `use` for its `_`",
+       "new_text": "* `prescan`; Go additionally overrides `declareBinding` / `def` / `use` for its `_`",
+       "confidence": "graph"
+      },
+      {
+       "line": 102,
+       "old_text": "protected declare(nameNode: SyntaxNode, kind: BindingEntry['kind'], scope: Scope): void {",
+       "new_text": "protected declareBinding(nameNode: SyntaxNode, kind: BindingEntry['kind'], scope: Scope): void {",
+       "confidence": "graph"
+      }
+     ]
+    },
+    {
+     "file_path": "gitnexus/src/core/ingestion/cfg/visitors/c-cpp-harvest.ts",
+     "edits": [
+      {
+       "line": 133,
+       "old_text": "if (name) this.declare(name, 'param', this.root);",
+       "new_text": "if (name) this.declareBinding(name, 'param', this.root);",
+       "confidence": "graph"
+      },
+      {
+       "line": 168,
+       "old_text": "if (name) this.declare(name, 'var', childScope);",
+       "new_text": "if (name) this.declareBinding(name, 'var', childScope);",
+       "confidence": "graph"
+      },
+      {
+       "line": 178,
+       "old_text": "if (name) this.declare(name, 'catch', childScope);",
+       "new_text": "if (name) this.declareBinding(name, 'catch', childScope);",
+       "confidence": "graph"
+      },
+      {
+       "line": 228,
+       "old_text": "for (const id of this.structuredBindingNames(sbd)) this.declare(id, 'var', scope);",
+       "new_text": "for (const id of this.structuredBindingNames(sbd)) this.declareBinding(id, 'var', scope);",
+       "confidence": "graph"
+      },
+      {
+       "line": 231,
+       "old_text": "if (name) this.declare(name, 'var', scope);",
+       "new_text": "if (name) this.declareBinding(name, 'var', scope);",
+       "confidence": "graph"
+      },
+      {
+       "line": 239,
+       "old_text": "// Uninitialized local (`int x;`) — declare the BINDING (so a later",
+       "new_text": "// Uninitialized local (`int x;`) — declareBinding the BINDING (so a later",
+       "confidence": "graph"
+      },
+      {
+       "line": 243,
+       "old_text": "if (name) this.declare(name, 'var', scope);",
+       "new_text": "if (name) this.declareBinding(name, 'var', scope);",
+       "confidence": "graph"
+      }
+     ]
+    },
+    {
+     "file_path": "gitnexus/src/core/ingestion/cfg/visitors/csharp-harvest.ts",
+     "edits": [
+      {
+       "line": 105,
+       "old_text": "this.declare(params, 'param', this.root);",
+       "new_text": "this.declareBinding(params, 'param', this.root);",
+       "confidence": "graph"
+      },
+      {
+       "line": 112,
+       "old_text": "if (name) this.declare(name, 'param', this.root);",
+       "new_text": "if (name) this.declareBinding(name, 'param', this.root);",
+       "confidence": "graph"
+      },
+      {
+       "line": 149,
+       "old_text": "if (name) this.declare(name, 'catch', childScope);",
+       "new_text": "if (name) this.declareBinding(name, 'catch', childScope);",
+       "confidence": "graph"
+      },
+      {
+       "line": 155,
+       "old_text": "if (name) this.declare(name, 'var', childScope);",
+       "new_text": "if (name) this.declareBinding(name, 'var', childScope);",
+       "confidence": "graph"
+      },
+      {
+       "line": 160,
+       "old_text": "// by the callee; declare it so its def + later uses resolve to a real",
+       "new_text": "// by the callee; declareBinding it so its def + later uses resolve to a real",
+       "confidence": "graph"
+      },
+      {
+       "line": 163,
+       "old_text": "if (name) this.declare(name, 'var', childScope);",
+       "new_text": "if (name) this.declareBinding(name, 'var', childScope);",
+       "confidence": "graph"
+      },
+      {
+       "line": 183,
+       "old_text": "this.declare(name, 'var', scope);",
+       "new_text": "this.declareBinding(name, 'var', scope);",
+       "confidence": "graph"
+      },
+      {
+       "line": 186,
+       "old_text": "// slot is a `tuple_pattern`; declare each identifier under it (reusing",
+       "new_text": "// slot is a `tuple_pattern`; declareBinding each identifier under it (reusing",
+       "confidence": "graph"
+      },
+      {
+       "line": 197,
+       "old_text": "this.declare(left, 'var', scope);",
+       "new_text": "this.declareBinding(left, 'var', scope);",
+       "confidence": "graph"
+      },
+      {
+       "line": 200,
+       "old_text": "// `var (k, v)` deconstruction — declare each identifier under the pattern.",
+       "new_text": "// `var (k, v)` deconstruction — declareBinding each identifier under the pattern.",
+       "confidence": "graph"
+      },
+      {
+       "line": 203,
+       "old_text": "if (c?.type === 'identifier') this.declare(c, 'var', scope);",
+       "new_text": "if (c?.type === 'identifier') this.declareBinding(c, 'var', scope);",
+       "confidence": "graph"
+      }
+     ]
+    },
+    {
+     "file_path": "gitnexus/src/core/ingestion/cfg/visitors/java-harvest.ts",
+     "edits": [
+      {
+       "line": 101,
+       "old_text": "this.declare(lambdaParam, 'param', this.root);",
+       "new_text": "this.declareBinding(lambdaParam, 'param', this.root);",
+       "confidence": "graph"
+      },
+      {
+       "line": 108,
+       "old_text": "if (p?.type === 'identifier') this.declare(p, 'param', this.root);",
+       "new_text": "if (p?.type === 'identifier') this.declareBinding(p, 'param', this.root);",
+       "confidence": "graph"
+      },
+      {
+       "line": 117,
+       "old_text": "if (name) this.declare(name, 'param', this.root);",
+       "new_text": "if (name) this.declareBinding(name, 'param', this.root);",
+       "confidence": "graph"
+      },
+      {
+       "line": 148,
+       "old_text": "if (name) this.declare(name, 'var', childScope);",
+       "new_text": "if (name) this.declareBinding(name, 'var', childScope);",
+       "confidence": "graph"
+      },
+      {
+       "line": 154,
+       "old_text": "if (name) this.declare(name, 'var', childScope);",
+       "new_text": "if (name) this.declareBinding(name, 'var', childScope);",
+       "confidence": "graph"
+      },
+      {
+       "line": 160,
+       "old_text": "if (name) this.declare(name, 'catch', childScope);",
+       "new_text": "if (name) this.declareBinding(name, 'catch', childScope);",
+       "confidence": "graph"
+      },
+      {
+       "line": 179,
+       "old_text": "if (name) this.declare(name, 'var', scope);",
+       "new_text": "if (name) this.declareBinding(name, 'var', scope);",
+       "confidence": "graph"
+      }
+     ]
+    }
+   ],
+   "applied": true
+  }
+ ],
+ "used_by_apply_and_check": "calls[0]"
+}

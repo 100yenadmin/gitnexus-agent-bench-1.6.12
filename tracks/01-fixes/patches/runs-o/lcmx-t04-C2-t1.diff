@@ -1,0 +1,100 @@
+diff --git a/escalation.py b/escalation.py
+index 4ed7571..7316755 100644
+--- a/escalation.py
++++ b/escalation.py
+@@ -280,9 +280,10 @@ def _unwrap_summary_contract(content: str, nonce: str, max_tokens: int) -> str:
+         not stripped.startswith(opening_tag)
+         or not stripped.endswith(closing_tag)
+         or stripped.count(opening_tag) != 1
+-        or stripped.count(closing_tag) != 1
+     ):
+         return ""
++    # Only the anchored final closing tag delimits the envelope. Earlier
++    # occurrences may be quoted historical content and must remain in the body.
+     body = stripped[len(opening_tag) : -len(closing_tag)].strip()
+     minimum_body_tokens = max(4, min(16, max(1, int(max_tokens) // 16)))
+     if count_tokens(body) < minimum_body_tokens:
+diff --git a/tests/test_lcm_core.py b/tests/test_lcm_core.py
+index b475296..289932d 100644
+--- a/tests/test_lcm_core.py
++++ b/tests/test_lcm_core.py
+@@ -414,7 +414,43 @@ class TestProviderPrefixedAuxiliaryCalls:
+         assert "nonce=" not in result
+         assert [message["role"] for message in seen["messages"]] == ["system", "user"]
+ 
+-    @pytest.mark.parametrize("variant", ["wrong_nonce", "outside_text", "missing_footer"])
++    @pytest.mark.parametrize("quoted_tags", [
++        "`</lcm-summary>`",
++        "\n</lcm-summary>\n",
++        "`</lcm-summary>` and an earlier `</lcm-summary>`",
++    ])
++    def test_summary_call_preserves_quoted_closing_tags(self, monkeypatch, quoted_tags):
++        from hermes_lcm.escalation import _build_l1_prompt, _call_llm_for_summary
++
++        body = (
++            f"- Decision: preserve the quoted envelope closing tag {quoted_tags} intact.\n"
++            "- Current state: historical envelope discussion remains available.\n"
++            "Expand for details about: envelope discussion and retained history"
++        )
++
++        def fake_call_llm(**kwargs):
++            match = re.search(
++                r'<lcm-summary nonce="([0-9a-f]{32})">',
++                kwargs["messages"][0]["content"],
++            )
++            assert match is not None
++            return self._fake_response(
++                f'<lcm-summary nonce="{match.group(1)}">\n{body}\n</lcm-summary>'
++            )
++
++        self._install_fake_auxiliary_client(monkeypatch, fake_call_llm)
++        result = _call_llm_for_summary(
++            _build_l1_prompt("Historical discussion of </lcm-summary> " * 30,
++                             token_budget=80, depth=0),
++            160,
++        )
++
++        assert result == body
++
++    @pytest.mark.parametrize("variant", [
++        "wrong_nonce", "outside_text", "trailing_text", "missing_footer",
++        "duplicate_opening", "missing_opening", "missing_closing", "short_body",
++    ])
+     def test_summary_call_rejects_malformed_integrity_contract(self, monkeypatch, variant):
+         from hermes_lcm.escalation import _build_l1_prompt, _call_llm_for_summary
+ 
+@@ -437,19 +473,32 @@ class TestProviderPrefixedAuxiliaryCalls:
+                     f'preamble\n<lcm-summary nonce="{nonce}">\n'
+                     f'{valid_body}\n</lcm-summary>'
+                 )
+-            else:
++            elif variant == "missing_footer":
+                 content = (
+                     f'<lcm-summary nonce="{nonce}">\n'
+                     "A long but footer-free body preserving decisions, blockers, files, and state.\n"
+                     "</lcm-summary>"
+                 )
++            else:
++                opening_tag = f'<lcm-summary nonce="{nonce}">'
++                content = f"{opening_tag}\n{valid_body}\n</lcm-summary>"
++                if variant == "trailing_text":
++                    content += "\ntrailing text"
++                elif variant == "duplicate_opening":
++                    content = f"{opening_tag}\n{content}"
++                elif variant == "missing_opening":
++                    content = f"{valid_body}\n</lcm-summary>"
++                elif variant == "missing_closing":
++                    content = f"{opening_tag}\n{valid_body}"
++                elif variant == "short_body":
++                    content = f"{opening_tag}\nExpand for details about: x\n</lcm-summary>"
+             return self._fake_response(content)
+ 
+         self._install_fake_auxiliary_client(monkeypatch, fake_call_llm)
+ 
+         result = _call_llm_for_summary(
+             _build_l1_prompt("ordinary historical transcript " * 30, token_budget=80, depth=0),
+-            160,
++            256,
+         )
+ 
+         assert result == ""

@@ -1,0 +1,148 @@
+diff --git a/db_bootstrap.py b/db_bootstrap.py
+index 5b31c38..b2116c2 100644
+--- a/db_bootstrap.py
++++ b/db_bootstrap.py
+@@ -3286,6 +3286,7 @@ def run_versioned_migrations(conn: sqlite3.Connection) -> None:
+ 
+     refuse_schema_version_too_new(conn)
+     current_version = get_schema_version(conn)
++    stored_version = current_version
+     if current_version < 2:
+         mark_migration_step_complete(conn, "v2_external_content_fts_triggers")
+         current_version = 2
+@@ -3316,4 +3317,8 @@ def run_versioned_migrations(conn: sqlite3.Connection) -> None:
+     # feature materialized lazily by VectorStore (recorded via the named
+     # ``embeddings_v1`` marker), so a disabled install stays at v5 with no
+     # embedding tables and the numeric counter is free for the temporal train.
+-    set_schema_version(conn, current_version)
++    # Even an unchanged UPSERT needs SQLite writer ownership. Reopening a
++    # current database (including an engine clone) must remain read-only when
++    # the checks above found no schema work to do.
++    if current_version != stored_version:
++        set_schema_version(conn, current_version)
+diff --git a/store.py b/store.py
+index 3ebfcd0..d10da7d 100644
+--- a/store.py
++++ b/store.py
+@@ -384,9 +384,15 @@ class MessageStore:
+             "observed_at_source",
+             "ALTER TABLE messages ADD COLUMN observed_at_source TEXT",
+         )
+-        self._conn.execute(
+-            "UPDATE messages SET ingested_at = timestamp WHERE ingested_at IS NULL"
+-        )
++        # A no-match UPDATE still takes the WAL write slot. Only acquire it
++        # when legacy rows actually need the source-time backfill; real repair
++        # errors must continue to propagate rather than silently skip work.
++        if self._conn.execute(
++            "SELECT 1 FROM messages WHERE ingested_at IS NULL LIMIT 1"
++        ).fetchone() is not None:
++            self._conn.execute(
++                "UPDATE messages SET ingested_at = timestamp WHERE ingested_at IS NULL"
++            )
+ 
+     # -- Write operations ---------------------------------------------------
+ 
+diff --git a/tests/test_startup_writer_contention.py b/tests/test_startup_writer_contention.py
+new file mode 100644
+index 0000000..6ca7af2
+--- /dev/null
++++ b/tests/test_startup_writer_contention.py
+@@ -0,0 +1,97 @@
++"""Current-schema startup must not need SQLite writer ownership (#363)."""
++
++import copy
++import sqlite3
++
++import pytest
++
++from hermes_lcm import db_bootstrap
++from hermes_lcm.config import LCMConfig
++from hermes_lcm.dag import build_nodes_fts_spec
++from hermes_lcm.engine import LCMEngine
++from hermes_lcm.store import build_message_fts_spec
++
++
++@pytest.mark.parametrize("startup_work", ["none", "migration", "legacy_row"])
++def test_deepcopy_with_active_wal_writer(tmp_path, monkeypatch, startup_work):
++    config = LCMConfig(database_path=str(tmp_path / "lcm.db"))
++    prototype = LCMEngine(config=config, hermes_home=str(tmp_path / "hermes"))
++    clone = None
++    writer = sqlite3.connect(config.database_path, timeout=0.02)
++    try:
++        # Finish real first-open scans before acquiring the write slot. Keep
++        # healthy FTS startup enabled during the clone, rather than mocking it.
++        db_bootstrap.ensure_external_content_fts(
++            prototype._store._conn, build_message_fts_spec()
++        )
++        db_bootstrap.ensure_external_content_fts(
++            prototype._dag.connection, build_nodes_fts_spec()
++        )
++        db_bootstrap.join_background_integrity_scans(timeout=5)
++        store_id = prototype._store.append(
++            "session", {"role": "user", "content": "durable context"}
++        )
++        if startup_work == "migration":
++            writer.execute(
++                "UPDATE metadata SET value = '4' WHERE key = 'schema_version'"
++            )
++        elif startup_work == "legacy_row":
++            writer.execute(
++                "UPDATE messages SET ingested_at = NULL WHERE store_id = ?",
++                (store_id,),
++            )
++        writer.commit()
++        assert writer.execute("PRAGMA journal_mode=WAL").fetchone()[0] == "wal"
++        monkeypatch.setattr(db_bootstrap, "SQLITE_BUSY_TIMEOUT_MS", 20)
++        writer.execute("BEGIN IMMEDIATE")
++
++        if startup_work == "none":
++            clone = copy.deepcopy(prototype)
++            assert isinstance(clone, LCMEngine)
++            assert clone is not prototype
++            assert clone._store._conn is not prototype._store._conn
++            assert clone._dag.connection is not prototype._dag.connection
++            assert clone._lifecycle is not prototype._lifecycle
++            assert clone._store.get_session_messages("session")[0]["content"] == "durable context"
++        else:
++            with pytest.raises(sqlite3.OperationalError, match="database is locked"):
++                copy.deepcopy(prototype)
++            # Contention cannot silently skip real migration or row repair.
++            if startup_work == "migration":
++                assert db_bootstrap.read_existing_schema_version(writer) == 4
++            else:
++                assert writer.execute(
++                    "SELECT ingested_at FROM messages WHERE store_id = ?", (store_id,)
++                ).fetchone() == (None,)
++
++        assert writer.in_transaction
++        writer.rollback()
++        if clone is None:
++            clone = copy.deepcopy(prototype)
++        assert db_bootstrap.read_existing_schema_version(writer) == db_bootstrap.SCHEMA_VERSION
++        row = writer.execute(
++            "SELECT content, timestamp, ingested_at, observed_at FROM messages WHERE store_id = ?",
++            (store_id,),
++        ).fetchone()
++        assert row[0] == "durable context"
++        assert row[1] == row[2]
++        assert row[3] is None
++    finally:
++        writer.rollback()
++        writer.close()
++        if clone is not None:
++            clone.shutdown()
++        prototype.shutdown()
++
++
++def test_current_schema_migrations_do_not_write(tmp_path):
++    conn = sqlite3.connect(tmp_path / "current.db", timeout=0.02)
++    try:
++        db_bootstrap.run_versioned_migrations(conn)
++        conn.commit()
++        changes = conn.total_changes
++        db_bootstrap.run_versioned_migrations(conn)
++        assert conn.total_changes == changes
++        assert not conn.in_transaction
++    finally:
++        conn.close()

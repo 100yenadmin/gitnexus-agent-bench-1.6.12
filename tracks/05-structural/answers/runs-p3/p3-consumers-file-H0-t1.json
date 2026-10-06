@@ -1,0 +1,7 @@
+{
+ "files": [
+  "gitnexus-web/src/services/backend-client.ts",
+  "gitnexus-web/src/core/llm/tools.ts",
+  "gitnexus-web/src/components/CodeReferencesPanel.tsx"
+ ]
+}

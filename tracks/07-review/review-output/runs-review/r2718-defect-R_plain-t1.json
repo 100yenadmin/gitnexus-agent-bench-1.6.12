@@ -1,0 +1,18 @@
+{
+ "schema_version": 1,
+ "verdict": "request_changes",
+ "findings": [
+  {
+   "id": "ts-parameter-property-qualified-as-function-local",
+   "severity": "medium",
+   "path": "gitnexus/src/core/ingestion/workers/parse-worker.ts",
+   "line": 2309,
+   "end_line": 2312,
+   "category": "correctness",
+   "scenario": "Take a TypeScript class `class User { constructor(public address: string) {} }`. The `address` parameter property is a class MEMBER. Before this change its node id was `Property:x.ts:User.address`. After it, the id becomes a function-local id, `Property:x.ts:User.constructor.address@<row>:<col>`. Every parameter property in a TS codebase (Angular/Nest DI `constructor(private readonly svc: Svc)`) changes id, and its qualifiedName now claims it is a local of `constructor`. That breaks saved queries and references that address class members, and it moves a class member onto the position-keyed local identity path.",
+   "evidence": "The diff widens the prefix gate from callables to `isPositionQualifiedLocalLabel(nodeLabel)`, which now includes `Property`. In the qualifiedName chain, `nestedCallablePrefix` is checked BEFORE `enclosingClassInfo`. The TS query captures `(required_parameter (accessibility_modifier) pattern: (identifier) @name) @definition.property`, so definitionNode is `required_parameter`. Probing the installed tree-sitter-typescript grammar gives the ancestry `formal_parameters > method_definition > class_body > class_declaration`. `findAncestorBeforeBoundary` starts at `node.parent`, and it reaches `method_definition` (a member of LOCAL_SCOPE_BODY_NODE_TYPES) before the `class_body` boundary. `enclosingCallablePrefix` therefore returns `User.constructor`. This contradicts the new `callable-labels.ts` docblock, which says class members are untouched and that 'A class field stays unqualified even inside a function, because the prefix walk boundaries on class-likes'.",
+   "recommendation": "Skip the nested-callable prefix for any `Property` whose definition node sits inside a callable's parameter list (formal_parameters / parameter-property captures), or for any Property that has an `enclosingClassInfo`, so these members keep the `Class.name` id. Add an integration assertion that `constructor(public address: string)` still yields `Property:<file>:User.address`.",
+   "blocking": true
+  }
+ ]
+}

@@ -1,0 +1,3 @@
+#!/bin/sh
+echo "zsh: command not found: gitnexus" >&2
+exit 127

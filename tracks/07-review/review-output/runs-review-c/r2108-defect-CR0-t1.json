@@ -1,0 +1,18 @@
+{
+ "schema_version": 1,
+ "verdict": "request_changes",
+ "findings": [
+  {
+   "id": "fts-rss-verdict-without-successful-fts-reads",
+   "severity": "medium",
+   "path": "gitnexus/scripts/bench/fts-evict-reload-rss.mjs",
+   "line": 273,
+   "end_line": 277,
+   "category": "correctness",
+   "scenario": "Running --via-pool against an analyzed repository without usable FTS indexes, or with an unavailable FTS extension, can report PLATEAU and claim the FTS arena is reclaimed even though no FTS read succeeded.",
+   "evidence": "Every executeParameterized failure is converted to [] at line 277; runViaPool still records RSS samples and passes them to verdict without any successful-query check. Executing the actual runViaPool and verdict functions in memory with a rejecting pool and constant RSS produced 30 failed FTS reads over six cycles and MACHINE.verdict=PLATEAU. Initialization failures are also caught and sampled at lines 280-289, so they can produce the same invalid result.",
+   "recommendation": "Track successful FTS reads per cycle and exclude failed cycles from leak classification. Require a usable FTS workload before emitting PLATEAU or CLIMB; fail or emit INCONCLUSIVE when none succeeds. Skip only confirmed absent indexes rather than swallowing every query error.",
+   "blocking": true
+  }
+ ]
+}

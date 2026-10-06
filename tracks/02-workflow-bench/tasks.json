@@ -1,0 +1,78 @@
+[
+ {
+  "id": "u-trivial",
+  "upstream_id": "trivial-status-json-alias",
+  "upstream_repo": "abhigyanpatwari/GitNexus",
+  "upstream_commit": "c4ecf398de637cf779ab2238e69958cfd5d601ce",
+  "statement": "Add -j as a short alias for --json on the gitnexus status command (gitnexus/src/cli/index.ts), and cover the alias with a unit test in gitnexus/test/unit/status-json-alias.test.ts.",
+  "oracle_files": [
+   "vitest.config.mts",
+   "trivial-status-json-alias.oracle.test.ts"
+  ],
+  "oracle_cmd": "cd gitnexus && ./node_modules/.bin/vitest run --config \"$GITNEXUS_BENCH_ORACLE_ROOT/vitest.config.mts\" \"$GITNEXUS_BENCH_ORACLE_ROOT/trivial-status-json-alias.oracle.test.ts\"",
+  "regression_cmd": "cd gitnexus && ./node_modules/.bin/tsc --noEmit -p .",
+  "index_variants": {
+   "runs-u, runs-u-nomcp-clean": "gnxu-base (default analyze)",
+   "runs-u-pdg": "gnxu-pdg (analyze --pdg)"
+  },
+  "same_statement_in_pdg_variant": true,
+  "class": "trivial"
+ },
+ {
+  "id": "u-cbug",
+  "upstream_id": "inv-bug-c-system-include",
+  "upstream_repo": "abhigyanpatwari/GitNexus",
+  "upstream_commit": "c4ecf398de637cf779ab2238e69958cfd5d601ce",
+  "statement": "Fix the C scope resolver so a system include such as <stdio.h> never resolves to an unrelated same-named header inside the repository, while quoted/local includes still resolve. Remove C from the conformance suite's KNOWN_GAPS and cover the negative and positive cases there.",
+  "oracle_files": [
+   "vitest.config.mts",
+   "inv-bug-c-system-include.oracle.test.ts"
+  ],
+  "oracle_cmd": "cd gitnexus && ./node_modules/.bin/vitest run --config \"$GITNEXUS_BENCH_ORACLE_ROOT/vitest.config.mts\" \"$GITNEXUS_BENCH_ORACLE_ROOT/inv-bug-c-system-include.oracle.test.ts\"",
+  "regression_cmd": "cd gitnexus && ./node_modules/.bin/tsc --noEmit -p .",
+  "index_variants": {
+   "runs-u, runs-u-nomcp-clean": "gnxu-base (default analyze)",
+   "runs-u-pdg": "gnxu-pdg (analyze --pdg)"
+  },
+  "same_statement_in_pdg_variant": true,
+  "class": "investigation-bug"
+ },
+ {
+  "id": "u-feat",
+  "upstream_id": "inv-feature-list-repos-filter",
+  "upstream_repo": "abhigyanpatwari/GitNexus",
+  "upstream_commit": "c4ecf398de637cf779ab2238e69958cfd5d601ce",
+  "statement": "Add an optional \"name_contains\" filter parameter to the list_repos MCP tool: case-insensitive substring match on the repo name, with the pagination object (total/hasMore/nextOffset) reflecting the FILTERED set. Cover with unit tests in gitnexus/test/unit/list-repos-name-filter.test.ts.",
+  "oracle_files": [
+   "vitest.config.mts",
+   "inv-feature-list-repos-filter.oracle.test.ts"
+  ],
+  "oracle_cmd": "cd gitnexus && ./node_modules/.bin/vitest run --config \"$GITNEXUS_BENCH_ORACLE_ROOT/vitest.config.mts\" \"$GITNEXUS_BENCH_ORACLE_ROOT/inv-feature-list-repos-filter.oracle.test.ts\"",
+  "regression_cmd": "cd gitnexus && ./node_modules/.bin/tsc --noEmit -p .",
+  "index_variants": {
+   "runs-u, runs-u-nomcp-clean": "gnxu-base (default analyze)",
+   "runs-u-pdg": "gnxu-pdg (analyze --pdg)"
+  },
+  "same_statement_in_pdg_variant": true,
+  "class": "investigation-feature"
+ },
+ {
+  "id": "u-xmod",
+  "upstream_id": "cross-module-parse-retry",
+  "upstream_repo": "abhigyanpatwari/GitNexus",
+  "upstream_commit": "c4ecf398de637cf779ab2238e69958cfd5d601ce",
+  "statement": "Add bounded retry with backoff to the ingestion pipeline so a transient parse-worker failure on a file is retried up to 2 times before the file is marked failed, without retrying deterministic parse errors. Cover the retry/no-retry decision with unit tests in gitnexus/test/unit/parse-retry.test.ts.",
+  "oracle_files": [
+   "vitest.config.mts",
+   "cross-module-parse-retry.oracle.test.ts"
+  ],
+  "oracle_cmd": "cd gitnexus && ./node_modules/.bin/vitest run --config \"$GITNEXUS_BENCH_ORACLE_ROOT/vitest.config.mts\" \"$GITNEXUS_BENCH_ORACLE_ROOT/cross-module-parse-retry.oracle.test.ts\"",
+  "regression_cmd": "cd gitnexus && ./node_modules/.bin/tsc --noEmit -p .",
+  "index_variants": {
+   "runs-u, runs-u-nomcp-clean": "gnxu-base (default analyze)",
+   "runs-u-pdg": "gnxu-pdg (analyze --pdg)"
+  },
+  "same_statement_in_pdg_variant": true,
+  "class": "cross-module"
+ }
+]

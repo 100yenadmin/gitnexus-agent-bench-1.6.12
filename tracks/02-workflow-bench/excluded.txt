@@ -1,0 +1,4 @@
+runs-u/u-cbug-U_nomcp-t1	contamination: old-isolation no-GitNexus run reached the live GitNexus index (replaced by runs-u-nomcp-clean)
+runs-u/u-feat-U_nomcp-t1	contamination: old-isolation no-GitNexus run reached the live GitNexus index (replaced by runs-u-nomcp-clean)
+runs-u/u-trivial-U_nomcp-t1	contamination: old-isolation no-GitNexus run reached the live GitNexus index (replaced by runs-u-nomcp-clean)
+runs-u/u-xmod-U_nomcp-t1	contamination: old-isolation no-GitNexus run reached the live GitNexus index (replaced by runs-u-nomcp-clean)

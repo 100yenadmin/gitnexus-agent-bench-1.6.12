@@ -1,0 +1,125 @@
+{
+ "scope": "claims bench tracks 1-7, scored runs only, one row per run (no hermes-agent tracks)",
+ "arms": {
+  "A0": {
+   "runs": 35,
+   "used": 0,
+   "calls": 0,
+   "share": 0.0
+  },
+  "A1": {
+   "runs": 28,
+   "used": 6,
+   "calls": 11,
+   "share": 0.2143
+  },
+  "A2": {
+   "runs": 35,
+   "used": 18,
+   "calls": 27,
+   "hook_calls": 513,
+   "hook_pre": 303,
+   "hook_post": 210,
+   "hook_enriched": 24,
+   "hook_hint": 22,
+   "hook_stale": 0,
+   "hook_other": 0,
+   "hook_no_context": 467,
+   "share": 0.5143
+  },
+  "A3": {
+   "runs": 12,
+   "used": 12,
+   "calls": 56,
+   "hook_calls": 430,
+   "hook_pre": 243,
+   "hook_post": 187,
+   "hook_enriched": 16,
+   "hook_hint": 13,
+   "hook_stale": 10,
+   "hook_other": 0,
+   "hook_no_context": 391,
+   "share": 1.0
+  },
+  "C0": {
+   "runs": 35,
+   "used": 0,
+   "calls": 0,
+   "share": 0.0
+  },
+  "C1": {
+   "runs": 22,
+   "used": 22,
+   "calls": 62,
+   "share": 1.0
+  },
+  "C2": {
+   "runs": 35,
+   "used": 34,
+   "calls": 170,
+   "share": 0.9714
+  },
+  "CR0": {
+   "runs": 12,
+   "used": 0,
+   "calls": 0,
+   "share": 0.0
+  },
+  "CR1": {
+   "runs": 12,
+   "used": 12,
+   "calls": 113,
+   "share": 1.0
+  },
+  "H0": {
+   "runs": 33,
+   "used": 8,
+   "calls": 9,
+   "share": 0.2424
+  },
+  "H2": {
+   "runs": 33,
+   "used": 24,
+   "calls": 78,
+   "hook_calls": 1125,
+   "hook_pre": 590,
+   "hook_post": 535,
+   "hook_enriched": 35,
+   "hook_hint": 23,
+   "hook_stale": 17,
+   "hook_other": 0,
+   "hook_no_context": 1050,
+   "share": 0.7273
+  },
+  "R_gnx": {
+   "runs": 12,
+   "used": 9,
+   "calls": 21,
+   "share": 0.75
+  },
+  "R_plain": {
+   "runs": 12,
+   "used": 0,
+   "calls": 0,
+   "share": 0.0
+  },
+  "U_direct": {
+   "runs": 8,
+   "used": 8,
+   "calls": 39,
+   "share": 1.0
+  },
+  "U_mcp": {
+   "runs": 8,
+   "used": 8,
+   "calls": 23,
+   "share": 1.0
+  },
+  "U_nomcp": {
+   "runs": 8,
+   "used": 3,
+   "calls": 3,
+   "share": 0.375
+  }
+ }
+}

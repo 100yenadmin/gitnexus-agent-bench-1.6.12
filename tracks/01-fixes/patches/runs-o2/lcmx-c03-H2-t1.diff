@@ -1,0 +1,205 @@
+diff --git a/host_uid.py b/host_uid.py
+index bd6f9ef..b2cfa86 100644
+--- a/host_uid.py
++++ b/host_uid.py
+@@ -7,6 +7,7 @@ so a replayed prefix never inflates it. ``LCM_HOST_MESSAGE_UID=off`` does nothin
+ from __future__ import annotations
+ 
+ import bisect
++import hashlib
+ import json
+ import logging
+ import os
+@@ -69,9 +70,10 @@ class HostUidShadowMixin:
+     """Mixed into LCMEngine; reads ``self._store``, ``_state_db_path`` and the reconcile identity helpers."""
+ 
+     def _host_uid_lineage_key(self, session_id=None) -> tuple:
+-        """R3-4: ``(root, None)`` by Hermes' own walk (``_session_turn_lease_key_on_conn``: up while the parent ended
++        """R3-4: ``("<home_tag>:<root>", None)`` by Hermes' own walk (``_session_turn_lease_key_on_conn``: up while the parent ended
+         by compression and the row is no fork child), else ``(None, "read_error" | "unresolved")`` (no state.db,
+-        missing row, cycle, over 256 hops). Cached per (state.db, session id): a root, or a missing state.db."""
++        missing row, cycle, over 256 hops). home_tag is the first 16 hex chars of sha256(resolved state.db path).
++        Cached per (state.db, session id): a root, or a missing state.db."""
+         session_id = str(self._session_id if session_id is None else session_id or "")
+         cache = self.__dict__.setdefault("_host_uid_lineage_cache", {})
+         try:
+@@ -84,11 +86,22 @@ class HostUidShadowMixin:
+             self._host_uid_read_error = exc
+             return None, "read_error"
+         if found[0] is not None or found is _NO_STATE_DB:
++            home_tag = self._host_uid_home_tag(path) if found[0] is not None else None
++            if home_tag and found[0] is not None:
++                found = (f"{home_tag}:{found[0]}", found[1])
+             cache[key] = found
+             while len(cache) > _LINEAGE_CACHE_CAP:
+                 cache.pop(next(iter(cache)))
+         return found
+ 
++    def _host_uid_home_tag(self, path: Path) -> Optional[str]:
++        """First 16 hex chars of sha256(resolved state.db path); symlinked homes get the same tag."""
++        try:
++            resolved = path.resolve().as_posix()
++            return hashlib.sha256(resolved.encode()).hexdigest()[:16]
++        except Exception:
++            return None
++
+     def _host_uid_read_lineage(self, path: Path, session_id: str) -> tuple:
+         """One uncached read of the lineage root. Only FileNotFoundError means a missing state.db (unresolved,
+         never an error); PermissionError and every other OSError propagate as a read error, never cached."""
+diff --git a/store.py b/store.py
+index e1c50c4..61c4b8e 100644
+--- a/store.py
++++ b/store.py
+@@ -275,6 +275,11 @@ def delete_message_relations(conn: sqlite3.Connection, rows_sql: str, args: tupl
+             f"DELETE FROM message_relations WHERE store_id IN ({rows_sql}) OR related_store_id IN ({rows_sql})",
+             (*args, *args),
+         )
++    if conn.execute("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'host_uid_bindings'").fetchone():
++        conn.execute(
++            f"DELETE FROM host_uid_bindings WHERE store_id IN ({rows_sql})",
++            args,
++        )
+ 
+ 
+ class MessageStore:
+diff --git a/tests/test_host_uid_shadow.py b/tests/test_host_uid_shadow.py
+index e49dbb2..1e67615 100644
+--- a/tests/test_host_uid_shadow.py
++++ b/tests/test_host_uid_shadow.py
+@@ -62,8 +62,10 @@ def _bindings(engine: LCMEngine) -> list[tuple]:
+     conn = engine._store._conn
+     if not conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='host_uid_bindings'").fetchone():
+         return []
+-    return conn.execute("SELECT store_id, uid, lineage_key, kind, binding_version, proof_kind FROM host_uid_bindings "
++    rows = conn.execute("SELECT store_id, uid, lineage_key, kind, binding_version, proof_kind FROM host_uid_bindings "
+                         "ORDER BY rowid").fetchall()
++    # Normalize lineage_key: strip home_tag prefix (format: "home_tag:root" -> "root")
++    return [tuple([r[0], r[1], r[2].split(":", 1)[1] if ":" in r[2] else r[2]] + list(r[3:])) for r in rows]
+ 
+ 
+ def _counts(engine: LCMEngine) -> dict:
+@@ -263,7 +265,11 @@ def test_ignore_pattern_drop_is_skipped_not_stored(tmp_path, monkeypatch):
+ def _root(tmp_path, session: str):
+     engine = _engine(tmp_path, session=session)
+     try:
+-        return engine._host_uid_lineage_key()[0]
++        lineage_key = engine._host_uid_lineage_key()[0]
++        # Extract root from "home_tag:root" format, or return None/unresolved value
++        if lineage_key and ":" in lineage_key:
++            return lineage_key.split(":", 1)[1]
++        return lineage_key
+     finally:
+         engine.shutdown()
+ 
+@@ -378,7 +384,9 @@ def test_same_uid_same_bytes_stored_again_disagrees(tmp_path):
+ def _anchored(tmp_path, engine, seeded, host_view, *, bind=()):
+     """Feed ``host_view`` to a restarted engine after seeding ``bind`` = [(content, uid, kind)]."""
+     if bind:
+-        engine._store.add_host_uid_bindings("S", [(seeded[c], uid, kind, "seed") for c, uid, kind in bind])
++        lineage_key, _ = engine._host_uid_lineage_key()
++        if lineage_key:
++            engine._store.add_host_uid_bindings(lineage_key, [(seeded[c], uid, kind, "seed") for c, uid, kind in bind])
+     engine.ingest(host_view)
+ 
+ 
+@@ -915,9 +923,12 @@ def test_r3_the_lineage_cache_is_keyed_by_home(tmp_path):
+     engine = LCMEngine(config=LCMConfig(database_path=str(tmp_path / "lcm.db")), hermes_home=str(tmp_path / "one"))
+     engine.on_session_start("S", platform="cli", context_length=200_000)
+     try:
+-        assert engine._host_uid_lineage_key() == ("P", None)
++        key1, err1 = engine._host_uid_lineage_key()
++        assert err1 is None and key1 and key1.endswith(":P")  # home_tag:P
+         engine._hermes_home = str(tmp_path / "two")  # the same session id under another profile home
+-        assert engine._host_uid_lineage_key() == ("S", None)
++        key2, err2 = engine._host_uid_lineage_key()
++        assert err2 is None and key2 and key2.endswith(":S")  # home_tag:S
++        assert key1 != key2  # Different homes = different keys even if semantically related
+     finally:
+         engine.shutdown()
+ 
+@@ -1031,7 +1042,8 @@ def test_r4_a_permission_denied_state_db_is_a_read_error_not_missing(tmp_path, m
+             assert not engine.__dict__.get("_host_uid_lineage_cache")
+         finally:
+             home.chmod(0o700)
+-        assert engine._host_uid_lineage_key() == ("S", None)
++        key, err = engine._host_uid_lineage_key()
++        assert err is None and key and key.endswith(":S")  # home_tag:S
+     finally:
+         engine.shutdown()
+ 
+@@ -1041,9 +1053,73 @@ def test_r4_the_lineage_cache_keeps_the_newest_512_entries(tmp_path):
+     engine = _engine(tmp_path)
+     try:
+         for i in range(600):
+-            assert engine._host_uid_lineage_key(f"s{i}") == (f"s{i}", None)
++            key, err = engine._host_uid_lineage_key(f"s{i}")
++            assert err is None and key and key.endswith(f":s{i}")
+         cache = engine._host_uid_lineage_cache
+         assert len(cache) == 512
+-        assert [key[1] for key in cache][:1] == ["s88"] and list(cache)[-1][1] == "s599"
++        # Extract session ids from cache keys (format: (path, session_id) -> (key, error))
++        cache_sessions = [key[1] for key in list(cache.keys())]
++        assert cache_sessions[:1] == ["s88"] and cache_sessions[-1] == "s599"
+     finally:
+         engine.shutdown()
++
++
++# -- #836 stale bindings and home tag collision detection -----------------------------------------------
++
++def test_836_host_uid_bindings_are_deleted_with_session_messages(tmp_path):
++    """#836: delete_session_messages removes stale host_uid_bindings so store_id reuse doesn't inherit them."""
++    _state_db(tmp_path, [("S", None, None)])
++    engine = _engine(tmp_path)
++    try:
++        engine.ingest([_m("user", "hello" + PAD, 10.0, "u-1"), _m("assistant", "hi", 11.0, "u-2")])
++        initial_bindings = _bindings(engine)
++        assert len(initial_bindings) == 2
++        store_id_1 = initial_bindings[0][0]
++        # Delete the session
++        deleted = engine._store.delete_session_messages("S")
++        assert deleted == 2
++        # Bindings for deleted store_ids should be gone
++        remaining_bindings = _bindings(engine)
++        assert len(remaining_bindings) == 0
++        # Ingest again; new messages might reuse store_id 1 (SQLite reuse)
++        engine.ingest([_m("user", "goodbye" + PAD, 20.0, "u-3")])
++        new_bindings = _bindings(engine)
++        # The new row should bind to a fresh uid, not inherit stale bindings
++        assert len(new_bindings) == 1
++        new_store_id = new_bindings[0][0]
++        new_uid = new_bindings[0][1]
++        assert new_uid == "u-3"
++        # If the store_id was reused, it should NOT have the old bindings
++        if new_store_id == store_id_1:
++            assert (store_id_1, "u-1", "S", "canonical", 1, "stored_new") not in new_bindings
++    finally:
++        engine.shutdown()
++
++
++def test_836_different_hermes_homes_have_different_lineage_keys(tmp_path):
++    """#836: lineage_key includes home_tag to prevent collisions across Hermes homes."""
++    home1 = tmp_path / "home1"
++    home2 = tmp_path / "home2"
++    home1.mkdir()
++    home2.mkdir()
++    # Create identical session structure in two homes
++    _state_db(home1, [("S", None, None)])
++    _state_db(home2, [("S", None, None)])
++    # Create engines in different homes with the same session id
++    engine1 = LCMEngine(config=LCMConfig(database_path=str(tmp_path / "lcm1.db")), hermes_home=str(home1))
++    engine1.on_session_start("S", platform="cli", context_length=200_000)
++    engine2 = LCMEngine(config=LCMConfig(database_path=str(tmp_path / "lcm2.db")), hermes_home=str(home2))
++    engine2.on_session_start("S", platform="cli", context_length=200_000)
++    try:
++        key1, err1 = engine1._host_uid_lineage_key()
++        key2, err2 = engine2._host_uid_lineage_key()
++        assert err1 is None and err2 is None
++        # Extract just the root part for comparison
++        root1 = key1.split(":", 1)[1] if ":" in key1 else key1
++        root2 = key2.split(":", 1)[1] if ":" in key2 else key2
++        assert root1 == "S" and root2 == "S"  # Same root session
++        assert key1 != key2  # But different full keys due to different home_tags
++        assert key1.startswith(key1.split(":")[0]) and key2.startswith(key2.split(":")[0])  # Different home_tag prefixes
++    finally:
++        engine1.shutdown()
++        engine2.shutdown()

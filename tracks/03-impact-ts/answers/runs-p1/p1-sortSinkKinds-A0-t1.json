@@ -1,0 +1,24 @@
+{
+ "locations": [
+  {
+   "path": "gitnexus/src/core/ingestion/taint/summary-harvest.ts",
+   "line": 524
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/taint/summary-harvest.ts",
+   "line": 531
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/taint/summary-harvest.ts",
+   "line": 551
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/taint/propagate.ts",
+   "line": 375
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/taint/propagate.ts",
+   "line": 911
+  }
+ ]
+}

@@ -1,0 +1,96 @@
+diff --git a/agent/turn_final_response.py b/agent/turn_final_response.py
+index 6ebc4050..242a24c4 100644
+--- a/agent/turn_final_response.py
++++ b/agent/turn_final_response.py
+@@ -97,9 +97,22 @@ def finish_text_response(
+     # ``api_content`` sidecar, so the next turn still replays it byte-identically.
+     _content = assistant_message.content
+     _promoted = None
++    # Claude's signed thinking is a summary, not an answer. Plugins replaying native
++    # Claude turns carry the same distinction in their private reasoning_details.
++    _native_thinking = any(
++        isinstance(detail, dict) and (
++            str(detail.get("type", "")).endswith(".native_assistant")
++            or (
++                detail.get("type") in {"thinking", "redacted_thinking"}
++                and (detail.get("signature") or detail.get("data"))
++            )
++        )
++        for detail in (getattr(assistant_message, "reasoning_details", None) or [])
++    )
+     if (
+         finish_reason == "stop"
+         and not assistant_message.tool_calls
++        and not _native_thinking
+         and (_content is None or (isinstance(_content, str) and not _content.strip()))
+     ):
+         _promoted = agent._extract_reasoning(assistant_message) or None
+diff --git a/tests/agent/test_reasoning_only_stop_persistence.py b/tests/agent/test_reasoning_only_stop_persistence.py
+index 063fcab0..f1460631 100644
+--- a/tests/agent/test_reasoning_only_stop_persistence.py
++++ b/tests/agent/test_reasoning_only_stop_persistence.py
+@@ -10,6 +10,7 @@ sidecar, so the next request still replays the answer byte-identically.
+ 
+ from __future__ import annotations
+ 
++from types import SimpleNamespace
+ from unittest.mock import MagicMock, patch
+ 
+ import pytest
+@@ -175,3 +176,56 @@ def test_genuine_reasoning_only_answer_with_tools_still_promotes_on_first_call(l
+         ])
+         assert result["api_calls"] == 1
+         assert result["final_response"] == answer
++
++
++@pytest.mark.parametrize("block", [
++    {"type": "thinking", "thinking": "I will factor the number.", "signature": "sig-abc"},
++    {"type": "redacted_thinking", "data": "opaque-thinking"},
++])
++def test_native_anthropic_thinking_only_stop_continues_to_text(loop_agent, block):
++    loop_agent.api_mode = "anthropic_messages"
++    loop_agent.provider = "anthropic"
++    loop_agent.base_url = "https://api.anthropic.com"
++    loop_agent.model = "claude-opus-4-7"
++    responses = [
++        SimpleNamespace(content=[SimpleNamespace(**block)], stop_reason="end_turn", usage=None),
++        SimpleNamespace(content=[SimpleNamespace(type="text", text="391 = 17 x 23.")],
++                        stop_reason="end_turn", usage=None),
++    ]
++    with (
++        patch.object(loop_agent, "_interruptible_api_call", side_effect=responses) as call,
++        patch.object(loop_agent, "_persist_session"),
++        patch.object(loop_agent, "_save_trajectory"),
++        patch.object(loop_agent, "_cleanup_task_resources"),
++    ):
++        result = loop_agent.run_conversation("factor 391")
++
++    assert result["final_response"] == "391 = 17 x 23."
++    assert result["api_calls"] == call.call_count == 2
++    assert all(m.get("content") != block.get("thinking")
++               for m in result["messages"] if m.get("content"))
++
++
++@pytest.mark.parametrize("details, expected_calls", [
++    ([{"type": "thinking", "thinking": "Summary", "signature": "sig-abc"}], 2),
++    ([{"type": "redacted_thinking", "data": "opaque-thinking"}], 2),
++    ([{"type": "claude-subscription-directsdk-experimental.native_assistant",
++       "message": {"role": "assistant", "content": [
++           {"type": "thinking", "thinking": "Summary", "signature": "sig-abc"},
++       ]}}], 2),
++    ([{"type": "other-plugin.native_assistant"}], 2),
++    ([{"type": "thinking", "thinking": "I will factor the number."}], 1),
++    ([{"type": "reasoning.text", "text": "I will factor the number.", "signature": "sig-abc"}], 1),
++    (None, 1),
++])
++def test_chat_reasoning_promotion_distinguishes_native_thinking(loop_agent, details, expected_calls):
++    from tests.agent.test_run_agent import _mock_response
++
++    summary = "I will factor the number."
++    response = _mock_response(content=None, finish_reason="stop", reasoning_content=summary,
++                              reasoning_details=details)
++    result = _run(loop_agent, [response, _mock_response(content="391 = 17 x 23.")],
++                  user_message="factor 391")
++
++    assert result["api_calls"] == expected_calls
++    assert result["final_response"] == ("391 = 17 x 23." if expected_calls == 2 else summary)

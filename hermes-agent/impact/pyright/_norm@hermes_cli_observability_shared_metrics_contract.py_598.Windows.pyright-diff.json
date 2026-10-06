@@ -1,0 +1,175 @@
+{
+ "platform": "Windows",
+ "summary": {
+  "filesAnalyzed": 2383,
+  "errorCount": 15440,
+  "warningCount": 77,
+  "informationCount": 0,
+  "timeInSec": 167.58
+ },
+ "added": [
+  {
+   "file": "hermes_cli/observability/shared_metrics_contract.py",
+   "line": 608,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "hermes_cli/observability/shared_metrics_contract.py",
+   "line": 613,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "hermes_cli/observability/shared_metrics_contract.py",
+   "line": 621,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "hermes_cli/observability/shared_metrics_contract.py",
+   "line": 1272,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "hermes_cli/observability/shared_metrics_contract.py",
+   "line": 1309,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "hermes_cli/observability/shared_metrics_contract.py",
+   "line": 1323,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "hermes_cli/observability/shared_metrics_contract.py",
+   "line": 1374,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "hermes_cli/observability/shared_metrics_contract.py",
+   "line": 1417,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "hermes_cli/observability/shared_metrics_contract.py",
+   "line": 1420,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "hermes_cli/observability/shared_metrics_contract.py",
+   "line": 1425,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "hermes_cli/observability/shared_metrics_contract.py",
+   "line": 1434,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "hermes_cli/observability/shared_metrics_contract.py",
+   "line": 1496,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "hermes_cli/observability/shared_metrics_contract.py",
+   "line": 1515,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "hermes_cli/observability/shared_metrics_contract.py",
+   "line": 1530,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "hermes_cli/observability/shared_metrics_contract.py",
+   "line": 1555,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "hermes_cli/observability/shared_metrics_contract.py",
+   "line": 1582,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "hermes_cli/observability/shared_metrics_contract.py",
+   "line": 1641,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "hermes_cli/observability/shared_metrics_contract.py",
+   "line": 1665,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "hermes_cli/observability/shared_metrics_contract.py",
+   "line": 1666,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "hermes_cli/observability/shared_metrics_fields.py",
+   "line": 112,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "hermes_cli/observability/shared_metrics_fields.py",
+   "line": 133,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "hermes_cli/observability/shared_metrics_fields.py",
+   "line": 134,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "hermes_cli/observability/shared_metrics_fields.py",
+   "line": 163,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "hermes_cli/observability/shared_metrics_fields.py",
+   "line": 166,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "hermes_cli/observability/shared_metrics_fields.py",
+   "line": 170,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "hermes_cli/observability/shared_metrics_install.py",
+   "line": 148,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "hermes_cli/observability/shared_metrics_install.py",
+   "line": 164,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  }
+ ],
+ "removed_keys": []
+}

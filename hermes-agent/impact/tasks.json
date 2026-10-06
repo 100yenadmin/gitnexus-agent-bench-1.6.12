@@ -1,0 +1,194 @@
+[
+ {
+  "id": "h-impact-format_bytes",
+  "repo": "NousResearch/hermes-agent",
+  "base_commit": "d62fbea7e110c6008e1ffe1b226d1f593ba4bc28",
+  "kind": "qa",
+  "class": "impact",
+  "target": {
+   "name": "format_bytes",
+   "cls": null,
+   "file": "hermes_cli/sizefmt.py",
+   "line": 7
+  },
+  "probe": "positional",
+  "gt_sites": 24,
+  "gt": "gt.json",
+  "prompt": "Impact check before a change. We are about to add a new required parameter to `format_bytes`, the function declared at `hermes_cli/sizefmt.py:7`. Before anyone edits code, list every location in this repository's Python code that would have to be updated so the project still type-checks (pyright) and runs after that change: each place that calls this exact function, or otherwise uses it in a way that would break (for example passing it, or an object that carries it, where a compatible signature is required). Do not include other functions or methods that only share its name, the declaration itself, import/export statements, comments, strings, or test code (any file under a `tests/` or `test/` directory, or named `test_*.py`, `*_test.py` or `conftest.py`). Do not modify any repository files.\n\nWrite `.bench-review/answer.json` as UTF-8 JSON with exactly this shape:\n{\"locations\": [{\"path\": \"<repo-relative path>.py\", \"line\": <1-based line of the call or use>}]}\nOne entry per affected line. Then reply with a one-line summary.",
+  "answer_file": ".bench-review/answer.json",
+  "env": {
+   "HERMES_HOME": "{TMP}/hermes-home",
+   "HERMES_DISABLE_LAZY_INSTALLS": "1",
+   "UV_NO_SYNC": "1",
+   "HERMES_PYTHON": "{RUNDIR}/.venv/bin/python"
+  }
+ },
+ {
+  "id": "h-impact-_norm",
+  "repo": "NousResearch/hermes-agent",
+  "base_commit": "d62fbea7e110c6008e1ffe1b226d1f593ba4bc28",
+  "kind": "qa",
+  "class": "impact",
+  "target": {
+   "name": "_norm",
+   "cls": null,
+   "file": "hermes_cli/observability/shared_metrics_contract.py",
+   "line": 598
+  },
+  "probe": "positional",
+  "gt_sites": 27,
+  "gt": "gt.json",
+  "prompt": "Impact check before a change. We are about to add a new required parameter to `_norm`, the function declared at `hermes_cli/observability/shared_metrics_contract.py:598`. Before anyone edits code, list every location in this repository's Python code that would have to be updated so the project still type-checks (pyright) and runs after that change: each place that calls this exact function, or otherwise uses it in a way that would break (for example passing it, or an object that carries it, where a compatible signature is required). Do not include other functions or methods that only share its name, the declaration itself, import/export statements, comments, strings, or test code (any file under a `tests/` or `test/` directory, or named `test_*.py`, `*_test.py` or `conftest.py`). Do not modify any repository files.\n\nWrite `.bench-review/answer.json` as UTF-8 JSON with exactly this shape:\n{\"locations\": [{\"path\": \"<repo-relative path>.py\", \"line\": <1-based line of the call or use>}]}\nOne entry per affected line. Then reply with a one-line summary.",
+  "answer_file": ".bench-review/answer.json",
+  "env": {
+   "HERMES_HOME": "{TMP}/hermes-home",
+   "HERMES_DISABLE_LAZY_INSTALLS": "1",
+   "UV_NO_SYNC": "1",
+   "HERMES_PYTHON": "{RUNDIR}/.venv/bin/python"
+  }
+ },
+ {
+  "id": "h-impact-_write",
+  "repo": "NousResearch/hermes-agent",
+  "base_commit": "d62fbea7e110c6008e1ffe1b226d1f593ba4bc28",
+  "kind": "qa",
+  "class": "impact",
+  "target": {
+   "name": "_write",
+   "cls": null,
+   "file": "pm/lock.py",
+   "line": 66
+  },
+  "probe": "positional",
+  "gt_sites": 13,
+  "gt": "gt.json",
+  "prompt": "Impact check before a change. We are about to add a new required parameter to `_write`, the function declared at `pm/lock.py:66`. Before anyone edits code, list every location in this repository's Python code that would have to be updated so the project still type-checks (pyright) and runs after that change: each place that calls this exact function, or otherwise uses it in a way that would break (for example passing it, or an object that carries it, where a compatible signature is required). Do not include other functions or methods that only share its name, the declaration itself, import/export statements, comments, strings, or test code (any file under a `tests/` or `test/` directory, or named `test_*.py`, `*_test.py` or `conftest.py`). Do not modify any repository files.\n\nWrite `.bench-review/answer.json` as UTF-8 JSON with exactly this shape:\n{\"locations\": [{\"path\": \"<repo-relative path>.py\", \"line\": <1-based line of the call or use>}]}\nOne entry per affected line. Then reply with a one-line summary.",
+  "answer_file": ".bench-review/answer.json",
+  "env": {
+   "HERMES_HOME": "{TMP}/hermes-home",
+   "HERMES_DISABLE_LAZY_INSTALLS": "1",
+   "UV_NO_SYNC": "1",
+   "HERMES_PYTHON": "{RUNDIR}/.venv/bin/python"
+  }
+ },
+ {
+  "id": "h-impact-_fail",
+  "repo": "NousResearch/hermes-agent",
+  "base_commit": "d62fbea7e110c6008e1ffe1b226d1f593ba4bc28",
+  "kind": "qa",
+  "class": "impact",
+  "target": {
+   "name": "_fail",
+   "cls": null,
+   "file": "hermes_cli/plugins_cmd.py",
+   "line": 113
+  },
+  "probe": "positional",
+  "gt_sites": 20,
+  "gt": "gt.json",
+  "prompt": "Impact check before a change. We are about to add a new required parameter to `_fail`, the function declared at `hermes_cli/plugins_cmd.py:113`. Before anyone edits code, list every location in this repository's Python code that would have to be updated so the project still type-checks (pyright) and runs after that change: each place that calls this exact function, or otherwise uses it in a way that would break (for example passing it, or an object that carries it, where a compatible signature is required). Do not include other functions or methods that only share its name, the declaration itself, import/export statements, comments, strings, or test code (any file under a `tests/` or `test/` directory, or named `test_*.py`, `*_test.py` or `conftest.py`). Do not modify any repository files.\n\nWrite `.bench-review/answer.json` as UTF-8 JSON with exactly this shape:\n{\"locations\": [{\"path\": \"<repo-relative path>.py\", \"line\": <1-based line of the call or use>}]}\nOne entry per affected line. Then reply with a one-line summary.",
+  "answer_file": ".bench-review/answer.json",
+  "env": {
+   "HERMES_HOME": "{TMP}/hermes-home",
+   "HERMES_DISABLE_LAZY_INSTALLS": "1",
+   "UV_NO_SYNC": "1",
+   "HERMES_PYTHON": "{RUNDIR}/.venv/bin/python"
+  }
+ },
+ {
+  "id": "h-impact-_section",
+  "repo": "NousResearch/hermes-agent",
+  "base_commit": "d62fbea7e110c6008e1ffe1b226d1f593ba4bc28",
+  "kind": "qa",
+  "class": "impact",
+  "target": {
+   "name": "_section",
+   "cls": null,
+   "file": "hermes_cli/doctor_report.py",
+   "line": 31
+  },
+  "probe": "positional",
+  "gt_sites": 9,
+  "gt": "gt.json",
+  "prompt": "Impact check before a change. We are about to add a new required parameter to `_section`, the function declared at `hermes_cli/doctor_report.py:31`. Before anyone edits code, list every location in this repository's Python code that would have to be updated so the project still type-checks (pyright) and runs after that change: each place that calls this exact function, or otherwise uses it in a way that would break (for example passing it, or an object that carries it, where a compatible signature is required). Do not include other functions or methods that only share its name, the declaration itself, import/export statements, comments, strings, or test code (any file under a `tests/` or `test/` directory, or named `test_*.py`, `*_test.py` or `conftest.py`). Do not modify any repository files.\n\nWrite `.bench-review/answer.json` as UTF-8 JSON with exactly this shape:\n{\"locations\": [{\"path\": \"<repo-relative path>.py\", \"line\": <1-based line of the call or use>}]}\nOne entry per affected line. Then reply with a one-line summary.",
+  "answer_file": ".bench-review/answer.json",
+  "env": {
+   "HERMES_HOME": "{TMP}/hermes-home",
+   "HERMES_DISABLE_LAZY_INSTALLS": "1",
+   "UV_NO_SYNC": "1",
+   "HERMES_PYTHON": "{RUNDIR}/.venv/bin/python"
+  }
+ },
+ {
+  "id": "h-impact-CredentialPool.has_credentials",
+  "repo": "NousResearch/hermes-agent",
+  "base_commit": "d62fbea7e110c6008e1ffe1b226d1f593ba4bc28",
+  "kind": "qa",
+  "class": "impact",
+  "target": {
+   "name": "has_credentials",
+   "cls": "CredentialPool",
+   "file": "agent/credential_pool.py",
+   "line": 1036
+  },
+  "probe": "positional",
+  "gt_sites": 27,
+  "gt": "gt.json",
+  "prompt": "Impact check before a change. We are about to add a new required parameter to `CredentialPool.has_credentials`, the method declared at `agent/credential_pool.py:1036`. Before anyone edits code, list every location in this repository's Python code that would have to be updated so the project still type-checks (pyright) and runs after that change: each place that calls this exact method, or otherwise uses it in a way that would break (for example passing it, or an object that carries it, where a compatible signature is required). Do not include other functions or methods that only share its name, the declaration itself, import/export statements, comments, strings, or test code (any file under a `tests/` or `test/` directory, or named `test_*.py`, `*_test.py` or `conftest.py`). Do not modify any repository files.\n\nWrite `.bench-review/answer.json` as UTF-8 JSON with exactly this shape:\n{\"locations\": [{\"path\": \"<repo-relative path>.py\", \"line\": <1-based line of the call or use>}]}\nOne entry per affected line. Then reply with a one-line summary.",
+  "answer_file": ".bench-review/answer.json",
+  "env": {
+   "HERMES_HOME": "{TMP}/hermes-home",
+   "HERMES_DISABLE_LAZY_INSTALLS": "1",
+   "UV_NO_SYNC": "1",
+   "HERMES_PYTHON": "{RUNDIR}/.venv/bin/python"
+  }
+ },
+ {
+  "id": "h-impact-ProviderRegistry.export",
+  "repo": "NousResearch/hermes-agent",
+  "base_commit": "d62fbea7e110c6008e1ffe1b226d1f593ba4bc28",
+  "kind": "qa",
+  "class": "impact",
+  "target": {
+   "name": "export",
+   "cls": "ProviderRegistry",
+   "file": "agent/provider_registry.py",
+   "line": 161
+  },
+  "probe": "positional",
+  "gt_sites": 7,
+  "gt": "gt.json",
+  "prompt": "Impact check before a change. We are about to add a new required parameter to `ProviderRegistry.export`, the method declared at `agent/provider_registry.py:161`. Before anyone edits code, list every location in this repository's Python code that would have to be updated so the project still type-checks (pyright) and runs after that change: each place that calls this exact method, or otherwise uses it in a way that would break (for example passing it, or an object that carries it, where a compatible signature is required). Do not include other functions or methods that only share its name, the declaration itself, import/export statements, comments, strings, or test code (any file under a `tests/` or `test/` directory, or named `test_*.py`, `*_test.py` or `conftest.py`). Do not modify any repository files.\n\nWrite `.bench-review/answer.json` as UTF-8 JSON with exactly this shape:\n{\"locations\": [{\"path\": \"<repo-relative path>.py\", \"line\": <1-based line of the call or use>}]}\nOne entry per affected line. Then reply with a one-line summary.",
+  "answer_file": ".bench-review/answer.json",
+  "env": {
+   "HERMES_HOME": "{TMP}/hermes-home",
+   "HERMES_DISABLE_LAZY_INSTALLS": "1",
+   "UV_NO_SYNC": "1",
+   "HERMES_PYTHON": "{RUNDIR}/.venv/bin/python"
+  }
+ },
+ {
+  "id": "h-impact-normalize_provider",
+  "repo": "NousResearch/hermes-agent",
+  "base_commit": "d62fbea7e110c6008e1ffe1b226d1f593ba4bc28",
+  "kind": "qa",
+  "class": "impact",
+  "target": {
+   "name": "normalize_provider",
+   "cls": null,
+   "file": "hermes_cli/providers.py",
+   "line": 164
+  },
+  "probe": "positional",
+  "gt_sites": 20,
+  "gt": "gt.json",
+  "prompt": "Impact check before a change. We are about to add a new required parameter to `normalize_provider`, the function declared at `hermes_cli/providers.py:164`. Before anyone edits code, list every location in this repository's Python code that would have to be updated so the project still type-checks (pyright) and runs after that change: each place that calls this exact function, or otherwise uses it in a way that would break (for example passing it, or an object that carries it, where a compatible signature is required). Do not include other functions or methods that only share its name, the declaration itself, import/export statements, comments, strings, or test code (any file under a `tests/` or `test/` directory, or named `test_*.py`, `*_test.py` or `conftest.py`). Do not modify any repository files.\n\nWrite `.bench-review/answer.json` as UTF-8 JSON with exactly this shape:\n{\"locations\": [{\"path\": \"<repo-relative path>.py\", \"line\": <1-based line of the call or use>}]}\nOne entry per affected line. Then reply with a one-line summary.",
+  "answer_file": ".bench-review/answer.json",
+  "env": {
+   "HERMES_HOME": "{TMP}/hermes-home",
+   "HERMES_DISABLE_LAZY_INSTALLS": "1",
+   "UV_NO_SYNC": "1",
+   "HERMES_PYTHON": "{RUNDIR}/.venv/bin/python"
+  }
+ }
+]

@@ -1,0 +1,344 @@
+diff --git a/command.py b/command.py
+index d1efa8a..329c884 100644
+--- a/command.py
++++ b/command.py
+@@ -63,7 +63,7 @@ from .assertion_store import AssertionSchemaUnavailableError, AssertionStore
+ from . import rollup_builder
+ from .rollup_store import RollupStore
+ from .session_patterns import build_session_match_keys, matches_session_pattern
+-from .store import build_message_fts_spec, delete_message_relations
++from .store import build_message_fts_spec, delete_host_uid_bindings, delete_message_relations
+ from .survival_fit import SURVIVAL_FIT_COUNTER_KEY
+ from .host_uid import host_uid_doctor_lines
+ from .chunking import (
+@@ -2048,11 +2048,13 @@ def _delete_clean_candidates_atomically(engine, session_ids: set[str]) -> dict[s
+                 "WHERE scope.session_id = messages.session_id)"
+             ).fetchall()
+         ]
+-        delete_message_relations(conn, (
++        rows_sql = (
+             f"SELECT store_id FROM messages WHERE EXISTS ("
+             f"SELECT 1 FROM {scope_table} AS scope "
+             "WHERE scope.session_id = messages.session_id)"
+-        ))
++        )
++        delete_message_relations(conn, rows_sql)
++        delete_host_uid_bindings(conn, rows_sql)
+         msg_cur = conn.execute(
+             f"DELETE FROM messages WHERE EXISTS ("
+             f"SELECT 1 FROM {scope_table} AS scope "
+diff --git a/host_uid.py b/host_uid.py
+index bd6f9ef..02f8515 100644
+--- a/host_uid.py
++++ b/host_uid.py
+@@ -7,6 +7,7 @@ so a replayed prefix never inflates it. ``LCM_HOST_MESSAGE_UID=off`` does nothin
+ from __future__ import annotations
+ 
+ import bisect
++import hashlib
+ import json
+ import logging
+ import os
+@@ -69,17 +70,21 @@ class HostUidShadowMixin:
+     """Mixed into LCMEngine; reads ``self._store``, ``_state_db_path`` and the reconcile identity helpers."""
+ 
+     def _host_uid_lineage_key(self, session_id=None) -> tuple:
+-        """R3-4: ``(root, None)`` by Hermes' own walk (``_session_turn_lease_key_on_conn``: up while the parent ended
++        """R3-4: ``(<home_tag>:<root>, None)`` by Hermes' own walk (``_session_turn_lease_key_on_conn``: up while the parent ended
+         by compression and the row is no fork child), else ``(None, "read_error" | "unresolved")`` (no state.db,
+-        missing row, cycle, over 256 hops). Cached per (state.db, session id): a root, or a missing state.db."""
++        missing row, cycle, over 256 hops). The home tag is the first 16 SHA256 hex chars of the resolved state.db path.
++        Cached per (resolved state.db, session id): a namespaced root, or a missing state.db."""
+         session_id = str(self._session_id if session_id is None else session_id or "")
+         cache = self.__dict__.setdefault("_host_uid_lineage_cache", {})
+         try:
+-            path = Path(self._state_db_path())
++            path = Path(self._state_db_path()).resolve()
+             key = (str(path), session_id)  # keyed by the home too: a profile switch changes the state.db
+             if key in cache:
+                 return cache[key]
+             found = self._host_uid_read_lineage(path, session_id)
++            if found[0] is not None:
++                home_tag = hashlib.sha256(str(path).encode()).hexdigest()[:16]
++                found = (f"{home_tag}:{found[0]}", None)
+         except Exception as exc:  # host DB drift: no root, no binding; counted as an error
+             self._host_uid_read_error = exc
+             return None, "read_error"
+diff --git a/store.py b/store.py
+index e1c50c4..ac612a1 100644
+--- a/store.py
++++ b/store.py
+@@ -277,6 +277,15 @@ def delete_message_relations(conn: sqlite3.Connection, rows_sql: str, args: tupl
+         )
+ 
+ 
++def delete_host_uid_bindings(conn: sqlite3.Connection, rows_sql: str, args: tuple = ()) -> None:
++    """Remove bindings for the selected store ids in the caller's delete transaction.
++
++    Shadow capture is optional: never create the side table just to delete rows.
++    """
++    if conn.execute("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'host_uid_bindings'").fetchone():
++        conn.execute(f"DELETE FROM host_uid_bindings WHERE store_id IN ({rows_sql})", args)
++
++
+ class MessageStore:
+     """SQLite-backed immutable message store."""
+ 
+@@ -582,16 +591,16 @@ class MessageStore:
+             return cur.rowcount if cur.rowcount is not None else 0
+ 
+     def delete_session_messages(self, session_id: str) -> int:
+-        """Delete all messages for a session. Returns count deleted."""
+-        with self._write_lock:
+-            delete_message_relations(self._conn, "SELECT store_id FROM messages WHERE session_id = ?", (session_id,))
++        """Delete a session's messages and identity side rows atomically. Returns count deleted."""
++        with self._write_lock, self._conn:
++            rows_sql = "SELECT store_id FROM messages WHERE session_id = ?"
++            delete_message_relations(self._conn, rows_sql, (session_id,))
++            delete_host_uid_bindings(self._conn, rows_sql, (session_id,))
+             cur = self._conn.execute(
+                 "DELETE FROM messages WHERE session_id = ?",
+                 (session_id,),
+             )
+-            self._conn.commit()
+-            deleted = cur.rowcount if cur.rowcount is not None else 0
+-            return deleted
++            return cur.rowcount if cur.rowcount is not None else 0
+ 
+     def gc_externalized_tool_result(
+         self,
+diff --git a/tests/test_host_uid_shadow.py b/tests/test_host_uid_shadow.py
+index e49dbb2..ddaa789 100644
+--- a/tests/test_host_uid_shadow.py
++++ b/tests/test_host_uid_shadow.py
+@@ -6,6 +6,7 @@ fed to the classifier directly."""
+ 
+ from __future__ import annotations
+ 
++import hashlib
+ import json
+ import logging
+ import os
+@@ -16,7 +17,7 @@ import sqlite3
+ import pytest
+ 
+ import hermes_lcm.config as lcm_config
+-from hermes_lcm.command import _doctor_text
++from hermes_lcm.command import _delete_clean_candidates_atomically, _doctor_text
+ from hermes_lcm.config import LCMConfig, host_message_uid_mode
+ from hermes_lcm.db_bootstrap import SCHEMA_VERSION, get_schema_version, run_versioned_migrations
+ from hermes_lcm.engine import LCMEngine
+@@ -106,8 +107,8 @@ def test_new_rows_bind_canonical_in_the_lineage_root(tmp_path):
+     try:
+         engine.ingest([_m("user", "hello" + PAD, 10.0, "u-1"), _m("assistant", "hi", 11.0, "u-2")])
+         user_id, reply_id = _id_of(engine, "hello" + PAD), _id_of(engine, "hi")
+-        assert _bindings(engine) == [(user_id, "u-1", "S", "canonical", 1, "stored_new"),
+-                                     (reply_id, "u-2", "S", "canonical", 1, "stored_new")]
++        assert _bindings(engine) == [(user_id, "u-1", _lineage(tmp_path, "S"), "canonical", 1, "stored_new"),
++                                     (reply_id, "u-2", _lineage(tmp_path, "S"), "canonical", 1, "stored_new")]
+         assert _counts(engine) == {"unbound.agree_new": 2}
+         assert _durable(engine) == {"unbound.agree_new": 2}
+     finally:
+@@ -120,7 +121,7 @@ def test_on_mode_behaves_exactly_like_shadow(tmp_path, monkeypatch):
+     engine = _engine(tmp_path)
+     try:
+         engine.ingest([_m("user", "hello" + PAD, 10.0, "u-1")])
+-        assert [b[1:4] for b in _bindings(engine)] == [("u-1", "S", "canonical")]
++        assert [b[1:4] for b in _bindings(engine)] == [("u-1", _lineage(tmp_path, "S"), "canonical")]
+         assert _counts(engine) == {"unbound.agree_new": 1}
+     finally:
+         engine.shutdown()
+@@ -260,6 +261,11 @@ def test_ignore_pattern_drop_is_skipped_not_stored(tmp_path, monkeypatch):
+ 
+ # -- lineage root (R3-4) --------------------------------------------------------------------------------
+ 
++def _lineage(home, root):
++    tag = hashlib.sha256(str((home / "state.db").resolve()).encode()).hexdigest()[:16]
++    return f"{tag}:{root}"
++
++
+ def _root(tmp_path, session: str):
+     engine = _engine(tmp_path, session=session)
+     try:
+@@ -280,17 +286,17 @@ def test_compression_child_shares_its_root_branch_and_reset_children_start_their
+         ("Q", None, "user_exit"),
+         ("Y", "Q", None),  # parent did not end by compression
+     ])
+-    assert _root(tmp_path, "C") == "P"
+-    assert _root(tmp_path, "P") == "P"
++    assert _root(tmp_path, "C") == _lineage(tmp_path, "P")
++    assert _root(tmp_path, "P") == _lineage(tmp_path, "P")
+     for child in ("B", "R", "D", "T", "Y"):
+-        assert _root(tmp_path, child) == child
+-    assert _root(tmp_path, "X") == "P"
++        assert _root(tmp_path, child) == _lineage(tmp_path, child)
++    assert _root(tmp_path, "X") == _lineage(tmp_path, "P")
+ 
+ 
+ def test_truncated_or_unreadable_chain_gives_no_root(tmp_path):
+     chain = [("H0", None, "compression")] + [(f"H{i}", f"H{i - 1}", "compression") for i in range(1, 258)]
+     _state_db(tmp_path, chain)
+-    assert _root(tmp_path, "H256") == "H0"  # exactly 256 hops: still read
++    assert _root(tmp_path, "H256") == _lineage(tmp_path, "H0")  # exactly 256 hops: still read
+     assert _root(tmp_path, "H257") is None  # over 256 hops
+     assert _root(tmp_path, "missing") is None  # the session's own row is not readable
+     (tmp_path / "state.db").write_bytes(b"not a database" * 100)
+@@ -302,7 +308,7 @@ def test_rotation_child_binds_under_the_parent_root(tmp_path):
+     engine = _engine(tmp_path, session="C")
+     try:
+         engine.ingest([_m("user", "hello" + PAD, 10.0, "u-1")])
+-        assert [b[1:4] for b in _bindings(engine)] == [("u-1", "P", "canonical")]
++        assert [b[1:4] for b in _bindings(engine)] == [("u-1", _lineage(tmp_path, "P"), "canonical")]
+     finally:
+         engine.shutdown()
+ 
+@@ -354,7 +360,7 @@ def test_same_uid_new_bytes_is_version_new(tmp_path):
+         engine.ingest([_m("user", "hello" + PAD, 10.0, "u-1"), _m("user", "edited" + PAD, 10.5, "u-1")])
+         edited = _id_of(engine, "edited" + PAD)
+         assert _counts(engine) == {"unbound.agree_new": 1, "bound.version_new": 1}
+-        assert _bindings(engine)[-1] == (edited, "u-1", "S", "version", 1, "version_new")
++        assert _bindings(engine)[-1] == (edited, "u-1", _lineage(tmp_path, "S"), "version", 1, "version_new")
+     finally:
+         engine.shutdown()
+ 
+@@ -378,7 +384,7 @@ def test_same_uid_same_bytes_stored_again_disagrees(tmp_path):
+ def _anchored(tmp_path, engine, seeded, host_view, *, bind=()):
+     """Feed ``host_view`` to a restarted engine after seeding ``bind`` = [(content, uid, kind)]."""
+     if bind:
+-        engine._store.add_host_uid_bindings("S", [(seeded[c], uid, kind, "seed") for c, uid, kind in bind])
++        engine._store.add_host_uid_bindings(_lineage(tmp_path, "S"), [(seeded[c], uid, kind, "seed") for c, uid, kind in bind])
+     engine.ingest(host_view)
+ 
+ 
+@@ -594,7 +600,7 @@ def test_f2_late_off_current_session_end_suffix_is_observed_under_that_session(t
+     try:
+         engine.on_session_end("A", [_m("user", "late" + PAD, 10.0, "u-late"), _m("assistant", "ok", 11.0)])
+         late = next(r for r in engine._store.get_session_messages("A") if r["content"] == "late" + PAD)
+-        assert [b[:4] for b in _bindings(engine)] == [(late["store_id"], "u-late", "A", "canonical")]
++        assert [b[:4] for b in _bindings(engine)] == [(late["store_id"], "u-late", _lineage(tmp_path, "A"), "canonical")]
+         assert _counts(engine) == {"unbound.agree_new": 1, "skipped.no_uid": 1}
+     finally:
+         engine.shutdown()
+@@ -915,9 +921,9 @@ def test_r3_the_lineage_cache_is_keyed_by_home(tmp_path):
+     engine = LCMEngine(config=LCMConfig(database_path=str(tmp_path / "lcm.db")), hermes_home=str(tmp_path / "one"))
+     engine.on_session_start("S", platform="cli", context_length=200_000)
+     try:
+-        assert engine._host_uid_lineage_key() == ("P", None)
++        assert engine._host_uid_lineage_key() == (_lineage(tmp_path / "one", "P"), None)
+         engine._hermes_home = str(tmp_path / "two")  # the same session id under another profile home
+-        assert engine._host_uid_lineage_key() == ("S", None)
++        assert engine._host_uid_lineage_key() == (_lineage(tmp_path / "two", "S"), None)
+     finally:
+         engine.shutdown()
+ 
+@@ -948,7 +954,7 @@ def test_r3_the_gate_counts_only_canonical_and_version_bindings(tmp_path):
+     try:
+         engine.ingest([_m("user", "hello" + PAD, 10.0, "u-1")])
+         store_id = _bindings(engine)[0][0]
+-        engine._store.add_host_uid_bindings("S", [(store_id, "u-alias", "alias_candidate", "unknown")])
++        engine._store.add_host_uid_bindings(_lineage(tmp_path, "S"), [(store_id, "u-alias", "alias_candidate", "unknown")])
+         engine._store._conn.execute("UPDATE host_uid_bindings SET first_check = 'disagree', disagree_seen = 1")
+         engine._store._conn.commit()
+         assert engine._store.host_uid_gate() == [(1, 0)]
+@@ -1031,7 +1037,7 @@ def test_r4_a_permission_denied_state_db_is_a_read_error_not_missing(tmp_path, m
+             assert not engine.__dict__.get("_host_uid_lineage_cache")
+         finally:
+             home.chmod(0o700)
+-        assert engine._host_uid_lineage_key() == ("S", None)
++        assert engine._host_uid_lineage_key() == (_lineage(home, "S"), None)
+     finally:
+         engine.shutdown()
+ 
+@@ -1041,9 +1047,91 @@ def test_r4_the_lineage_cache_keeps_the_newest_512_entries(tmp_path):
+     engine = _engine(tmp_path)
+     try:
+         for i in range(600):
+-            assert engine._host_uid_lineage_key(f"s{i}") == (f"s{i}", None)
++            assert engine._host_uid_lineage_key(f"s{i}") == (_lineage(tmp_path, f"s{i}"), None)
+         cache = engine._host_uid_lineage_cache
+         assert len(cache) == 512
+         assert [key[1] for key in cache][:1] == ["s88"] and list(cache)[-1][1] == "s599"
+     finally:
+         engine.shutdown()
++
++
++@pytest.mark.parametrize("path", ["store", "doctor"])
++@pytest.mark.parametrize("with_bindings", [False, True])
++def test_issue_836_deletes_only_affected_bindings(tmp_path, path, with_bindings):
++    engine = _engine(tmp_path, session="active")
++    store = engine._store
++    try:
++        kept = store.append("active", _m("user", "keep"))
++        deleted = store.append("junk", _m("user", "delete"))
++        if with_bindings:
++            store.add_host_uid_bindings("home:root", [
++                (kept, "keep", "canonical", None),
++                (deleted, "delete", "canonical", None),
++                (deleted, "alias", "alias", None),
++            ])
++        if path == "store":
++            assert store.delete_session_messages("junk") == 1
++        else:
++            assert _delete_clean_candidates_atomically(engine, {"junk", "active"})["messages_deleted"] == 1
++        assert store.get_session_messages("active")
++        assert not store.get_session_messages("junk")
++        if with_bindings:
++            assert [(b[0], b[1]) for b in _bindings(engine)] == [(kept, "keep")]
++            # Reuse the id as a legacy INTEGER PRIMARY KEY store can do.
++            store.connection.execute(
++                "INSERT INTO messages(store_id, session_id, role, content, timestamp) VALUES (?, 'new', 'user', 'new', 1)",
++                (deleted,),
++            )
++            store.connection.commit()
++            assert store.host_uid_uids_of_stores("home:root", [deleted]) == {}
++        else:
++            assert not _has_table(engine)
++    finally:
++        engine.shutdown()
++
++
++@pytest.mark.parametrize("path", ["store", "doctor"])
++def test_issue_836_failed_delete_rolls_back_bindings(tmp_path, path):
++    engine = _engine(tmp_path, session="active")
++    store = engine._store
++    try:
++        deleted = store.append("junk", _m("user", "delete"))
++        store.add_host_uid_bindings("home:root", [(deleted, "delete", "canonical", None)])
++        before = _bindings(engine)
++        store.connection.execute("CREATE TRIGGER reject_delete BEFORE DELETE ON messages "
++                                 "BEGIN SELECT RAISE(ABORT, 'delete failed'); END")
++        with pytest.raises(sqlite3.IntegrityError, match="delete failed"):
++            if path == "store":
++                store.delete_session_messages("junk")
++            else:
++                _delete_clean_candidates_atomically(engine, {"junk"})
++        assert not store.connection.in_transaction
++        assert _bindings(engine) == before
++        assert store.get_session_messages("junk")
++    finally:
++        engine.shutdown()
++
++
++def test_issue_836_same_root_is_isolated_by_home_and_symlinks_agree(tmp_path):
++    one, two = tmp_path / "one", tmp_path / "two"
++    for home in (one, two):
++        home.mkdir()
++        _state_db(home, [("S", None, None)])
++    link = tmp_path / "link"
++    link.symlink_to(one, target_is_directory=True)
++    engine = LCMEngine(config=LCMConfig(database_path=str(tmp_path / "lcm.db")), hermes_home=str(one))
++    engine.on_session_start("S", platform="cli", context_length=200_000)
++    try:
++        first, problem = engine._host_uid_lineage_key()
++        assert (first, problem) == (_lineage(one, "S"), None)
++        row = engine._store.append("S", _m("user", "one"))
++        engine._store.add_host_uid_bindings(first, [(row, "same-uid", "canonical", None)])
++        engine._hermes_home = str(two)
++        second, problem = engine._host_uid_lineage_key()
++        assert (second, problem) == (_lineage(two, "S"), None)
++        assert second != first
++        assert engine._store.host_uid_bindings_for(second, {"same-uid"}) == {}
++        engine._hermes_home = str(link)
++        assert engine._host_uid_lineage_key() == (first, None)
++    finally:
++        engine.shutdown()

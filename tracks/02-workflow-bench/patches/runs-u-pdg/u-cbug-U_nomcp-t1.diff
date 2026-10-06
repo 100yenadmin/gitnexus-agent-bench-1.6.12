@@ -1,0 +1,151 @@
+diff --git a/gitnexus/src/core/ingestion/languages/c/import-target.ts b/gitnexus/src/core/ingestion/languages/c/import-target.ts
+index 5590bb2..282dc65 100644
+--- a/gitnexus/src/core/ingestion/languages/c/import-target.ts
++++ b/gitnexus/src/core/ingestion/languages/c/import-target.ts
+@@ -44,6 +44,34 @@ const suffixIndex = perFileSet((allFilePaths: ReadonlySet<string>) => {
+   return index;
+ });
+ 
++/**
++ * Resolve a C `#include` target as the C scope resolver receives it, honouring
++ * the include's delimiters when the spelling still carries them.
++ *
++ *   - `<stdio.h>` is a system include: the compiler searches the system and
++ *     `-I` directories, never the including file's directory, so the repo's
++ *     file set says nothing about which header it names. A same-named in-repo
++ *     file (`src/stdio.h`) is a decoy, not an answer, so this returns `null` —
++ *     the same verdict `interpretCImport` reaches by dropping system includes
++ *     before they become imports.
++ *   - `"util.h"` is a quoted include: the quotes are stripped and the path is
++ *     resolved normally (same-directory sibling, exact, then suffix).
++ *   - A bare path (what `interpretCImport` emits for a quoted include) is
++ *     resolved unchanged.
++ */
++export function resolveCIncludeTarget(
++  targetRaw: string,
++  fromFile: string,
++  allFilePaths: ReadonlySet<string>,
++): string | null {
++  const spelling = targetRaw.trim();
++  if (spelling.startsWith('<') && spelling.endsWith('>')) return null;
++  if (spelling.length >= 2 && spelling.startsWith('"') && spelling.endsWith('"')) {
++    return resolveCImportTarget(spelling.slice(1, -1), fromFile, allFilePaths);
++  }
++  return resolveCImportTarget(targetRaw, fromFile, allFilePaths);
++}
++
+ /**
+  * Resolve a C #include path to a file in the workspace.
+  *
+diff --git a/gitnexus/src/core/ingestion/languages/c/index.ts b/gitnexus/src/core/ingestion/languages/c/index.ts
+index 8ebc2c9..e6a5167 100644
+--- a/gitnexus/src/core/ingestion/languages/c/index.ts
++++ b/gitnexus/src/core/ingestion/languages/c/index.ts
+@@ -7,7 +7,7 @@ export { splitCInclude } from './import-decomposer.js';
+ export { cArityCompatibility } from './arity.js';
+ export { cMergeBindings } from './merge-bindings.js';
+ export { cBindingScopeFor, cImportOwningScope, cReceiverBinding } from './simple-hooks.js';
+-export { resolveCImportTarget } from './import-target.js';
++export { resolveCImportTarget, resolveCIncludeTarget } from './import-target.js';
+ export {
+   markStaticName,
+   isStaticName,
+diff --git a/gitnexus/src/core/ingestion/languages/c/scope-resolver.ts b/gitnexus/src/core/ingestion/languages/c/scope-resolver.ts
+index c3f9fb3..3f4e17d 100644
+--- a/gitnexus/src/core/ingestion/languages/c/scope-resolver.ts
++++ b/gitnexus/src/core/ingestion/languages/c/scope-resolver.ts
+@@ -4,7 +4,7 @@ import { buildMro, defaultLinearize } from '../../scope-resolution/passes/mro.js
+ import { populateClassOwnedMembers } from '../../scope-resolution/scope/walkers.js';
+ import type { ScopeResolver } from '../../scope-resolution/contract/scope-resolver.js';
+ import { cProvider } from '../c-cpp.js';
+-import { cArityCompatibility, cMergeBindings, resolveCImportTarget } from './index.js';
++import { cArityCompatibility, cMergeBindings, resolveCIncludeTarget } from './index.js';
+ import { scanHeaderFiles } from './header-scan.js';
+ import { expandCWildcardNames, isStaticName, clearStaticNames } from './static-linkage.js';
+ import { applyCStaticLinkageSideChannel } from './capture-side-channel.js';
+@@ -87,13 +87,13 @@ export const cScopeResolver: ScopeResolver = {
+     // targets .h files classified as C++ in language detection.
+     const headerPaths = resolutionConfig as ReadonlySet<string> | undefined;
+     if (headerPaths !== undefined && headerPaths.size > 0) {
+-      return resolveCImportTarget(
++      return resolveCIncludeTarget(
+         targetRaw,
+         fromFile,
+         augmentedFilePathsFor(allFilePaths)(headerPaths),
+       );
+     }
+-    return resolveCImportTarget(targetRaw, fromFile, allFilePaths);
++    return resolveCIncludeTarget(targetRaw, fromFile, allFilePaths);
+   },
+ 
+   expandsWildcardTo: (targetModuleScope, parsedFiles) =>
+diff --git a/gitnexus/test/unit/scope-resolution/external-import-conformance.test.ts b/gitnexus/test/unit/scope-resolution/external-import-conformance.test.ts
+index c1932e0..91a8d32 100644
+--- a/gitnexus/test/unit/scope-resolution/external-import-conformance.test.ts
++++ b/gitnexus/test/unit/scope-resolution/external-import-conformance.test.ts
+@@ -345,9 +345,15 @@ const CASES: ReadonlyMap<SupportedLanguages, ConformanceCase> = new Map([
+       files: ['src/stdio.h', 'include/util.h', 'src/main.c'],
+       fromFile: 'src/main.c',
+       resolutionConfig: undefined,
+-      external: 'stdio.h',
++      // The two spellings name the SAME path and differ only by delimiter, which
++      // is the whole distinction C draws: `<stdio.h>` searches the system/-I
++      // dirs and never the includer's directory, `"stdio.h"` searches the
++      // includer's directory first and so does reach `src/stdio.h`. A resolver
++      // that stripped the angle brackets and resolved the path would land on
++      // the decoy here.
++      external: '<stdio.h>',
+       decoy: 'src/stdio.h',
+-      reachesDecoy: 'util.h',
++      reachesDecoy: '"stdio.h"',
+     },
+   ],
+   [
+@@ -418,7 +424,6 @@ const CASES: ReadonlyMap<SupportedLanguages, ConformanceCase> = new Map([
+ const KNOWN_GAPS: ReadonlyMap<SupportedLanguages, string> = new Map<SupportedLanguages, string>([
+   [SupportedLanguages.Dart, '`package:http/http.dart` -> `lib/http.dart`'],
+   [SupportedLanguages.Swift, '`Foundation` -> `Sources/Foundation/Thing.swift`'],
+-  [SupportedLanguages.C, '`stdio.h` -> `src/stdio.h`'],
+   [SupportedLanguages.CPlusPlus, '`cstdio.h` -> `src/cstdio.h`'],
+ ]);
+ 
+@@ -442,6 +447,10 @@ const KNOWN_GAPS: ReadonlyMap<SupportedLanguages, string> = new Map<SupportedLan
+  *     `src/de.rs`. The decoy-reachability arm proves the file IS reachable via
+  *     `crate::de`, so this is a real pass — but it is contingent on the
+  *     separator, not on Rust knowing what a crate is.
++ *   - C holds it because the include's delimiter is the language's own answer:
++ *     `<stdio.h>` is a system include and resolves to nothing in the repo,
++ *     while `"stdio.h"` (and the bare path `interpretCImport` emits for a
++ *     quoted include) still resolves, same-directory sibling first.
+  */
+ 
+ function resolveWith(
+@@ -529,3 +538,28 @@ describe('external imports never resolve into the repository (#2953)', () => {
+     ).toEqual([]);
+   });
+ });
++
++describe('C: system includes stay outside the repository, local includes resolve', () => {
++  const testCase = CASES.get(SupportedLanguages.C)!;
++  const resolve = (targetRaw: string) =>
++    filesOf(resolveWith(SupportedLanguages.C, testCase, targetRaw));
++
++  it.each(['<stdio.h>', '<util.h>', '< stdio.h >'])(
++    '%s resolves to nothing even with a same-named in-repo header',
++    (spelling) => {
++      expect(resolve(spelling)).toEqual([]);
++    },
++  );
++
++  it.each([
++    // Quoted: the includer's directory is searched first.
++    ['"stdio.h"', 'src/stdio.h'],
++    // The bare path `interpretCImport` emits for `#include "stdio.h"`.
++    ['stdio.h', 'src/stdio.h'],
++    // Quoted, not a sibling: falls through to the workspace suffix match.
++    ['"util.h"', 'include/util.h'],
++    ['util.h', 'include/util.h'],
++  ])('%s resolves to %s', (spelling, expected) => {
++    expect(resolve(spelling)).toEqual([expected]);
++  });
++});

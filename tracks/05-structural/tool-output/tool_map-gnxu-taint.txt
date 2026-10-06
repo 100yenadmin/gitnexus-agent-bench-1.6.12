@@ -1,0 +1,110 @@
+
+  GitNexus MCP (1.6.12)
+{"level":30,"time":1791218587271,"name":"gitnexus","repoCount":1,"repos":["gnxu-taint"],"msg":"GitNexus: MCP server starting"}
+{
+  "tools": [
+    {
+      "name": "list_repos",
+      "filePath": "gitnexus/src/mcp/tools.ts",
+      "description": "List indexed repositories available to GitNexus (paginated).  Returns a page of repositories — each with name, path, indexed date, last commit, and stats — plus a",
+      "flows": []
+    },
+    {
+      "name": "query",
+      "filePath": "gitnexus/src/mcp/tools.ts",
+      "description": "Query the code knowledge graph for execution flows related to a concept. Returns processes (call chains) ranked by relevance, each with its symbols and file locations.  WHEN TO USE: Understanding how",
+      "flows": []
+    },
+    {
+      "name": "cypher",
+      "filePath": "gitnexus/src/mcp/tools.ts",
+      "description": "Execute Cypher query against the code knowledge graph.  WHEN TO USE: Complex structural queries that search/explore can",
+      "flows": []
+    },
+    {
+      "name": "context",
+      "filePath": "gitnexus/src/mcp/tools.ts",
+      "description": "360-degree view of a single code symbol. Shows categorized incoming/outgoing references (calls, imports, extends, implements, methods, properties, overrides), process participation, and file location.",
+      "flows": []
+    },
+    {
+      "name": "detect_changes",
+      "filePath": "gitnexus/src/mcp/tools.ts",
+      "description": "Analyze uncommitted git changes and find affected execution flows. Maps git diff hunks to indexed symbols, then traces which processes are impacted.  WHEN TO USE: Before committing — to understand wha",
+      "flows": []
+    },
+    {
+      "name": "check",
+      "filePath": "gitnexus/src/mcp/tools.ts",
+      "description": "Run read-only structural checks against the indexed graph.  Currently detects directed cycles between File nodes connected by IMPORTS edges, counting only edges that force a module-initialization orde",
+      "flows": []
+    },
+    {
+      "name": "rename",
+      "filePath": "gitnexus/src/mcp/tools.ts",
+      "description": "Multi-file coordinated rename using the knowledge graph + text search. Finds all references via graph (high confidence) and regex text search (lower confidence). Preview by default.  WHEN TO USE: Rena",
+      "flows": []
+    },
+    {
+      "name": "impact",
+      "filePath": "gitnexus/src/mcp/tools.ts",
+      "description": "Analyze the blast radius of changing a code symbol. Returns affected symbols grouped by depth, plus risk assessment, affected execution flows, and affected modules.  MODE (opt-in):",
+      "flows": []
+    },
+    {
+      "name": "explain",
+      "filePath": "gitnexus/src/mcp/tools.ts",
+      "description": "Explain persisted taint findings recorded by \\",
+      "flows": []
+    },
+    {
+      "name": "pdg_query",
+      "filePath": "gitnexus/src/mcp/tools.ts",
+      "description": "Query the persisted Program Dependence Graph recorded by \\",
+      "flows": []
+    },
+    {
+      "name": "route_map",
+      "filePath": "gitnexus/src/mcp/tools.ts",
+      "description": "Show API route mappings: which components/hooks fetch which API endpoints, and which handler files serve them.  WHEN TO USE: Understanding API consumption patterns, finding orphaned routes. For pre-ch",
+      "flows": []
+    },
+    {
+      "name": "tool_map",
+      "filePath": "gitnexus/src/mcp/tools.ts",
+      "description": "Show MCP/RPC tool definitions: which tools are defined, where they",
+      "flows": []
+    },
+    {
+      "name": "shape_check",
+      "filePath": "gitnexus/src/mcp/tools.ts",
+      "description": "Check response shapes for API routes against their consumers",
+      "flows": []
+    },
+    {
+      "name": "api_impact",
+      "filePath": "gitnexus/src/mcp/tools.ts",
+      "description": "Pre-change impact report for an API route handler.  WHEN TO USE: BEFORE modifying any API route handler. Shows what consumers depend on, what response fields they access, what middleware protects the",
+      "flows": []
+    },
+    {
+      "name": "group_list",
+      "filePath": "gitnexus/src/mcp/tools.ts",
+      "description": "List all configured repository groups, or return details for one group (repos, manifest links).  WHEN TO USE: Discover groups before group_sync. Optional",
+      "flows": []
+    },
+    {
+      "name": "group_sync",
+      "filePath": "gitnexus/src/mcp/tools.ts",
+      "description": "Rebuild the Contract Registry (contracts.json) for a group: extract contracts (HTTP, gRPC, Thrift, topics, includes), apply manifest links, then cross-link by exact contract-id match followed by wildc",
+      "flows": []
+    },
+    {
+      "name": "trace",
+      "filePath": "gitnexus/src/mcp/tools.ts",
+      "description": "Find the shortest directed path between two symbols over call and class-member edges.  WHEN TO USE: Debugging",
+      "flows": []
+    }
+  ],
+  "total": 17
+}

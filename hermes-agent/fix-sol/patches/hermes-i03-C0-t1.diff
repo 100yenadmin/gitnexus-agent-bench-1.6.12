@@ -1,0 +1,129 @@
+diff --git a/hermes_cli/config.py b/hermes_cli/config.py
+index 49a2980a..dd139cb6 100644
+--- a/hermes_cli/config.py
++++ b/hermes_cli/config.py
+@@ -3381,7 +3381,9 @@ def _coerce_config_set_value(key: str, value: str) -> Any:
+     String-typed settings (per ``DEFAULT_CONFIG``) are preserved verbatim so enum members such as
+     ``approvals.mode="off"`` never become booleans. List/mapping literals are parsed so
+     isinstance-gated readers see real structures; the trigger is conservative."""
+-    if isinstance(_default_value_for_key(key), str):
++    # Bare model accepts both an id and a section, despite its string schema default.
++    structured = _looks_structured_value(value) or (key == "model" and ": " in value)
++    if isinstance(_default_value_for_key(key), str) and not (key == "model" and structured):
+         return value
+     stripped = value.strip()
+     lower = stripped.lower()
+@@ -3391,7 +3393,7 @@ def _coerce_config_set_value(key: str, value: str) -> Any:
+         coerced = coerce(stripped)
+         if coerced is not None:
+             return coerced
+-    if not _looks_structured_value(value):
++    if not structured:
+         return value
+     try:
+         parsed = yaml.safe_load(value)
+@@ -3403,7 +3405,7 @@ def _coerce_config_set_value(key: str, value: str) -> Any:
+             f"✗ Value for '{key}' looks like a list/mapping but is not valid YAML/JSON "
+             f"({detail}) — nothing was written.\n"
+             "  Fix the literal, or quote it (e.g. \"'[text'\") to store a plain string.")
+-    if isinstance(parsed, (list, dict)):
++    if isinstance(parsed, dict) or (key != "model" and isinstance(parsed, list)):
+         return parsed
+     # A quoted literal ("'[text'") parses to a scalar: that is the deliberate way to store one.
+     return value
+@@ -3524,12 +3526,20 @@ def _exit_if_key_managed(key: str, action: str) -> None:
+ 
+ def _guard_section_overwrite(key: str, value: Any, user_config: Dict[str, Any], force: bool) -> str:
+     """Refuse (or with ``force`` allow) a single-segment key overwriting a mapping with a scalar.
+-    Bare ``model`` is a documented shorthand — redirected to ``model.default`` so siblings survive.
++    Bare ``model`` ids redirect to ``model.default`` so siblings survive; mapping replacements
++    require ``force`` and stay at the section root.
+     Returns the (possibly redirected) key."""
+     existing = user_config.get(key)
+     if "." in key or not isinstance(existing, dict):
+         return key
+     if key == "model":
++        if isinstance(value, dict):
++            if not force:
++                _exit_invalid(
++                    "✗ Cannot replace the existing 'model' section — nothing was written.\n"
++                    "  Set model.provider / model.default individually, or use --force "
++                    "to replace the entire section.")
++            return key
+         if force:
+             print(
+                 f"⚠ Replacing entire 'model' section with a scalar "
+@@ -3614,7 +3624,8 @@ def set_config_value(key: str, value: str, force: bool = False):
+     ``discord.foo`` is known; otherwise refused — any other unknown path under a known section
+     is written with a did-you-mean notice), skips the unknown-top-level-key notice AND
+     authorizes replacing a mapping section with a scalar. Without it, scalar writes over mappings are refused and bare ``model`` is redirected
+-    to ``model.default``."""
++    to ``model.default``. Bare ``model`` mapping literals require ``force`` to replace an existing
++    section and are stored as mappings."""
+     if is_managed():
+         managed_error("set configuration values")
+         return
+diff --git a/tests/hermes_cli/test_config_set_model_mapping.py b/tests/hermes_cli/test_config_set_model_mapping.py
+new file mode 100644
+index 00000000..a2076009
+--- /dev/null
++++ b/tests/hermes_cli/test_config_set_model_mapping.py
+@@ -0,0 +1,58 @@
++"""Bare model mapping literals must not become model identifiers."""
++
++import pytest
++import hermes_yaml as yaml
++
++from hermes_cli.config import set_config_value
++
++
++@pytest.fixture
++def config_path(tmp_path, monkeypatch):
++    monkeypatch.setenv("HERMES_HOME", str(tmp_path))
++    path = tmp_path / "config.yaml"
++    path.write_text(
++        "# Keep this comment\n"
++        "model:\n"
++        "  default: glm-5.3-flash\n"
++        "  provider: zai\n"
++        "  context_length: 128000\n"
++        "agent:\n"
++        "  max_turns: 7\n"
++    )
++    return path
++
++
++@pytest.mark.parametrize("literal", [
++    '{"provider": "openai-codex", "default": "gpt-6.1-sol"}',
++    '{"provider": "openrouter", "default": "z-ai/glm-5.3-flash"}',
++    '{provider: openai-codex, default: gpt-6.1-sol}',
++    'provider: openai-codex\ndefault: gpt-6.1-sol',
++    'provider: openai-codex',
++])
++@pytest.mark.parametrize("force", [False, True])
++def test_model_mapping_requires_force(config_path, capsys, literal, force):
++    before = config_path.read_bytes()
++    if not force:
++        with pytest.raises(SystemExit) as exc:
++            set_config_value("model", literal)
++        assert exc.value.code == 1
++        assert config_path.read_bytes() == before
++        message = capsys.readouterr().err
++        assert "model.provider" in message
++        assert "model.default" in message
++        assert "--force" in message
++    else:
++        set_config_value("model", literal, force=True)
++        saved = yaml.safe_load(config_path.read_text())
++        assert saved["model"] == yaml.safe_load(literal)
++        assert saved["agent"] == {"max_turns": 7}
++        assert "# Keep this comment" in config_path.read_text()
++
++
++@pytest.mark.parametrize("key", ["model", "model.default"])
++@pytest.mark.parametrize("model_id", ["gpt-5.6-sol", "z-ai/glm-5.3-flash"])
++def test_plain_model_id_preserves_siblings(config_path, key, model_id):
++    set_config_value(key, model_id)
++    assert yaml.safe_load(config_path.read_text())["model"] == {
++        "default": model_id, "provider": "zai", "context_length": 128000,
++    }

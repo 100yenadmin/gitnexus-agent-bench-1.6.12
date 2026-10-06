@@ -1,0 +1,61 @@
+{
+ "platform": "Windows",
+ "summary": {
+  "filesAnalyzed": 2383,
+  "errorCount": 15421,
+  "warningCount": 77,
+  "informationCount": 0,
+  "timeInSec": 157.876
+ },
+ "added": [
+  {
+   "file": "hermes_cli/doctor.py",
+   "line": 185,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "hermes_cli/doctor_config.py",
+   "line": 450,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "hermes_cli/doctor_live.py",
+   "line": 165,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "hermes_cli/doctor_platform.py",
+   "line": 192,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "hermes_cli/doctor_platform.py",
+   "line": 273,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "hermes_cli/doctor_platform.py",
+   "line": 511,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "hermes_cli/doctor_state.py",
+   "line": 141,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "hermes_cli/doctor_state.py",
+   "line": 642,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  }
+ ],
+ "removed_keys": []
+}

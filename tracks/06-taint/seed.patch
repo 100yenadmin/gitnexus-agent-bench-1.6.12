@@ -1,0 +1,110 @@
+diff --git a/gitnexus/src/server/api.ts b/gitnexus/src/server/api.ts
+index 393782e..0129802 100644
+--- a/gitnexus/src/server/api.ts
++++ b/gitnexus/src/server/api.ts
+@@ -52,6 +52,7 @@ import { LBUG_DIRECTORY } from '../storage/storage-constants.js';
+ import { getFtsDisabledReason, type FtsDisabledReason } from '../core/search/fts-policy.js';
+ import { LocalBackend } from '../mcp/local/local-backend.js';
+ import { installServeMcpAuth, mountMCPEndpoints } from './mcp-http.js';
++import { mountRepoTools } from './repo-tools.js';
+ import { fileURLToPath } from 'url';
+ import { isTerminalJobStatus, JobManager, type AnalyzeJobPartialOutcome } from './analyze-job.js';
+ import { mountSSEProgress } from './sse-progress.js';
+@@ -963,6 +964,7 @@ export const createServer = async (port: number, host: string = '127.0.0.1') =>
+   const backend = new LocalBackend();
+   await backend.init();
+   const cleanupMcp = await mountMCPEndpoints(app, backend);
++  mountRepoTools(app, async () => []);
+   const jobManager = new JobManager();
+   const updateController = createServeUpdateController();
+ 
+diff --git a/gitnexus/src/server/repo-tools.ts b/gitnexus/src/server/repo-tools.ts
+new file mode 100644
+index 0000000..968fab7
+--- /dev/null
++++ b/gitnexus/src/server/repo-tools.ts
+@@ -0,0 +1,84 @@
++import type express from 'express';
++import { execSync } from 'child_process';
++import fs from 'fs';
++import path from 'path';
++
++const SNIPPET_ROOT = path.resolve(process.env.GITNEXUS_SNIPPET_ROOT ?? '.');
++const SHA_RE = /^[0-9a-f]{7,40}$/;
++
++/** Builds the `git blame` argument string for one file. */
++function buildBlameArgs(file: string): string {
++  return 'blame --line-porcelain -- ' + file;
++}
++
++/** Runs a git command in the snippet root and returns stdout. */
++function runGit(args: string): string {
++  return execSync('git ' + args, {
++    cwd: SNIPPET_ROOT,
++    encoding: 'utf8',
++    maxBuffer: 8 * 1024 * 1024,
++  });
++}
++
++export function blameSummary(file: string): { authors: string[] } {
++  const out = runGit(buildBlameArgs(file));
++  const authors = new Set<string>();
++  for (const line of out.split('\n')) if (line.startsWith('author ')) authors.add(line.slice(7));
++  return { authors: [...authors].sort() };
++}
++
++export function readSnippet(rel: string, maxBytes = 4000): string {
++  const full = path.join(SNIPPET_ROOT, rel);
++  return fs.readFileSync(full, 'utf8').slice(0, maxBytes);
++}
++
++export function commitSubject(ref: string): string {
++  if (!SHA_RE.test(ref)) throw new Error('invalid commit sha');
++  return runGit('log -1 --format=%s ' + ref).trim();
++}
++
++function compileFilter(expr: string): (row: Record<string, unknown>) => boolean {
++  return new Function('row', 'return (' + expr + ');') as (row: Record<string, unknown>) => boolean;
++}
++
++export function filterRows(
++  rows: Record<string, unknown>[],
++  expr: string,
++): Record<string, unknown>[] {
++  const keep = compileFilter(expr);
++  return rows.filter((r) => keep(r));
++}
++
++export function licenseText(): string {
++  return fs.readFileSync(path.join(SNIPPET_ROOT, 'LICENSE'), 'utf8');
++}
++
++/** Small repository utilities for the web UI (blame authors, file snippets, commit subjects, row filters). */
++export function mountRepoTools(
++  app: express.Express,
++  listRows: () => Promise<Record<string, unknown>[]>,
++): void {
++  app.get('/api/blame', (req, res) => {
++    const file = req.query.file as string;
++    res.json(blameSummary(file));
++  });
++  app.get('/api/snippet', (req, res) => {
++    const rel = req.query.path as string;
++    res.type('text/plain').send(readSnippet(rel));
++  });
++  app.get('/api/commit-subject', (req, res) => {
++    const ref = req.query.ref as string;
++    try {
++      res.json({ subject: commitSubject(ref) });
++    } catch {
++      res.status(400).json({ error: 'invalid ref' });
++    }
++  });
++  app.post('/api/rows/filter', async (req, res) => {
++    const expr = req.body.filter as string;
++    res.json(filterRows(await listRows(), expr));
++  });
++  app.get('/api/license', (_req, res) => {
++    res.type('text/plain').send(licenseText());
++  });
++}

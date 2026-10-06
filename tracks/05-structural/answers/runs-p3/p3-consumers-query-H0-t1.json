@@ -1,0 +1,6 @@
+{
+ "files": [
+  "gitnexus-web/src/services/backend-client.ts",
+  "gitnexus-web/src/hooks/useAppState.tsx"
+ ]
+}

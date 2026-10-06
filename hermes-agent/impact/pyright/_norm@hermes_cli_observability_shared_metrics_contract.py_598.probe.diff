@@ -1,0 +1,13 @@
+diff --git a/hermes_cli/observability/shared_metrics_contract.py b/hermes_cli/observability/shared_metrics_contract.py
+index 80c1c46adb..203f5edf00 100644
+--- a/hermes_cli/observability/shared_metrics_contract.py
++++ b/hermes_cli/observability/shared_metrics_contract.py
+@@ -595,7 +595,7 @@ _ARCHITECTURE_ALIASES = {
+ _OS_FAMILIES = {"darwin": "macos", "linux": "linux", "macos": "macos", "windows": "windows"}
+ 
+ 
+-def _norm(value: Any) -> str:
++def _norm(value: Any, bench_probe) -> str:
+     return str(value or "").strip().lower()
+ 
+ 

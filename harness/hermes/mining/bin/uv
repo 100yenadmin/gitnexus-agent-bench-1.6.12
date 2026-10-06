@@ -1,0 +1,5 @@
+#!/bin/bash
+# The only command hermes_pytest.sh adds to the test PATH (hermes-agent's pm worker-contract tests need a real uv).
+# The original was a symlink to our user-level uv; this forwards to UV_BIN from harness/config.env (or `uv` on PATH).
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../isolation" && pwd)/_config.sh"
+exec "${UV_BIN:-uv}" "$@"

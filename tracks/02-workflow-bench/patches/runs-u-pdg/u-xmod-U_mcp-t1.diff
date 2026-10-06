@@ -1,0 +1,830 @@
+diff --git a/gitnexus/src/core/ingestion/workers/parse-retry.ts b/gitnexus/src/core/ingestion/workers/parse-retry.ts
+new file mode 100644
+index 0000000..2e82deb
+--- /dev/null
++++ b/gitnexus/src/core/ingestion/workers/parse-retry.ts
+@@ -0,0 +1,211 @@
++/**
++ * Bounded per-file retry for parse-worker failures.
++ *
++ * When a worker dies while a specific file is in flight, the pool used to
++ * quarantine that file on the first death. That is right for a deterministic
++ * failure (the same input reproduces the same throw on every attempt) but
++ * wrong for a transient one — a worker killed by the OS, a native crash under
++ * memory pressure, an `EMFILE`/`EAGAIN` from a shard write — where a second
++ * attempt on a fresh worker usually succeeds. This module decides which is
++ * which and how long to back off before the retry. It is pure (no timers, no
++ * pool state beyond the per-path counter) so the decision is unit-testable
++ * without spinning up workers.
++ */
++
++/** Retries granted to a file after its first transient failure. */
++export const DEFAULT_MAX_PARSE_RETRIES = 2;
++/** Backoff before the first retry; doubles per retry up to the cap. */
++export const DEFAULT_PARSE_RETRY_BASE_DELAY_MS = 250;
++export const DEFAULT_PARSE_RETRY_MAX_DELAY_MS = 5_000;
++
++/** Which pool death site observed the failure. */
++export type ParseFailureSource =
++  /** Worker caught its own throw and reported `{type:'error'}`. */
++  | 'worker-error-message'
++  /** Node `error` event — an uncaught worker throw. */
++  | 'uncaught-error'
++  /** Worker thread exited (native crash, OOM kill, external signal). */
++  | 'exit'
++  /** Receiver-side postMessage deserialization failure. */
++  | 'messageerror'
++  /** Worker sent a message without a `type` discriminant. */
++  | 'malformed-message';
++
++export interface ParseFailure {
++  source: ParseFailureSource;
++  /** Error message (or exit description) as observed by the pool. */
++  message?: string;
++  /** `err.code` when the failure carried one (e.g. `ERR_WORKER_OUT_OF_MEMORY`). */
++  code?: string;
++  /** Worker-side stack; its first line names the error type. */
++  stack?: string;
++}
++
++export type ParseFailureClass = 'transient' | 'deterministic';
++
++/**
++ * OS-level errno codes that describe resource contention rather than the
++ * input itself — a retry on a fresh worker can succeed.
++ */
++const TRANSIENT_ERRNO_CODES = [
++  'EAGAIN',
++  'EBUSY',
++  'EMFILE',
++  'ENFILE',
++  'ENOMEM',
++  'ETIMEDOUT',
++  'ECONNRESET',
++  'EPIPE',
++  'EINTR',
++];
++const TRANSIENT_ERRNO_RE = new RegExp(`\\b(?:${TRANSIENT_ERRNO_CODES.join('|')})\\b`);
++
++/**
++ * Failures that reproduce on the same input: JS error types thrown by the
++ * parser/extractors, and the worker hitting its own heap cap (the file is too
++ * large for the cap — retrying only burns another worker).
++ */
++const DETERMINISTIC_ERROR_NAME_RE =
++  /^(?:SyntaxError|TypeError|RangeError|ReferenceError|URIError|EvalError|ParseError)\b/;
++const DETERMINISTIC_MESSAGE_RE =
++  /ERR_WORKER_OUT_OF_MEMORY|Maximum call stack size exceeded|\bparse error\b|\bfailed to parse\b|\bunsupported language\b/i;
++
++/**
++ * Classify a worker failure as transient (worth retrying the in-flight file)
++ * or deterministic (retrying the same input would fail the same way).
++ *
++ * Order matters: an explicit transient errno wins over everything (an
++ * `EMFILE` surfaced as a thrown Error is still contention), then known
++ * deterministic signatures, then a per-source default.
++ */
++export function classifyParseFailure(failure: ParseFailure): ParseFailureClass {
++  const message = failure.message ?? '';
++  const firstStackLine = (failure.stack ?? '').split('\n', 1)[0] ?? '';
++
++  if (failure.code === 'ERR_WORKER_OUT_OF_MEMORY') return 'deterministic';
++  if (
++    (failure.code !== undefined && TRANSIENT_ERRNO_CODES.includes(failure.code)) ||
++    TRANSIENT_ERRNO_RE.test(message) ||
++    TRANSIENT_ERRNO_RE.test(firstStackLine)
++  ) {
++    return 'transient';
++  }
++  if (DETERMINISTIC_MESSAGE_RE.test(message) || DETERMINISTIC_MESSAGE_RE.test(firstStackLine)) {
++    return 'deterministic';
++  }
++  if (
++    DETERMINISTIC_ERROR_NAME_RE.test(firstStackLine) ||
++    DETERMINISTIC_ERROR_NAME_RE.test(message)
++  ) {
++    return 'deterministic';
++  }
++
++  switch (failure.source) {
++    // The worker survived long enough to catch and report its own throw:
++    // the parse code rejected this input, and will again.
++    case 'worker-error-message':
++    // A protocol bug or an unclonable payload is a property of the code /
++    // the produced result, not of the moment it ran.
++    case 'malformed-message':
++    case 'messageerror':
++      return 'deterministic';
++    // The thread vanished without a JS-level explanation (native crash,
++    // OOM-killer, external signal) or threw something unrecognized —
++    // give the file another chance on a fresh worker.
++    case 'exit':
++    case 'uncaught-error':
++      return 'transient';
++  }
++}
++
++export interface ParseRetryPolicy {
++  /** Retries after the first failure; 0 disables retry. */
++  maxRetries: number;
++  baseDelayMs: number;
++  maxDelayMs: number;
++}
++
++export const DEFAULT_PARSE_RETRY_POLICY: ParseRetryPolicy = {
++  maxRetries: DEFAULT_MAX_PARSE_RETRIES,
++  baseDelayMs: DEFAULT_PARSE_RETRY_BASE_DELAY_MS,
++  maxDelayMs: DEFAULT_PARSE_RETRY_MAX_DELAY_MS,
++};
++
++/**
++ * Exponential backoff for the `retryNumber`-th retry (1-based), capped at
++ * `maxDelayMs`. `random` (0..1) applies "equal jitter": the delay lands in
++ * `[d/2, d]` so concurrent retries from different slots don't line up, while
++ * never collapsing to zero.
++ */
++export function parseRetryBackoffMs(
++  retryNumber: number,
++  policy: Pick<ParseRetryPolicy, 'baseDelayMs' | 'maxDelayMs'> = DEFAULT_PARSE_RETRY_POLICY,
++  random: () => number = Math.random,
++): number {
++  if (policy.baseDelayMs <= 0) return 0;
++  const exponent = Math.max(0, retryNumber - 1);
++  const raw = Math.min(policy.maxDelayMs, policy.baseDelayMs * 2 ** exponent);
++  const half = raw / 2;
++  return Math.round(half + half * Math.min(1, Math.max(0, random())));
++}
++
++export type ParseRetryDecision =
++  | { retry: true; retryNumber: number; delayMs: number }
++  | { retry: false; reason: 'deterministic' | 'retries-exhausted' };
++
++/**
++ * Decide whether a file that just failed should be retried.
++ *
++ * @param priorRetries retries already spent on this file (0 on first failure).
++ */
++export function decideParseRetry(
++  failureClass: ParseFailureClass,
++  priorRetries: number,
++  policy: ParseRetryPolicy = DEFAULT_PARSE_RETRY_POLICY,
++  random: () => number = Math.random,
++): ParseRetryDecision {
++  if (failureClass === 'deterministic') return { retry: false, reason: 'deterministic' };
++  if (priorRetries >= policy.maxRetries) return { retry: false, reason: 'retries-exhausted' };
++  const retryNumber = priorRetries + 1;
++  return { retry: true, retryNumber, delayMs: parseRetryBackoffMs(retryNumber, policy, random) };
++}
++
++/**
++ * Session-scoped per-path retry counter. Like the quarantine, it lives for
++ * one `createWorkerPool` invocation, so a file's retry budget is spent at
++ * most once per pool.
++ */
++export interface ParseRetryTracker {
++  /**
++   * Record a failure of `path` and return the decision. A `retry: true`
++   * decision consumes one retry from the path's budget.
++   */
++  onFailure(path: string, failure: ParseFailure): ParseRetryDecision;
++  /** Retries already spent on `path`. */
++  retriesFor(path: string): number;
++  /** Total retries granted across all paths. */
++  readonly totalRetries: number;
++}
++
++export function createParseRetryTracker(
++  policy: ParseRetryPolicy = DEFAULT_PARSE_RETRY_POLICY,
++  random: () => number = Math.random,
++): ParseRetryTracker {
++  const retries = new Map<string, number>();
++  let total = 0;
++  return {
++    onFailure(path, failure) {
++      const prior = retries.get(path) ?? 0;
++      const decision = decideParseRetry(classifyParseFailure(failure), prior, policy, random);
++      if (decision.retry) {
++        retries.set(path, decision.retryNumber);
++        total++;
++      }
++      return decision;
++    },
++    retriesFor: (path) => retries.get(path) ?? 0,
++    get totalRetries() {
++      return total;
++    },
++  };
++}
+diff --git a/gitnexus/src/core/ingestion/workers/worker-pool.ts b/gitnexus/src/core/ingestion/workers/worker-pool.ts
+index b972d73..49b9216 100644
+--- a/gitnexus/src/core/ingestion/workers/worker-pool.ts
++++ b/gitnexus/src/core/ingestion/workers/worker-pool.ts
+@@ -6,6 +6,13 @@ import { fileURLToPath } from 'node:url';
+ 
+ import { logger } from '../../logger.js';
+ import { createQuarantine } from './quarantine.js';
++import {
++  createParseRetryTracker,
++  DEFAULT_MAX_PARSE_RETRIES,
++  DEFAULT_PARSE_RETRY_BASE_DELAY_MS,
++  DEFAULT_PARSE_RETRY_MAX_DELAY_MS,
++  type ParseFailure,
++} from './parse-retry.js';
+ 
+ /**
+  * Worker IPC uses Node's native `worker.postMessage(value, transferList)`
+@@ -198,6 +205,10 @@ export interface WorkerPoolStats {
+   readonly droppedSlots: number;
+   /** Cumulative paths quarantined by failure attribution. */
+   readonly quarantined: number;
++  /** Cumulative transient-failure file retries granted (see
++   *  `WorkerPoolOptions.maxParseRetries`). Optional for compatibility with
++   *  external `WorkerPoolStats` implementations. */
++  readonly parseRetries?: number;
+   /** Whether the circuit breaker has tripped (no further dispatches
+    *  will be accepted by this pool instance). */
+   readonly poolBroken: boolean;
+@@ -247,6 +258,20 @@ export interface WorkerPoolOptions {
+    * created. Default `Math.max(3, poolSize)`.
+    */
+   consecutiveFailureThreshold?: number;
++  /**
++   * Retries granted to a file whose in-flight parse killed its worker with a
++   * TRANSIENT failure (exit/native crash, contention errno) before the file is
++   * quarantined. Deterministic failures (the worker reported its own throw,
++   * a JS SyntaxError/TypeError/…, heap-cap OOM) are never retried — see
++   * `classifyParseFailure`. Default 2; 0 restores quarantine-on-first-death.
++   * Also overridable via `GITNEXUS_WORKER_MAX_PARSE_RETRIES`.
++   */
++  maxParseRetries?: number;
++  /**
++   * Base backoff before re-dispatching a retried file; doubles per retry
++   * (with jitter) up to 5s. Default 250ms. 0 ⇒ no wait (test hook).
++   */
++  parseRetryBaseDelayMs?: number;
+   /**
+    * Startup budget in milliseconds for a replacement worker to emit the
+    * `{type:'ready'}` handshake before the pool treats it as a startup
+@@ -600,6 +625,8 @@ interface ResolvedWorkerPoolOptions {
+   maxRespawnsPerSlot: number;
+   maxCumulativeTimeoutMs: number;
+   consecutiveFailureThreshold: number;
++  maxParseRetries: number;
++  parseRetryBaseDelayMs: number;
+   shutdownDrainMs: number;
+   workerReadyTimeoutMs: number;
+ }
+@@ -634,6 +661,12 @@ export function resolveWorkerPoolOptions(
+       positiveInteger(options.consecutiveFailureThreshold) ??
+       positiveInteger(process.env.GITNEXUS_WORKER_CONSECUTIVE_FAILURE_THRESHOLD) ??
+       Math.max(DEFAULT_CONSECUTIVE_FAILURE_THRESHOLD_FLOOR, poolSize ?? 0),
++    maxParseRetries:
++      nonNegativeInteger(options.maxParseRetries) ??
++      nonNegativeInteger(process.env.GITNEXUS_WORKER_MAX_PARSE_RETRIES) ??
++      DEFAULT_MAX_PARSE_RETRIES,
++    parseRetryBaseDelayMs:
++      nonNegativeInteger(options.parseRetryBaseDelayMs) ?? DEFAULT_PARSE_RETRY_BASE_DELAY_MS,
+     shutdownDrainMs:
+       nonNegativeInteger(options.shutdownDrainMs) ??
+       nonNegativeInteger(process.env.GITNEXUS_WORKER_SHUTDOWN_DRAIN_MS) ??
+@@ -1143,6 +1176,15 @@ export const createWorkerPool = (
+   // 1100+ LOC of pool plumbing. Public worker-pool API is unchanged —
+   // `getQuarantinedPaths()` still returns the same defensive copy.
+   const quarantine = createQuarantine();
++  // Bounded per-file retry: a TRANSIENT death attributed to an in-flight
++  // file re-dispatches that file (after backoff) up to `maxParseRetries`
++  // times before it is quarantined. Deterministic failures quarantine on
++  // the first death, exactly as before. Session-scoped like the quarantine.
++  const parseRetries = createParseRetryTracker({
++    maxRetries: poolOptions.maxParseRetries,
++    baseDelayMs: poolOptions.parseRetryBaseDelayMs,
++    maxDelayMs: DEFAULT_PARSE_RETRY_MAX_DELAY_MS,
++  });
+   const initialReadinessFailures: string[] = [];
+   // Per-slot consecutive-failure counter (F6): replaces the prior pool-wide
+   // scalar so a chronically-failing slot trips the breaker on its own
+@@ -1703,9 +1745,13 @@ export const createWorkerPool = (
+       // pool's final `quarantinedPaths` snapshot carries SOME signal
+       // for downstream diagnostics instead of silently re-hitting the
+       // bad file.
+-      const requeueRemainder = (job: WorkerJob<TInput>, excluded: readonly string[]) => {
++      const requeueRemainder = (
++        job: WorkerJob<TInput>,
++        excluded: readonly string[],
++        attributed = excluded.length > 0,
++      ) => {
+         let effectiveExcluded = excluded;
+-        if (excluded.length === 0) {
++        if (!attributed) {
+           const deaths = (unattributedJobDeaths.get(job.startIndex) ?? 0) + 1;
+           unattributedJobDeaths.set(job.startIndex, deaths);
+           if (deaths < 2) {
+@@ -1761,9 +1807,14 @@ export const createWorkerPool = (
+         reason: string,
+         excludePaths: readonly string[],
+         removalMode: WorkerRemovalMode = 'terminate',
++        retryingInFlight = false,
+       ) => {
+         if (stopped) return;
+-        consecutiveFailuresPerSlot[workerIndex]++;
++        // A death whose in-flight file is being retried is already bounded by
++        // that file's retry budget; counting it toward the breaker would let a
++        // single transient-failing file trip the pool on the same slot before
++        // its final (quarantining) attempt — which does count.
++        if (!retryingInFlight) consecutiveFailuresPerSlot[workerIndex]++;
+         for (const p of excludePaths) {
+           if (p) quarantine.add(p);
+         }
+@@ -2042,13 +2093,57 @@ export const createWorkerPool = (
+         // Recover-and-resume flow shared by all in-pool worker death sites
+         // (`error`, `exit`, msg-channel error). Bridges the per-job teardown
+         // into the pool-level handleWorkerDeath recovery + breaker logic.
+-        const recoverAndResume = async (reason: string, excludePaths: readonly string[]) => {
++        const recoverAndResume = async (
++          reason: string,
++          excludePaths: readonly string[],
++          failure: ParseFailure,
++        ) => {
+           busySlots.delete(workerIndex);
+           inFlightProgress[workerIndex] = 0;
+-          requeueRemainder(job, excludePaths);
++          // Bounded retry: split the attributed in-flight path(s) into those
++          // worth another attempt (transient failure, budget left) and those
++          // to quarantine (deterministic, or retries exhausted).
++          const quarantinePaths: string[] = [];
++          let retryDelayMs = -1;
++          for (const p of excludePaths) {
++            const decision = parseRetries.onFailure(p, failure);
++            if (decision.retry) {
++              retryDelayMs = Math.max(retryDelayMs, decision.delayMs);
++              logger.warn(
++                { workerIndex, path: p, retry: decision.retryNumber, delayMs: decision.delayMs },
++                `Worker ${workerIndex} failed transiently on ${p}; retrying ` +
++                  `(${decision.retryNumber}/${poolOptions.maxParseRetries}) in ${decision.delayMs}ms.`,
++              );
++            } else {
++              quarantinePaths.push(p);
++              if ('reason' in decision && decision.reason === 'retries-exhausted') {
++                logger.warn(
++                  { workerIndex, path: p, retries: parseRetries.retriesFor(p) },
++                  `Worker ${workerIndex} failed on ${p} after ${parseRetries.retriesFor(p)} ` +
++                    `retries; marking file failed (quarantined).`,
++                );
++              }
++            }
++          }
++          const retrying = retryDelayMs >= 0;
++          // Overlap the backoff with the slot respawn below; the retried job is
++          // only re-queued once the backoff has elapsed.
++          const backoff =
++            retryDelayMs > 0 ? new Promise<void>((r) => setTimeout(r, retryDelayMs)) : undefined;
++          if (!retrying) requeueRemainder(job, quarantinePaths);
+           // Keep recovery in flight so another slot finishing cannot settle
+           // this dispatch before the replacement is ready for the next one.
+-          await handleWorkerDeath(workerIndex, reason, excludePaths);
++          await handleWorkerDeath(
++            workerIndex,
++            reason,
++            quarantinePaths,
++            'terminate',
++            retrying && quarantinePaths.length === 0,
++          );
++          if (retrying) {
++            if (backoff) await backoff;
++            requeueRemainder(job, quarantinePaths, true);
++          }
+           activeWorkers--;
+           if (stopped) return;
+           // Slot may have been dropped or respawned. Kick the current slot
+@@ -2245,6 +2340,7 @@ export const createWorkerPool = (
+             void recoverAndResume(
+               `Worker ${workerIndex} sent a malformed message (no type discriminant)`,
+               resolveExcludePaths(),
++              { source: 'malformed-message' },
+             );
+             return;
+           }
+@@ -2274,6 +2370,7 @@ export const createWorkerPool = (
+             void recoverAndResume(
+               workerErrorReason(workerIndex, msg.error, msg.errorStack),
+               resolveExcludePaths(),
++              { source: 'worker-error-message', message: msg.error, stack: msg.errorStack },
+             );
+           } else if (msg.type === 'result') {
+             if (!waitingForFlush) {
+@@ -2337,7 +2434,13 @@ export const createWorkerPool = (
+             const reason = isWorkerHeapOom
+               ? `${workerErrorReason(workerIndex, err.message, err.stack)} (worker hit its ${workerHeapCapMb}MB heap cap — raise with GITNEXUS_WORKER_HEAP_MB)`
+               : workerErrorReason(workerIndex, err.message, err.stack);
+-            void recoverAndResume(reason, resolveExcludePaths());
++            const code = (err as NodeJS.ErrnoException | undefined)?.code;
++            void recoverAndResume(reason, resolveExcludePaths(), {
++              source: 'uncaught-error',
++              message: typeof err?.message === 'string' ? err.message : undefined,
++              code: typeof code === 'string' ? code : undefined,
++              stack: typeof err?.stack === 'string' ? err.stack : undefined,
++            });
+           }
+         };
+ 
+@@ -2352,6 +2455,7 @@ export const createWorkerPool = (
+               `Worker ${workerIndex} exited with code ${code}. ` +
+                 `Likely OOM or native addon failure${inFlightSuffix}.`,
+               excludes,
++              { source: 'exit', message: `exited with code ${code}` },
+             );
+           }
+         };
+@@ -2377,6 +2481,7 @@ export const createWorkerPool = (
+             void recoverAndResume(
+               `Worker ${workerIndex} messageerror (postMessage deserialization failure): ${err.message}`,
+               resolveExcludePaths(),
++              { source: 'messageerror', message: err?.message },
+             );
+           }
+         };
+@@ -2440,6 +2545,7 @@ export const createWorkerPool = (
+       activeSlots: activeSlots.size,
+       droppedSlots: size - activeSlots.size,
+       quarantined: quarantine.size,
++      parseRetries: parseRetries.totalRetries,
+       poolBroken,
+       terminated,
+       pendingStartupTimers: pendingStartupTimers.size,
+diff --git a/gitnexus/test/unit/parse-retry.test.ts b/gitnexus/test/unit/parse-retry.test.ts
+new file mode 100644
+index 0000000..6926458
+--- /dev/null
++++ b/gitnexus/test/unit/parse-retry.test.ts
+@@ -0,0 +1,188 @@
++import { describe, it, expect } from 'vitest';
++import {
++  classifyParseFailure,
++  createParseRetryTracker,
++  decideParseRetry,
++  DEFAULT_MAX_PARSE_RETRIES,
++  parseRetryBackoffMs,
++  type ParseFailure,
++} from '../../src/core/ingestion/workers/parse-retry.js';
++
++const noJitter = () => 1;
++
++describe('classifyParseFailure', () => {
++  it.each<[string, ParseFailure]>([
++    ['worker exit (native crash / signal)', { source: 'exit', message: 'exited with code 134' }],
++    ['unrecognized uncaught worker error', { source: 'uncaught-error', message: 'boom' }],
++    [
++      'EMFILE errno code',
++      { source: 'uncaught-error', message: 'too many open files', code: 'EMFILE' },
++    ],
++    [
++      'EAGAIN surfaced through a worker-reported error',
++      { source: 'worker-error-message', message: 'write EAGAIN: resource temporarily unavailable' },
++    ],
++    [
++      'ENOMEM in the stack header',
++      {
++        source: 'worker-error-message',
++        message: 'x',
++        stack: 'Error: ENOMEM: cannot allocate\n    at f',
++      },
++    ],
++  ])('treats %s as transient', (_label, failure) => {
++    expect(classifyParseFailure(failure)).toBe('transient');
++  });
++
++  it.each<[string, ParseFailure]>([
++    [
++      'a worker-caught throw',
++      { source: 'worker-error-message', message: 'Cannot read properties of undefined' },
++    ],
++    [
++      'a SyntaxError from the parser',
++      {
++        source: 'uncaught-error',
++        message: 'Unexpected token',
++        stack: 'SyntaxError: Unexpected token\n    at p',
++      },
++    ],
++    [
++      'a TypeError thrown uncaught',
++      {
++        source: 'uncaught-error',
++        message: 'x is not a function',
++        stack: 'TypeError: x is not a function',
++      },
++    ],
++    ['stack overflow', { source: 'uncaught-error', message: 'Maximum call stack size exceeded' }],
++    [
++      'worker heap-cap OOM (code)',
++      { source: 'uncaught-error', message: 'Worker terminated', code: 'ERR_WORKER_OUT_OF_MEMORY' },
++    ],
++    [
++      'worker heap-cap OOM (message)',
++      { source: 'uncaught-error', message: 'ERR_WORKER_OUT_OF_MEMORY: heap limit' },
++    ],
++    ['an explicit parse error', { source: 'uncaught-error', message: 'Parse error at line 3' }],
++    ['a postMessage deserialization failure', { source: 'messageerror', message: 'clone failed' }],
++    ['a malformed protocol message', { source: 'malformed-message' }],
++  ])('treats %s as deterministic', (_label, failure) => {
++    expect(classifyParseFailure(failure)).toBe('deterministic');
++  });
++
++  it('prefers a transient errno over a deterministic error name', () => {
++    expect(
++      classifyParseFailure({
++        source: 'uncaught-error',
++        message: 'EMFILE: too many open files',
++        stack: 'TypeError: EMFILE: too many open files',
++      }),
++    ).toBe('transient');
++  });
++
++  it('heap-cap OOM wins even when an errno also appears', () => {
++    expect(
++      classifyParseFailure({
++        source: 'uncaught-error',
++        code: 'ERR_WORKER_OUT_OF_MEMORY',
++        message: 'ENOMEM',
++      }),
++    ).toBe('deterministic');
++  });
++});
++
++describe('decideParseRetry', () => {
++  it('never retries a deterministic failure, even with budget left', () => {
++    expect(decideParseRetry('deterministic', 0)).toEqual({ retry: false, reason: 'deterministic' });
++  });
++
++  it('retries a transient failure up to 2 times by default, then gives up', () => {
++    expect(DEFAULT_MAX_PARSE_RETRIES).toBe(2);
++    const first = decideParseRetry('transient', 0, undefined, noJitter);
++    const second = decideParseRetry('transient', 1, undefined, noJitter);
++    const third = decideParseRetry('transient', 2, undefined, noJitter);
++    expect(first).toMatchObject({ retry: true, retryNumber: 1 });
++    expect(second).toMatchObject({ retry: true, retryNumber: 2 });
++    expect(third).toEqual({ retry: false, reason: 'retries-exhausted' });
++  });
++
++  it('maxRetries 0 disables retry', () => {
++    expect(
++      decideParseRetry('transient', 0, { maxRetries: 0, baseDelayMs: 100, maxDelayMs: 1000 }),
++    ).toEqual({ retry: false, reason: 'retries-exhausted' });
++  });
++});
++
++describe('parseRetryBackoffMs', () => {
++  const policy = { baseDelayMs: 100, maxDelayMs: 1_000 };
++
++  it('doubles per retry and caps at maxDelayMs', () => {
++    expect(parseRetryBackoffMs(1, policy, noJitter)).toBe(100);
++    expect(parseRetryBackoffMs(2, policy, noJitter)).toBe(200);
++    expect(parseRetryBackoffMs(3, policy, noJitter)).toBe(400);
++    expect(parseRetryBackoffMs(10, policy, noJitter)).toBe(1_000);
++  });
++
++  it('jitter keeps the delay within [d/2, d]', () => {
++    expect(parseRetryBackoffMs(2, policy, () => 0)).toBe(100);
++    expect(parseRetryBackoffMs(2, policy, () => 0.5)).toBe(150);
++    for (let i = 0; i < 50; i++) {
++      const d = parseRetryBackoffMs(2, policy);
++      expect(d).toBeGreaterThanOrEqual(100);
++      expect(d).toBeLessThanOrEqual(200);
++    }
++  });
++
++  it('a zero base delay means no wait', () => {
++    expect(parseRetryBackoffMs(3, { baseDelayMs: 0, maxDelayMs: 1_000 })).toBe(0);
++  });
++});
++
++describe('createParseRetryTracker', () => {
++  const crash: ParseFailure = { source: 'exit', message: 'exited with code 139' };
++  const syntax: ParseFailure = {
++    source: 'worker-error-message',
++    message: 'bad',
++    stack: 'SyntaxError: bad',
++  };
++
++  it('allows two transient retries per file, then marks it failed', () => {
++    const t = createParseRetryTracker(undefined, noJitter);
++    expect(t.onFailure('a.ts', crash).retry).toBe(true);
++    expect(t.onFailure('a.ts', crash).retry).toBe(true);
++    expect(t.onFailure('a.ts', crash)).toEqual({ retry: false, reason: 'retries-exhausted' });
++    expect(t.retriesFor('a.ts')).toBe(2);
++    expect(t.totalRetries).toBe(2);
++  });
++
++  it('tracks budgets per path independently', () => {
++    const t = createParseRetryTracker(undefined, noJitter);
++    t.onFailure('a.ts', crash);
++    t.onFailure('a.ts', crash);
++    expect(t.onFailure('b.ts', crash).retry).toBe(true);
++    expect(t.retriesFor('b.ts')).toBe(1);
++  });
++
++  it('marks a deterministic failure failed immediately without spending budget', () => {
++    const t = createParseRetryTracker(undefined, noJitter);
++    expect(t.onFailure('a.ts', syntax)).toEqual({ retry: false, reason: 'deterministic' });
++    expect(t.retriesFor('a.ts')).toBe(0);
++    expect(t.totalRetries).toBe(0);
++  });
++
++  it('a deterministic failure after a transient retry stops retrying', () => {
++    const t = createParseRetryTracker(undefined, noJitter);
++    expect(t.onFailure('a.ts', crash).retry).toBe(true);
++    expect(t.onFailure('a.ts', syntax)).toEqual({ retry: false, reason: 'deterministic' });
++  });
++
++  it('backs off exponentially across retries of the same file', () => {
++    const t = createParseRetryTracker(
++      { maxRetries: 2, baseDelayMs: 50, maxDelayMs: 1_000 },
++      noJitter,
++    );
++    expect(t.onFailure('a.ts', crash)).toEqual({ retry: true, retryNumber: 1, delayMs: 50 });
++    expect(t.onFailure('a.ts', crash)).toEqual({ retry: true, retryNumber: 2, delayMs: 100 });
++  });
++});
+diff --git a/gitnexus/test/unit/worker-pool-resilience.test.ts b/gitnexus/test/unit/worker-pool-resilience.test.ts
+index 1427f45..43dd386 100644
+--- a/gitnexus/test/unit/worker-pool-resilience.test.ts
++++ b/gitnexus/test/unit/worker-pool-resilience.test.ts
+@@ -153,6 +153,10 @@ let workerUrl: URL;
+ beforeEach(() => {
+   nextActions.length = 0;
+   workerInstances = [];
++  // These suites pin the Layer-3 quarantine-on-first-death contract; the
++  // bounded per-file retry layer (parse-retry.ts) is disabled here and
++  // covered by the dedicated `bounded parse retry` describe below.
++  vi.stubEnv('GITNEXUS_WORKER_MAX_PARSE_RETRIES', '0');
+   tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'gitnexus-worker-pool-resilience-'));
+   const workerPath = path.join(tempDir, 'fake-worker.js');
+   fs.writeFileSync(workerPath, '// fake');
+@@ -160,6 +164,7 @@ beforeEach(() => {
+ });
+ 
+ afterEach(() => {
++  vi.unstubAllEnvs();
+   try {
+     fs.rmSync(tempDir, { recursive: true, force: true });
+   } catch {
+@@ -185,6 +190,7 @@ describe('worker pool resilience', () => {
+       activeSlots: 3,
+       droppedSlots: 0,
+       quarantined: 0,
++      parseRetries: 0,
+       poolBroken: false,
+       // Code-review F16: `terminated` distinguishes graceful shutdown
+       // from a circuit-breaker trip. Fresh pool has not been
+@@ -223,6 +229,7 @@ describe('worker pool resilience', () => {
+       activeSlots: 1,
+       droppedSlots: 1,
+       quarantined: 1,
++      parseRetries: 0,
+       poolBroken: false,
+       // F16: pool is still alive (just lost a slot); terminated=false.
+       terminated: false,
+@@ -584,6 +591,112 @@ describe('worker pool resilience', () => {
+   });
+ });
+ 
++describe('bounded parse retry (transient worker failures)', () => {
++  const fakeFactory = () => new FakeWorker() as unknown as import('node:worker_threads').Worker;
++  const files = [
++    { path: 'src/flaky.ts', content: '' },
++    { path: 'src/good.ts', content: '' },
++  ];
++  const ok = {
++    kind: 'parse-ok',
++    files: [{ path: 'src/flaky.ts' }, { path: 'src/good.ts' }],
++  } as const;
++
++  it('retries a file whose worker exited transiently and keeps it out of quarantine', async () => {
++    const pool = createWorkerPool(workerUrl, 1, {
++      workerFactory: fakeFactory,
++      maxParseRetries: 2,
++      parseRetryBaseDelayMs: 0,
++      consecutiveFailureThreshold: 10,
++      maxRespawnsPerSlot: 10,
++    });
++    nextActions.push({ kind: 'crash-exit', code: 137, afterStartingFiles: 1 });
++    nextActions.push({ ...ok, result: { fileCount: 2 } });
++
++    const results = await pool.dispatch<{ path: string; content: string }, unknown>(files);
++
++    expect(results).toEqual([{ fileCount: 2 }]);
++    expect(pool.getQuarantinedPaths()).toEqual([]);
++    expect(pool.getStats?.().parseRetries).toBe(1);
++    await pool.terminate();
++  });
++
++  it('marks the file failed after 2 transient retries, without tripping the breaker', async () => {
++    const pool = createWorkerPool(workerUrl, 1, {
++      workerFactory: fakeFactory,
++      maxParseRetries: 2,
++      parseRetryBaseDelayMs: 0,
++      // Threshold 3: the two retry deaths must not count, or the third
++      // (quarantining) death would trip the breaker instead.
++      consecutiveFailureThreshold: 3,
++      maxRespawnsPerSlot: 10,
++    });
++    for (let i = 0; i < 3; i++) {
++      nextActions.push({ kind: 'crash-exit', code: 137, afterStartingFiles: 1 });
++    }
++    nextActions.push({
++      kind: 'parse-ok',
++      files: [{ path: 'src/good.ts' }],
++      result: { fileCount: 1 },
++    });
++
++    const results = await pool.dispatch<{ path: string; content: string }, unknown>(files);
++
++    expect(results).toEqual([{ fileCount: 1 }]);
++    expect(pool.getQuarantinedPaths()).toEqual(['src/flaky.ts']);
++    expect(pool.getStats?.().parseRetries).toBe(2);
++    expect(pool.getStats?.().poolBroken).toBe(false);
++    await pool.terminate();
++  });
++
++  it('does not retry a deterministic parse error', async () => {
++    const pool = createWorkerPool(workerUrl, 1, {
++      workerFactory: fakeFactory,
++      maxParseRetries: 2,
++      parseRetryBaseDelayMs: 0,
++      consecutiveFailureThreshold: 10,
++      maxRespawnsPerSlot: 10,
++    });
++    nextActions.push({
++      kind: 'crash-error',
++      message: 'SyntaxError: Unexpected token',
++      afterStartingFiles: 1,
++    });
++    nextActions.push({
++      kind: 'parse-ok',
++      files: [{ path: 'src/good.ts' }],
++      result: { fileCount: 1 },
++    });
++
++    const results = await pool.dispatch<{ path: string; content: string }, unknown>(files);
++
++    expect(results).toEqual([{ fileCount: 1 }]);
++    expect(pool.getQuarantinedPaths()).toEqual(['src/flaky.ts']);
++    expect(pool.getStats?.().parseRetries).toBe(0);
++    await pool.terminate();
++  });
++
++  it('waits out the backoff before re-dispatching the retried file', async () => {
++    const pool = createWorkerPool(workerUrl, 1, {
++      workerFactory: fakeFactory,
++      maxParseRetries: 2,
++      parseRetryBaseDelayMs: 80,
++      consecutiveFailureThreshold: 10,
++      maxRespawnsPerSlot: 10,
++    });
++    nextActions.push({ kind: 'crash-exit', code: 137, afterStartingFiles: 1 });
++    nextActions.push({ ...ok, result: { fileCount: 2 } });
++
++    const started = Date.now();
++    const results = await pool.dispatch<{ path: string; content: string }, unknown>(files);
++
++    expect(results).toEqual([{ fileCount: 2 }]);
++    // Equal jitter keeps the first retry's delay within [base/2, base].
++    expect(Date.now() - started).toBeGreaterThanOrEqual(35);
++    await pool.terminate();
++  });
++});
++
+ describe('worker pool option resolution', () => {
+   it('resolves maxRespawnsPerSlot from explicit options', () => {
+     const opts = resolveWorkerPoolOptions({ maxRespawnsPerSlot: 7 }, 4);
+diff --git a/gitnexus/test/unit/worker-pool-windows-quarantine.test.ts b/gitnexus/test/unit/worker-pool-windows-quarantine.test.ts
+index 4e9258b..0ba37c9 100644
+--- a/gitnexus/test/unit/worker-pool-windows-quarantine.test.ts
++++ b/gitnexus/test/unit/worker-pool-windows-quarantine.test.ts
+@@ -19,7 +19,7 @@
+  * test-injected, so the test exercises the same code path regardless
+  * of the host's actual `path.sep`.
+  */
+-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
++import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+ import { EventEmitter } from 'node:events';
+ import path from 'node:path';
+ import { pathToFileURL } from 'node:url';
+@@ -108,6 +108,9 @@ let workerUrl: URL;
+ 
+ beforeEach(() => {
+   nextActions = [];
++  // Pins quarantine-on-first-death; bounded parse retry is covered in
++  // worker-pool-resilience.test.ts and parse-retry.test.ts.
++  vi.stubEnv('GITNEXUS_WORKER_MAX_PARSE_RETRIES', '0');
+   tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'gitnexus-quarantine-paths-'));
+   const workerPath = path.join(tempDir, 'fake-worker.js');
+   fs.writeFileSync(workerPath, '// fake');
+@@ -115,6 +118,7 @@ beforeEach(() => {
+ });
+ 
+ afterEach(() => {
++  vi.unstubAllEnvs();
+   try {
+     fs.rmSync(tempDir, { recursive: true, force: true });
+   } catch {

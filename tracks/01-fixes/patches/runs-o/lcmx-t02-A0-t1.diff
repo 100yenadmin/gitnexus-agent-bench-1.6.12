@@ -1,0 +1,133 @@
+diff --git a/tests/test_embedding_search_modes.py b/tests/test_embedding_search_modes.py
+index d05980c..da0706d 100644
+--- a/tests/test_embedding_search_modes.py
++++ b/tests/test_embedding_search_modes.py
+@@ -281,6 +281,44 @@ def test_semantic_missing_provider_degrades_to_fts(semantic_engine, monkeypatch)
+     assert "not configured" in payload["degraded_reason"]
+ 
+ 
++@pytest.mark.parametrize("mode", ["full_text", "semantic", "hybrid"])
++@pytest.mark.parametrize("query", [None, "", "   "], ids=["null", "empty", "blank"])
++def test_missing_or_null_query_returns_documented_error_in_every_mode(
++    semantic_engine, monkeypatch, mode, query
++):
++    provider = MockProvider()
++    monkeypatch.setattr(lcm_tools, "resolve_provider", lambda _config: provider)
++
++    for args in ({"query": query, "mode": mode}, {"mode": mode}):
++        payload = json.loads(lcm_tools.lcm_grep(args, engine=semantic_engine))
++        assert payload == {"error": "No query provided"}
++    assert provider.queries == []
++
++
++@pytest.mark.parametrize("mode", ["full_text", "semantic", "hybrid"])
++@pytest.mark.parametrize("query", [0, 0.0, 42], ids=["int-zero", "float-zero", "int"])
++def test_numeric_query_is_searched_as_text_in_every_mode(
++    semantic_engine, monkeypatch, mode, query
++):
++    semantic_engine._store.append(
++        "session-a",
++        {"role": "user", "content": f"ticket number {query} reported"},
++    )
++    provider = MockProvider()
++    monkeypatch.setattr(lcm_tools, "resolve_provider", lambda _config: provider)
++
++    payload = json.loads(
++        lcm_tools.lcm_grep({"query": query, "mode": mode}, engine=semantic_engine)
++    )
++
++    assert "error" not in payload, payload
++    assert payload["query"] == str(query)
++    if isinstance(query, int):
++        assert any(str(query) in json.dumps(hit) for hit in payload["results"])
++    if mode != "full_text":
++        assert provider.queries == [str(query)]
++
++
+ def test_semantic_capacity_degrades_using_independent_full_text_workers(
+     semantic_engine, monkeypatch
+ ):
+diff --git a/tests/test_lcm_recall.py b/tests/test_lcm_recall.py
+index 9079ec4..7892ba9 100644
+--- a/tests/test_lcm_recall.py
++++ b/tests/test_lcm_recall.py
+@@ -448,9 +448,23 @@ def test_limit_is_capped_and_reported(recall_engine, monkeypatch):
+     assert payload["limit_clamped_from"] == 1000
+ 
+ 
+-def test_missing_query_is_rejected(recall_engine):
+-    payload = json.loads(lcm_tools.lcm_recall({"query": "   "}, engine=recall_engine))
+-    assert "error" in payload
++@pytest.mark.parametrize("args", [{"query": "   "}, {"query": None}, {"query": ""}, {}])
++def test_missing_query_is_rejected(recall_engine, args):
++    payload = json.loads(lcm_tools.lcm_recall(args, engine=recall_engine))
++    assert payload == {"error": "No query provided"}
++
++
++def test_numeric_query_is_searched_as_text(recall_engine, monkeypatch):
++    recall_engine._config.embeddings_enabled = False
++    recall_engine._store.append(CURRENT, {"role": "user", "content": "error code 0 surfaced"})
++    provider = MockProvider()
++    monkeypatch.setattr(lcm_tools, "resolve_provider", lambda _config: provider)
++
++    payload = json.loads(lcm_tools.lcm_recall({"query": 0, "include": "all"}, engine=recall_engine))
++
++    assert "error" not in payload, payload
++    assert payload["query"] == "0"
++    assert payload["hits"]
+ 
+ 
+ def test_answer_ready_is_opt_in_and_default_response_is_byte_compatible(
+diff --git a/tools.py b/tools.py
+index 766445e..1666920 100644
+--- a/tools.py
++++ b/tools.py
+@@ -185,6 +185,21 @@ def _truncate_text_to_token_budget(text: str, max_tokens: int) -> tuple[str, boo
+     return best, True
+ 
+ 
++def _coerce_query_arg(value: Any) -> str:
++    """Normalize a model-supplied ``query`` argument to stripped text.
++
++    Models sometimes send ``null`` (common right after compaction) or a bare
++    number. ``None`` maps to ``""`` so callers return the documented
++    "No query provided" payload; any other value is searched as its text form
++    (so ``0`` becomes ``"0"`` rather than being treated as missing).
++    """
++    if value is None:
++        return ""
++    if isinstance(value, bytes):
++        value = value.decode("utf-8", errors="replace")
++    return str(value).strip()
++
++
+ def _parse_int_value(value: Any, default: int) -> int:
+     try:
+         return int(value)
+@@ -2367,7 +2382,7 @@ def _lcm_grep_full_text(args: Dict[str, Any], **kwargs) -> str:
+     if engine is None:
+         return json.dumps({"error": "LCM engine not initialized"})
+ 
+-    query = args.get("query", "").strip()
++    query = _coerce_query_arg(args.get("query"))
+     if not query:
+         return json.dumps({"error": "No query provided"})
+ 
+@@ -3056,7 +3071,7 @@ def _lcm_grep_semantic(
+     mode = str(args.get("mode") or "semantic").lower()
+     if time.monotonic() >= deadline:
+         return _lcm_grep_deadline_error(mode, "semantic_entry")
+-    query = str(args.get("query", "")).strip()
++    query = _coerce_query_arg(args.get("query"))
+     if not query:
+         return {"error": "No query provided"}
+ 
+@@ -4587,7 +4602,7 @@ def lcm_recall(args: Dict[str, Any], **kwargs) -> str:
+     if engine is None:
+         return json.dumps({"error": "LCM engine not initialized"})
+ 
+-    query = str(args.get("query", "")).strip()
++    query = _coerce_query_arg(args.get("query"))
+     if not query:
+         return json.dumps({"error": "No query provided"})
+ 

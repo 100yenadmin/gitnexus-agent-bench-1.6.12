@@ -1,0 +1,263 @@
+diff --git a/tests/test_query_normalization.py b/tests/test_query_normalization.py
+new file mode 100644
+index 0000000..2290bee
+--- /dev/null
++++ b/tests/test_query_normalization.py
+@@ -0,0 +1,207 @@
++"""Tests for query normalization in lcm_grep and lcm_recall.
++
++Verifies that null, numeric, and empty queries are handled safely without crashes.
++"""
++
++from __future__ import annotations
++
++import json
++from types import SimpleNamespace
++
++import pytest
++
++from hermes_lcm.config import LCMConfig
++from hermes_lcm.store import MessageStore
++from hermes_lcm.dag import SummaryDAG
++import hermes_lcm.tools as lcm_tools
++
++
++@pytest.fixture
++def basic_engine(tmp_path):
++    """Create a basic LCM engine for testing."""
++    config = LCMConfig(
++        database_path=str(tmp_path / "test.db"),
++        embeddings_enabled=False,
++    )
++    store = MessageStore(config.database_path, ingest_protection_config=config)
++    dag = SummaryDAG(config.database_path)
++    engine = SimpleNamespace(
++        _config=config,
++        _store=store,
++        _dag=dag,
++        current_session_id="test-session",
++    )
++    try:
++        yield engine
++    finally:
++        dag.close()
++        store.close()
++
++
++class TestQueryNormalizationLcmGrep:
++    """Test lcm_grep with various query types."""
++
++    def test_lcm_grep_null_query_returns_error(self, basic_engine):
++        """lcm_grep should return error for null query without crashing."""
++        result = json.loads(lcm_tools.lcm_grep({"query": None}, engine=basic_engine))
++        assert "error" in result
++        assert result["error"] == "No query provided"
++
++    def test_lcm_grep_empty_string_query_returns_error(self, basic_engine):
++        """lcm_grep should return error for empty string query."""
++        result = json.loads(lcm_tools.lcm_grep({"query": ""}, engine=basic_engine))
++        assert "error" in result
++        assert result["error"] == "No query provided"
++
++    def test_lcm_grep_whitespace_only_query_returns_error(self, basic_engine):
++        """lcm_grep should return error for whitespace-only query."""
++        result = json.loads(lcm_tools.lcm_grep({"query": "   "}, engine=basic_engine))
++        assert "error" in result
++        assert result["error"] == "No query provided"
++
++    def test_lcm_grep_numeric_zero_query_returns_results(self, basic_engine):
++        """lcm_grep should treat numeric 0 as a text search for '0'."""
++        # First add a message containing "0"
++        basic_engine._store.append(
++            "test-session",
++            {"role": "user", "content": "The answer is 0"},
++        )
++        result = json.loads(lcm_tools.lcm_grep({"query": 0}, engine=basic_engine))
++        # Should not error, should be a valid response structure
++        assert "error" not in result or result.get("error") is None
++        # Could have results or empty results, but should not crash
++
++    def test_lcm_grep_numeric_nonzero_query_works(self, basic_engine):
++        """lcm_grep should treat numeric values as text."""
++        basic_engine._store.append(
++            "test-session",
++            {"role": "user", "content": "Test 42 here"},
++        )
++        result = json.loads(lcm_tools.lcm_grep({"query": 42}, engine=basic_engine))
++        assert "error" not in result or result.get("error") is None
++
++    def test_lcm_grep_float_query_works(self, basic_engine):
++        """lcm_grep should handle float queries."""
++        result = json.loads(lcm_tools.lcm_grep({"query": 3.14}, engine=basic_engine))
++        assert "error" not in result or result.get("error") is None
++
++    def test_lcm_grep_full_text_mode_null_query(self, basic_engine):
++        """lcm_grep full_text mode should handle null query."""
++        result = json.loads(
++            lcm_tools.lcm_grep({"query": None, "mode": "full_text"}, engine=basic_engine)
++        )
++        assert "error" in result
++        assert result["error"] == "No query provided"
++
++    def test_lcm_grep_semantic_mode_null_query(self, basic_engine):
++        """lcm_grep semantic mode should handle null query without embeddings."""
++        result = json.loads(
++            lcm_tools.lcm_grep({"query": None, "mode": "semantic"}, engine=basic_engine)
++        )
++        assert "error" in result
++        assert result["error"] == "No query provided"
++
++    def test_lcm_grep_hybrid_mode_null_query(self, basic_engine):
++        """lcm_grep hybrid mode should handle null query."""
++        result = json.loads(
++            lcm_tools.lcm_grep({"query": None, "mode": "hybrid"}, engine=basic_engine)
++        )
++        assert "error" in result
++        assert result["error"] == "No query provided"
++
++
++class TestQueryNormalizationLcmRecall:
++    """Test lcm_recall with various query types."""
++
++    def test_lcm_recall_null_query_returns_error(self, basic_engine):
++        """lcm_recall should return error for null query without crashing."""
++        result = json.loads(lcm_tools.lcm_recall({"query": None}, engine=basic_engine))
++        assert "error" in result
++        assert result["error"] == "No query provided"
++
++    def test_lcm_recall_empty_string_query_returns_error(self, basic_engine):
++        """lcm_recall should return error for empty string query."""
++        result = json.loads(lcm_tools.lcm_recall({"query": ""}, engine=basic_engine))
++        assert "error" in result
++        assert result["error"] == "No query provided"
++
++    def test_lcm_recall_whitespace_only_query_returns_error(self, basic_engine):
++        """lcm_recall should return error for whitespace-only query."""
++        result = json.loads(lcm_tools.lcm_recall({"query": "   "}, engine=basic_engine))
++        assert "error" in result
++        assert result["error"] == "No query provided"
++
++    def test_lcm_recall_numeric_zero_query_works(self, basic_engine):
++        """lcm_recall should treat numeric 0 as a text search for '0'."""
++        result = json.loads(lcm_tools.lcm_recall({"query": 0}, engine=basic_engine))
++        # Should not error, should be a valid response structure
++        assert "error" not in result or result.get("error") is None
++
++    def test_lcm_recall_numeric_nonzero_query_works(self, basic_engine):
++        """lcm_recall should treat numeric values as text."""
++        result = json.loads(lcm_tools.lcm_recall({"query": 42}, engine=basic_engine))
++        assert "error" not in result or result.get("error") is None
++
++    def test_lcm_recall_float_query_works(self, basic_engine):
++        """lcm_recall should handle float queries."""
++        result = json.loads(lcm_tools.lcm_recall({"query": 3.14}, engine=basic_engine))
++        assert "error" not in result or result.get("error") is None
++
++
++class TestNormalizeQueryStringHelper:
++    """Test the _normalize_query_string helper function directly."""
++
++    def test_normalize_none_returns_empty_string(self):
++        """None should normalize to empty string."""
++        result = lcm_tools._normalize_query_string(None)
++        assert result == ""
++
++    def test_normalize_empty_string_returns_empty_string(self):
++        """Empty string should remain empty."""
++        result = lcm_tools._normalize_query_string("")
++        assert result == ""
++
++    def test_normalize_whitespace_only_returns_empty_string(self):
++        """Whitespace-only string should normalize to empty."""
++        result = lcm_tools._normalize_query_string("   \t\n  ")
++        assert result == ""
++
++    def test_normalize_numeric_zero_returns_zero_string(self):
++        """Numeric 0 should convert to '0' string."""
++        result = lcm_tools._normalize_query_string(0)
++        assert result == "0"
++
++    def test_normalize_numeric_nonzero_returns_string(self):
++        """Numeric values should convert to strings."""
++        result = lcm_tools._normalize_query_string(42)
++        assert result == "42"
++
++    def test_normalize_float_returns_string(self):
++        """Float values should convert to strings."""
++        result = lcm_tools._normalize_query_string(3.14)
++        assert result == "3.14"
++
++    def test_normalize_negative_number_returns_string(self):
++        """Negative numbers should convert to strings."""
++        result = lcm_tools._normalize_query_string(-42)
++        assert result == "-42"
++
++    def test_normalize_string_strips_whitespace(self):
++        """String queries should have whitespace stripped."""
++        result = lcm_tools._normalize_query_string("  hello world  ")
++        assert result == "hello world"
++
++    def test_normalize_normal_string_unchanged(self):
++        """Normal strings should pass through unchanged."""
++        result = lcm_tools._normalize_query_string("search term")
++        assert result == "search term"
++
++    def test_normalize_bool_true_returns_true_string(self):
++        """Boolean True should convert to 'True' string."""
++        result = lcm_tools._normalize_query_string(True)
++        assert result == "True"
++
++    def test_normalize_bool_false_returns_false_string(self):
++        """Boolean False should convert to 'False' string."""
++        result = lcm_tools._normalize_query_string(False)
++        assert result == "False"
+diff --git a/tools.py b/tools.py
+index 766445e..4d6b732 100644
+--- a/tools.py
++++ b/tools.py
+@@ -255,6 +255,18 @@ def _parse_strict_int(value: Any, name: str) -> tuple[int | None, str | None]:
+         return None, f"{name} must be an integer"
+ 
+ 
++def _normalize_query_string(value: Any) -> str:
++    """Safely convert and normalize a query argument to a string.
++
++    Handles None, numeric values, and strings. Returns an empty string for None.
++    This allows the caller to check `if not query` to return the standard error.
++    """
++    if value is None:
++        return ""
++    # Convert to string (handles numbers, bools, etc.) and strip whitespace
++    return str(value).strip()
++
++
+ _LCM_GREP_VALID_SCOPES = frozenset({"current", "all", "session"})
+ _LCM_GREP_VALID_CONTENT_SCOPES = frozenset({"history", "externalized", "both"})
+ _LCM_GREP_HARD_LIMIT_CAP = 200
+@@ -2367,7 +2379,7 @@ def _lcm_grep_full_text(args: Dict[str, Any], **kwargs) -> str:
+     if engine is None:
+         return json.dumps({"error": "LCM engine not initialized"})
+ 
+-    query = args.get("query", "").strip()
++    query = _normalize_query_string(args.get("query"))
+     if not query:
+         return json.dumps({"error": "No query provided"})
+ 
+@@ -3056,7 +3068,7 @@ def _lcm_grep_semantic(
+     mode = str(args.get("mode") or "semantic").lower()
+     if time.monotonic() >= deadline:
+         return _lcm_grep_deadline_error(mode, "semantic_entry")
+-    query = str(args.get("query", "")).strip()
++    query = _normalize_query_string(args.get("query"))
+     if not query:
+         return {"error": "No query provided"}
+ 
+@@ -4587,7 +4599,7 @@ def lcm_recall(args: Dict[str, Any], **kwargs) -> str:
+     if engine is None:
+         return json.dumps({"error": "LCM engine not initialized"})
+ 
+-    query = str(args.get("query", "")).strip()
++    query = _normalize_query_string(args.get("query"))
+     if not query:
+         return json.dumps({"error": "No query provided"})
+ 

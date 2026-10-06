@@ -1,0 +1,49 @@
+{
+ "platform": "Linux",
+ "summary": {
+  "filesAnalyzed": 2383,
+  "errorCount": 15157,
+  "warningCount": 74,
+  "informationCount": 0,
+  "timeInSec": 106.441
+ },
+ "added": [
+  {
+   "file": "hermes_cli/_update_takeover.py",
+   "line": 87,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "hermes_cli/main.py",
+   "line": 2519,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "hermes_cli/source_completion.py",
+   "line": 58,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "hermes_cli/update_lock.py",
+   "line": 357,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "hermes_cli/venv_sync.py",
+   "line": 405,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "hermes_cli/venv_sync.py",
+   "line": 463,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  }
+ ],
+ "removed_keys": []
+}

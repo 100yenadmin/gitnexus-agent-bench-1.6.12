@@ -1,0 +1,18 @@
+{
+ "schema_version": 1,
+ "verdict": "comment",
+ "findings": [
+  {
+   "id": "impact-pdg-measure-stale-dist-preferred",
+   "severity": "low",
+   "path": "gitnexus/bench/impact-pdg/measure.mjs",
+   "line": 128,
+   "end_line": 130,
+   "category": "correctness",
+   "scenario": "A developer edits analyzer/PDG emission code under gitnexus/src and runs `node --import tsx bench/impact-pdg/measure.mjs --check` locally with a dist/ left over from an earlier build (dist/ is gitignored, so it commonly persists). cliChildArgs sees dist/cli/index.js exists and runs the whole child analyze from the stale compiled CLI, while the parent still reads the index through src (local-backend.ts, pool-adapter.ts imported from src). The bench measures old analyzer behavior and can report a false pass or fail against baselines.json, with nothing indicating that dist was used.",
+   "evidence": "cliChildArgs: `return fs.existsSync(DIST_CLI) ? [DIST_CLI, ...rest] : [TSX_CLI, CLI_ENTRY, ...rest];`. This is only an existence check, with no freshness check against src and no log of which CLI was chosen. Before this diff, the analyze main thread always ran from src/cli/index.ts, and only the parse workers came from dist. The parent side still dynamically imports src/mcp/local/local-backend.ts (line ~200) and src/core/lbug/pool-adapter.ts (line ~811), so the writer and reader can now come from different code versions. CI is unaffected because impact-pdg-mutation-report.yml builds dist first.",
+   "recommendation": "Make the dist choice explicit and visible. For example, use dist only when an env flag such as GN_IMPACT_PDG_USE_DIST=1 is set, or when CI is set, or when dist/cli/index.js is newer than the newest src file. At minimum, print which CLI entry was used in the report so a stale-dist run can be detected.",
+   "blocking": false
+  }
+ ]
+}

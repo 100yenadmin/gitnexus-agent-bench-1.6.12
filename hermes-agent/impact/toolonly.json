@@ -1,0 +1,107 @@
+{
+ "h-impact-format_bytes": {
+  "sites": 24,
+  "site_recall": 1.0,
+  "returned": 16,
+  "symbol_precision": 1.0,
+  "file_recall": 1.0,
+  "file_precision": 1.0,
+  "impactedCount": 16,
+  "epistemic": "exact",
+  "missed": []
+ },
+ "h-impact-_norm": {
+  "sites": 27,
+  "site_recall": 1.0,
+  "returned": 21,
+  "symbol_precision": 1.0,
+  "file_recall": 1.0,
+  "file_precision": 1.0,
+  "impactedCount": 21,
+  "epistemic": "exact",
+  "missed": []
+ },
+ "h-impact-_write": {
+  "sites": 13,
+  "site_recall": 1.0,
+  "returned": 11,
+  "symbol_precision": 1.0,
+  "file_recall": 1.0,
+  "file_precision": 1.0,
+  "impactedCount": 11,
+  "epistemic": "exact",
+  "missed": []
+ },
+ "h-impact-_fail": {
+  "sites": 20,
+  "site_recall": 0.5,
+  "returned": 7,
+  "symbol_precision": 1.0,
+  "file_recall": 0.25,
+  "file_precision": 1.0,
+  "impactedCount": 7,
+  "epistemic": "exact",
+  "missed": [
+   "hermes_cli/plugin_packs.py:508 in _load_and_review",
+   "hermes_cli/plugin_packs.py:536 in cmd_pack_install",
+   "hermes_cli/plugin_packs.py:540 in cmd_pack_install",
+   "hermes_cli/plugin_packs.py:574 in pack_command",
+   "hermes_cli/plugins_cmd_capabilities.py:124 in cmd_capabilities",
+   "hermes_cli/plugins_cmd_install.py:521 in cmd_install",
+   "hermes_cli/plugins_cmd_install.py:550 in cmd_install",
+   "hermes_cli/plugins_cmd_listing.py:123 in cmd_show",
+   "hermes_cli/plugins_cmd_remove.py:53 in cmd_remove",
+   "hermes_cli/plugins_cmd_update.py:91 in cmd_update"
+  ]
+ },
+ "h-impact-_section": {
+  "sites": 9,
+  "site_recall": 1.0,
+  "returned": 9,
+  "symbol_precision": 1.0,
+  "file_recall": 1.0,
+  "file_precision": 1.0,
+  "impactedCount": 9,
+  "epistemic": "exact",
+  "missed": []
+ },
+ "h-impact-CredentialPool.has_credentials": {
+  "sites": 27,
+  "site_recall": 0.926,
+  "returned": 25,
+  "symbol_precision": 1.0,
+  "file_recall": 0.889,
+  "file_precision": 1.0,
+  "impactedCount": 25,
+  "epistemic": "exact",
+  "missed": [
+   "hermes_cli/runtime_provider.py:644 in _resolve_from_pool",
+   "hermes_cli/runtime_provider_custom.py:383 in _try_resolve_from_custom_pool"
+  ]
+ },
+ "h-impact-ProviderRegistry.export": {
+  "sites": 7,
+  "site_recall": 1.0,
+  "returned": 7,
+  "symbol_precision": 1.0,
+  "file_recall": 1.0,
+  "file_precision": 1.0,
+  "impactedCount": 7,
+  "epistemic": "exact",
+  "missed": []
+ },
+ "h-impact-normalize_provider": {
+  "sites": 20,
+  "site_recall": 0.9,
+  "returned": 16,
+  "symbol_precision": 1.0,
+  "file_recall": 0.778,
+  "file_precision": 1.0,
+  "impactedCount": 16,
+  "epistemic": "exact",
+  "missed": [
+   "hermes_cli/doctor_config.py:265 in _validate_model_config",
+   "hermes_cli/doctor_connectivity.py:109 in _build_apikey_providers_list"
+  ]
+ }
+}

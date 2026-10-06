@@ -1,0 +1,218 @@
+diff --git a/servers/engine/server.py b/servers/engine/server.py
+index 0cf3bde..80c297c 100644
+--- a/servers/engine/server.py
++++ b/servers/engine/server.py
+@@ -4690,7 +4690,16 @@ def rest_blocked_cells(
+         (x, y)
+         for x, y in scene_grid_mod.impassable_cells(grid, width, height, occupied=occupied)
+     }
+-    return width, height, impassable | occupied
++    blocked = impassable | occupied
++    # The mover's own cell is never in the blocked set, whether blocked by terrain or occupancy.
++    # This ensures a mover standing on impassable terrain (e.g., from end_combat write-back) can
++    # still walk away from that cell.
++    if exclude_id:
++        mover = next((ch for ch in c.characters.values() if ch.id == exclude_id), None)
++        if mover and mover.stage_cell:
++            mover_cell = (int(mover.stage_cell[0]), int(mover.stage_cell[1]))
++            blocked.discard(mover_cell)
++    return width, height, blocked
+ 
+ 
+ def _seed_stage_cells_on_arrival(c: "Campaign", dest: "Location") -> list[str]:
+@@ -7428,13 +7437,25 @@ def end_combat(campaign_id: str, resolution: str = "") -> dict:
+         # the grid) get a write-back; a zone/theater fight leaves x/y None ⇒ NO stage_cell write,
+         # byte-for-byte today's behavior. The dead are skipped (a corpse has no rest position).
+         # This IS the engine writing its own sole-writer field from its own combat state.
++        # If a survivor's final cell is impassable terrain in the rest scene (e.g., a crate added
++        # by PR #1507), relocate them to the nearest walkable rest cell (#1511 stuck-cell fix).
++        loc = c.locations.get(c.current_location_id) if c.current_location_id else None
++        rest_width, rest_height, rest_blocked = (
++            rest_blocked_cells(c, loc) if loc else (0, 0, set())
++        )
+         for cb in c.combat.order:
+             if cb.x is None or cb.y is None:
+                 continue
+             ch = c.characters.get(cb.character_id)
+             if ch is None or ch.dead or ch.current_hp <= 0:
+                 continue
+-            ch.stage_cell = (int(cb.x), int(cb.y))
++            final_cell = (int(cb.x), int(cb.y))
++            # If final cell is blocked in rest, find the nearest walkable alternative.
++            if final_cell in rest_blocked and rest_width > 0 and rest_height > 0:
++                nearest = _nearest_walkable_cell(final_cell, rest_blocked, rest_width, rest_height)
++                if nearest is not None:
++                    final_cell = nearest
++            ch.stage_cell = final_cell
+         c.combat = Combat()
+         save_campaign(c)
+         return result
+@@ -10574,6 +10595,63 @@ def _nearest_walkable_adjacent(
+     return reachable[0][1]
+ 
+ 
++def _nearest_walkable_cell(
++    from_cell: tuple[int, int],
++    blocked: set[tuple[int, int]],
++    width: int,
++    height: int,
++) -> "tuple[int, int] | None":
++    """Find the nearest walkable cell from ``from_cell`` using BFS over the 8-neighbourhood.
++    This is used when end_combat writes a survivor's final cell to stage_cell and that cell
++    is impassable terrain — we need to relocate them to the nearest walkable cell. Returns
++    None if no walkable cell exists reachable from from_cell."""
++    import heapq
++
++    if from_cell not in blocked:
++        return from_cell  # already walkable
++
++    # BFS to find nearest walkable cell; start with distance 0 so immediate neighbours
++    # might be reachable even if from_cell itself is blocked.
++    dist: dict[tuple[int, int], int] = {}
++    pq: list[tuple[int, tuple[int, int]]] = []
++
++    # Try all 8 neighbours first (distance 1)
++    for dx in (-1, 0, 1):
++        for dy in (-1, 0, 1):
++            if dx == 0 and dy == 0:
++                continue
++            nx, ny = from_cell[0] + dx, from_cell[1] + dy
++            if not (0 <= nx < width and 0 <= ny < height):
++                continue
++            cell = (nx, ny)
++            if cell not in blocked:
++                return cell  # immediate neighbour is walkable
++            dist[cell] = 1
++            heapq.heappush(pq, (1, cell))
++
++    # BFS from blocked neighbours to find further walkable cells
++    while pq:
++        d, (cx, cy) = heapq.heappop(pq)
++        if d > dist.get((cx, cy), d):
++            continue
++        for dx in (-1, 0, 1):
++            for dy in (-1, 0, 1):
++                if dx == 0 and dy == 0:
++                    continue
++                nx, ny = cx + dx, cy + dy
++                if not (0 <= nx < width and 0 <= ny < height):
++                    continue
++                cell = (nx, ny)
++                if cell not in blocked:
++                    return cell  # found a walkable cell
++                nd = d + 1
++                if nd < dist.get(cell, nd + 1):
++                    dist[cell] = nd
++                    heapq.heappush(pq, (nd, cell))
++
++    return None
++
++
+ def _approach_to_talk(campaign_id: str, mover_id: str, npc) -> "dict | None":
+     """W3 (#1320) approach-to-talk: walk ``mover_id`` to a cell ADJACENT to the tracked ``npc``'s
+     stage cell, THEN return an approach descriptor — so a click-NPC parley opens AT the actor
+diff --git a/servers/engine/tests/test_combat.py b/servers/engine/tests/test_combat.py
+index 0ade7f1..da15864 100644
+--- a/servers/engine/tests/test_combat.py
++++ b/servers/engine/tests/test_combat.py
+@@ -2766,6 +2766,58 @@ def test_end_combat_resolution_records_disposition_for_living_hostiles(tmp_path,
+     assert store.load_campaign(cid).last_combat_resolution == ""
+ 
+ 
++def test_end_combat_moves_survivor_with_impassable_rest_cell(tmp_path, monkeypatch):
++    """When end_combat writes a survivor's final combat-grid cell to stage_cell, if that cell
++    is impassable terrain in the rest scene (e.g., a crate or wall), relocate the survivor to
++    the nearest walkable rest cell. This prevents the stuck-cell trap where a character ends
++    combat standing on a newly impassable cell."""
++    import server
++    from scene_grid import SceneGrid, SceneGridSpec, SceneCell, SceneCellDefault, SceneProp
++
++    monkeypatch.setenv("WORLDOS_STATE_DIR", str(tmp_path))
++    cid = server.create_campaign("Stuck cell test")["id"]
++    loc_id = server.add_location(cid, "Test Room")["id"]
++    pid = server.create_character(cid, "Hero", kind="player", max_hp=30)["id"]
++
++    # Create a simple scene with a crate at (4, 2)
++    cells = [SceneCell(c=4, r=2, type="prop", walkable=False, prop_ref="crate")]
++    props = [SceneProp(id="crate", kind="crates", cells=[(4, 2)], anchor_cell=(4, 2))]
++    c = server._require(cid)
++    c.locations[loc_id].scene_grid = SceneGrid(
++        scene_id="test", location_id=loc_id, kind="dungeon",
++        grid=SceneGridSpec(cols=5, rows=3, cell_size_ft=5),
++        cell_default=SceneCellDefault(type="floor", walkable=True, cost=1),
++        cells=cells, props=props,
++    )
++    server.save_campaign(c)
++
++    # Start combat
++    server.spawn_monster(cid, "Goblin")
++    mid = next(ch.id for ch in store.load_campaign(cid).characters.values() if ch.kind == "monster")
++    server.start_combat(cid, [pid, mid])
++
++    # Simulate hero's final position on the crate at (4, 2) during combat
++    # (This could happen if the crate didn't exist during combat but was added by PR #1507)
++    c = server._require(cid)
++    for cb in c.combat.order:
++        if cb.character_id == pid:
++            cb.x, cb.y = 4, 2
++    server.save_campaign(c)
++
++    # End combat — hero should be relocated away from the impassable crate at (4, 2)
++    server.end_combat(cid)
++    c = server._require(cid)
++    hero = c.characters[pid]
++
++    # Hero's stage_cell should not be on the crate; it should be at a nearby walkable cell
++    assert hero.stage_cell is not None, "hero should have a stage_cell after combat"
++    assert hero.stage_cell != (4, 2), "hero should not be stuck on the crate"
++    # Verify it's a walkable cell (checking it's not blocked by terrain, only by occupancy)
++    loc = c.locations[loc_id]
++    _w, _h, blocked = server.rest_blocked_cells(c, loc, exclude_id=pid)
++    assert hero.stage_cell not in blocked, f"hero relocated to blocked cell {hero.stage_cell}"
++
++
+ # =========================================================================
+ # (A) CRIT doubles the Battle Master superiority die (#213/A).
+ # SRD Critical Hits: the maneuver's superiority die is "other damage dice" and
+diff --git a/servers/engine/tests/test_walk_to.py b/servers/engine/tests/test_walk_to.py
+index cce9354..6e26063 100644
+--- a/servers/engine/tests/test_walk_to.py
++++ b/servers/engine/tests/test_walk_to.py
+@@ -332,3 +332,37 @@ def test_old_snapshot_without_stage_cell_deserializes(room):
+     from models import Campaign
+     restored = Campaign.model_validate(raw)
+     assert all(ch.stage_cell is None for ch in restored.characters.values())
++
++
++# ── stuck cell: mover on impassable terrain ─────────────────────────────────
++
++def test_mover_on_terrain_blocked_cell_not_in_blocked_set(room):
++    """A character standing on an impassable terrain cell (wall/crate) is NOT trapped —
++    rest_blocked_cells excludes the mover's cell from the blocked set even when the cell
++    itself is terrain-blocked. This lets walk_to path the character away from that cell."""
++    cid, hero, _ally, loc_id = room
++    c = server._require(cid)
++    loc = c.locations[loc_id]
++    # Manually place Hero on a wall cell (2,1) — simulating what end_combat could do
++    # when writing a survivor's final combat-grid cell back to stage_cell.
++    c.characters[hero].stage_cell = (2, 1)
++    server.save_campaign(c)
++    # When rest_blocked_cells is called with exclude_id=hero, the (2,1) wall cell
++    # should NOT be in the blocked set — the hero is standing on it, so it's not
++    # blocking them from walking away.
++    _w, _h, blocked = server.rest_blocked_cells(c, loc, exclude_id=hero)
++    assert (2, 1) not in blocked, "mover's own cell must not be in blocked set"
++
++
++def test_mover_on_terrain_can_walk_away(room):
++    """A character standing on an impassable cell can walk to an adjacent open cell."""
++    cid, hero, _ally, loc_id = room
++    c = server._require(cid)
++    loc = c.locations[loc_id]
++    # Place Hero on a wall cell (2,1)
++    c.characters[hero].stage_cell = (2, 1)
++    server.save_campaign(c)
++    # Hero should be able to walk to an adjacent open cell
++    out = server.walk_to(cid, hero, 1, 1)
++    assert out["walked"] is True, "should be able to walk away from terrain-blocked cell"
++    assert out["to"] == [1, 1]

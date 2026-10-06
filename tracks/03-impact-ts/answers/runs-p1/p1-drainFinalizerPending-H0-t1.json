@@ -1,0 +1,64 @@
+{
+ "locations": [
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/php.ts",
+   "line": 900
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/kotlin.ts",
+   "line": 939
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/python.ts",
+   "line": 516
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/python.ts",
+   "line": 632
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/go.ts",
+   "line": 472
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/swift.ts",
+   "line": 947
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/csharp.ts",
+   "line": 916
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/csharp.ts",
+   "line": 991
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/csharp.ts",
+   "line": 1055
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/dart.ts",
+   "line": 947
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/ruby.ts",
+   "line": 904
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/typescript.ts",
+   "line": 684
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/java.ts",
+   "line": 963
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/java.ts",
+   "line": 967
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/java.ts",
+   "line": 1029
+  }
+ ]
+}

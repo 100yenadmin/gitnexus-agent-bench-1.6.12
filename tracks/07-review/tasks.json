@@ -1,0 +1,80 @@
+[
+ {
+  "id": "r2718-defect",
+  "upstream_id": "review-pr-2718-defect",
+  "statement": "Review the historical snapshot of https://github.com/abhigyanpatwari/GitNexus/pull/2718. Report only actionable defects introduced by the local diff.",
+  "upstream_repo": "abhigyanpatwari/GitNexus",
+  "upstream_commit": "c4ecf398de637cf779ab2238e69958cfd5d601ce",
+  "review_case_patch": "eval/workflow_bench/review_cases/pr-2718.patch",
+  "review_case_patch_sha256": "14ca0d5659fb7aa529c32543f194deabc8e25d592037dad1d70ef8f6ab906391",
+  "labels": "eval/workflow_bench/oracles/review-pr-2718-defect.labels.json",
+  "labels_sha256": "959921e52a01a752c1dd6911ea67cf528d277c8d73a2b395eae7eef03d4497bd",
+  "pre_run_cmd": "git apply --exclude='eval/workflow_bench/*' $GITNEXUS_SRC/eval/workflow_bench/review_cases/pr-2718.patch",
+  "class": "review-defect"
+ },
+ {
+  "id": "r2794-defect",
+  "upstream_id": "review-pr-2794-defect",
+  "statement": "Review the historical snapshot of https://github.com/abhigyanpatwari/GitNexus/pull/2794. Report only actionable defects introduced by the local diff.",
+  "upstream_repo": "abhigyanpatwari/GitNexus",
+  "upstream_commit": "c4ecf398de637cf779ab2238e69958cfd5d601ce",
+  "review_case_patch": "eval/workflow_bench/review_cases/pr-2794.patch",
+  "review_case_patch_sha256": "e2271ede4b4d65993abde16012061191a094847aadf0431a2dec908a59b6af93",
+  "labels": "eval/workflow_bench/oracles/review-pr-2794-defect.labels.json",
+  "labels_sha256": "9b7f4bad7497f6bbfe08cfe4a306e5e6713e55d693bf064cb4bee3600db5f1d3",
+  "pre_run_cmd": "git apply --exclude='eval/workflow_bench/*' $GITNEXUS_SRC/eval/workflow_bench/review_cases/pr-2794.patch",
+  "class": "review-defect"
+ },
+ {
+  "id": "r2108-defect",
+  "upstream_id": "review-pr-2108-defect",
+  "statement": "Review the historical snapshot of https://github.com/abhigyanpatwari/GitNexus/pull/2108. Report only actionable defects introduced by the local diff.",
+  "upstream_repo": "abhigyanpatwari/GitNexus",
+  "upstream_commit": "c4ecf398de637cf779ab2238e69958cfd5d601ce",
+  "review_case_patch": "eval/workflow_bench/review_cases/pr-2108.patch",
+  "review_case_patch_sha256": "12928510253fe079b179fc4658334b732de8907471ac92a6ed8061fb78aedbf2",
+  "labels": "eval/workflow_bench/oracles/review-pr-2108-defect.labels.json",
+  "labels_sha256": "17414d0b820b9e9176c7ec5e8154cbb6d565aee9e9a3c0f47bece230453c560c",
+  "pre_run_cmd": "git apply --exclude='eval/workflow_bench/*' $GITNEXUS_SRC/eval/workflow_bench/review_cases/pr-2108.patch",
+  "class": "review-defect"
+ },
+ {
+  "id": "r2258-defect",
+  "upstream_id": "review-pr-2258-defect",
+  "statement": "Review the historical snapshot of https://github.com/abhigyanpatwari/GitNexus/pull/2258. Report only actionable defects introduced by the local diff.",
+  "upstream_repo": "abhigyanpatwari/GitNexus",
+  "upstream_commit": "c4ecf398de637cf779ab2238e69958cfd5d601ce",
+  "review_case_patch": "eval/workflow_bench/review_cases/pr-2258.patch",
+  "review_case_patch_sha256": "8e0eb214bd6151d1060cf2c47df7735fe5c57398e08bee9306b7b702abeca843",
+  "labels": "eval/workflow_bench/oracles/review-pr-2258-defect.labels.json",
+  "labels_sha256": "a0c17ba1981c17d53ceac3dd205075c073a52886f49d1d59d471fd8b87aa22b3",
+  "pre_run_cmd": "git apply --exclude='eval/workflow_bench/*' $GITNEXUS_SRC/eval/workflow_bench/review_cases/pr-2258.patch",
+  "class": "review-defect"
+ },
+ {
+  "id": "r2258-clean",
+  "upstream_id": "review-pr-2258-clean",
+  "statement": "Review the historical snapshot of https://github.com/abhigyanpatwari/GitNexus/pull/2258. Report only actionable defects introduced by the local diff.",
+  "upstream_repo": "abhigyanpatwari/GitNexus",
+  "upstream_commit": "c4ecf398de637cf779ab2238e69958cfd5d601ce",
+  "review_case_patch": "eval/workflow_bench/review_cases/pr-2258b.patch",
+  "review_case_patch_sha256": "4323ec2ff01f612f18a493e055c70eb4307e9c1859b97f5b60da07b177d3a238",
+  "labels": "eval/workflow_bench/oracles/review-pr-2258-clean.labels.json",
+  "labels_sha256": "37557326fb9e5ac009831ce3d93feaf0e018452be3ed0ce4c5d2e782aece1e28",
+  "pre_run_cmd": "git apply --exclude='eval/workflow_bench/*' $GITNEXUS_SRC/eval/workflow_bench/review_cases/pr-2258b.patch",
+  "class": "review-clean"
+ },
+ {
+  "id": "r2773-clean",
+  "upstream_id": "review-pr-2773-clean",
+  "statement": "Review the historical snapshot of https://github.com/abhigyanpatwari/GitNexus/pull/2773. Report only actionable defects introduced by the local diff.",
+  "upstream_repo": "abhigyanpatwari/GitNexus",
+  "upstream_commit": "c4ecf398de637cf779ab2238e69958cfd5d601ce",
+  "review_case_patch": "eval/workflow_bench/review_cases/pr-2773.patch",
+  "review_case_patch_sha256": "1c0327d4d9725428c1b49ab3586abefdbc084147735b120afd43312e8e48dd91",
+  "labels": "eval/workflow_bench/oracles/review-pr-2773-clean.labels.json",
+  "labels_sha256": "37557326fb9e5ac009831ce3d93feaf0e018452be3ed0ce4c5d2e782aece1e28",
+  "pre_run_cmd": "git apply --exclude='eval/workflow_bench/*' $GITNEXUS_SRC/eval/workflow_bench/review_cases/pr-2773.patch",
+  "class": "review-clean"
+ }
+]

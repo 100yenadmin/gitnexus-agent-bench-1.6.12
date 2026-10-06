@@ -1,0 +1,519 @@
+diff --git a/gitnexus/src/core/ingestion/cfg/visitors/c-cpp-harvest.ts b/gitnexus/src/core/ingestion/cfg/visitors/c-cpp-harvest.ts
+index 13e2597..c55631d 100644
+--- a/gitnexus/src/core/ingestion/cfg/visitors/c-cpp-harvest.ts
++++ b/gitnexus/src/core/ingestion/cfg/visitors/c-cpp-harvest.ts
+@@ -16,7 +16,7 @@
+  * TWO-PHASE, ORDER-INDEPENDENT (load-bearing — mirrors the TS harvester): the
+  * CFG walk is NOT source-order (`visitFor` builds the init block after the body,
+  * `visitDoWhile` the condition before the body), so resolving names against a
+- * scope stack populated *during* the walk would mis-resolve. Phase 1 pre-scans
++ * scope stack populated *during* the walk would mis-resolveBinding. Phase 1 pre-scans
+  * the whole function subtree once into a completed lexical scope tree; phase 2
+  * resolves defs/uses against that finished tree from any walk order.
+  *
+@@ -39,7 +39,7 @@
+  * def is not falsely killed.
+  *
+  * Identifiers with no in-function declaration (globals, macros, params of an
+- * enclosing scope) resolve to a SYNTHETIC module-level binding (`name@module`),
++ * enclosing scope) resolveBinding to a SYNTHETIC module-level binding (`name@module`),
+  * applied identically by def and use harvesting.
+  *
+  * RAII NOTE: C++ destructors that run at scope exit are NOT represented in the
+@@ -471,7 +471,7 @@ export class CCppHarvester extends ScopeTreeHarvester {
+         // any enclosing argument (`exec(escape(x))` must not put `escape` into
+         // exec's arg 0). A `new Foo(...)` type identifier is a type, not a
+         // scalar binding — record neither a use nor an occurrence for it.
+-        if (callee.type === 'identifier') acc.addUseWithoutOccurrence(this.resolve(callee));
++        if (callee.type === 'identifier') acc.addUseWithoutOccurrence(this.resolveBinding(callee));
+         calleePath = callee.text;
+       } else if (callee.type === 'field_expression') {
+         // skipFinalRead: the final access IS the callee, carried by the dotted
+@@ -517,7 +517,7 @@ export class CCppHarvester extends ScopeTreeHarvester {
+     acc: FactAccumulator,
+     skipFinalRead: boolean,
+   ): { path?: string; rootIdx?: number } {
+-    // Collect field accesses outer→inner (unshift), then resolve the root.
++    // Collect field accesses outer→inner (unshift), then resolveBinding the root.
+     const accesses: string[] = [];
+     let cur: SyntaxNode = this.unwrapLvalue(node);
+     for (;;) {
+@@ -534,7 +534,7 @@ export class CCppHarvester extends ScopeTreeHarvester {
+     let rootIdx: number | undefined;
+     let rootSegment: string | undefined;
+     if (cur.type === 'identifier' || cur.type === 'field_identifier') {
+-      rootIdx = this.resolve(cur);
++      rootIdx = this.resolveBinding(cur);
+       acc.addUse(rootIdx);
+       rootSegment = cur.text;
+     } else {
+diff --git a/gitnexus/src/core/ingestion/cfg/visitors/call-site-harvest.ts b/gitnexus/src/core/ingestion/cfg/visitors/call-site-harvest.ts
+index 9ba67ef..c3253d0 100644
+--- a/gitnexus/src/core/ingestion/cfg/visitors/call-site-harvest.ts
++++ b/gitnexus/src/core/ingestion/cfg/visitors/call-site-harvest.ts
+@@ -390,7 +390,7 @@ const finalizeSite = (site: MutableSite): SiteRecord => {
+  */
+ export interface ChainTerminalHooks {
+   /** Resolve a binding-target node to its function-table binding index. */
+-  resolve(node: SyntaxNode): number;
++  resolveBinding(node: SyntaxNode): number;
+   /**
+    * Walk a NON-identifier chain root for its uses + nested sites (the terminal's
+    * `else` branch — `self.x.f()`, `foo().bar`, a tuple index, etc.).
+@@ -427,7 +427,7 @@ export function finalizeChain(
+   let rootIdx: number | undefined;
+   let rootSegment: string | undefined;
+   if (isRootIdType(cur.type) && cur.text !== '_') {
+-    rootIdx = hooks.resolve(cur);
++    rootIdx = hooks.resolveBinding(cur);
+     acc.addUse(rootIdx);
+     rootSegment = cur.text;
+   } else {
+diff --git a/gitnexus/src/core/ingestion/cfg/visitors/csharp-harvest.ts b/gitnexus/src/core/ingestion/cfg/visitors/csharp-harvest.ts
+index f322925..22e90ee 100644
+--- a/gitnexus/src/core/ingestion/cfg/visitors/csharp-harvest.ts
++++ b/gitnexus/src/core/ingestion/cfg/visitors/csharp-harvest.ts
+@@ -11,7 +11,7 @@
+  * TWO-PHASE, ORDER-INDEPENDENT (load-bearing — mirrors the TS / C-C++ harvesters):
+  * the CFG walk is NOT source-order (`visitFor` builds the init block after the
+  * body, `visitDoWhile` the condition before the body), so resolving names against
+- * a scope stack populated *during* the walk would mis-resolve. Phase 1 pre-scans
++ * a scope stack populated *during* the walk would mis-resolveBinding. Phase 1 pre-scans
+  * the whole function subtree once into a completed lexical scope tree; phase 2
+  * resolves defs/uses against that finished tree from any walk order.
+  *
+@@ -38,7 +38,7 @@
+  * def is not falsely killed.
+  *
+  * Identifiers with no in-function declaration (fields, properties, statics,
+- * namespaced names) resolve to a SYNTHETIC module-level binding (`name@module`),
++ * namespaced names) resolveBinding to a SYNTHETIC module-level binding (`name@module`),
+  * applied identically by def and use harvesting.
+  *
+  * NOTE: nothing serialized here may carry a field named `nodeId` — the durable
+@@ -157,7 +157,7 @@ export class CsharpHarvester extends ScopeTreeHarvester {
+       }
+       case 'declaration_expression': {
+         // `f(out var n)` / `f(out int n)` — `n` is a fresh out-binding written
+-        // by the callee; declare it so its def + later uses resolve to a real
++        // by the callee; declare it so its def + later uses resolveBinding to a real
+         // local rather than a synthetic module binding.
+         const name = node.childForFieldName('name');
+         if (name) this.declare(name, 'var', childScope);
+@@ -477,7 +477,7 @@ export class CsharpHarvester extends ScopeTreeHarvester {
+         // For a `new Foo(...)`, the `type` is a type name, not a scalar
+         // binding — record neither a use nor an occurrence for it; for a bare
+         // call the callee name is a statement-level use but not an occurrence.
+-        if (kind === 'call') acc.addUseWithoutOccurrence(this.resolve(callee));
++        if (kind === 'call') acc.addUseWithoutOccurrence(this.resolveBinding(callee));
+         calleePath = callee.text;
+       } else if (callee.type === 'member_access_expression') {
+         // skipFinalRead: the final access IS the callee, carried by the path.
+@@ -554,7 +554,7 @@ export class CsharpHarvester extends ScopeTreeHarvester {
+     let rootIdx: number | undefined;
+     let rootSegment: string | undefined;
+     if (cur.type === 'identifier') {
+-      rootIdx = this.resolve(cur);
++      rootIdx = this.resolveBinding(cur);
+       acc.addUse(rootIdx);
+       rootSegment = cur.text;
+     } else {
+diff --git a/gitnexus/src/core/ingestion/cfg/visitors/go-harvest.ts b/gitnexus/src/core/ingestion/cfg/visitors/go-harvest.ts
+index 606229c..5fa33fd 100644
+--- a/gitnexus/src/core/ingestion/cfg/visitors/go-harvest.ts
++++ b/gitnexus/src/core/ingestion/cfg/visitors/go-harvest.ts
+@@ -28,7 +28,7 @@
+  * TWO-PHASE, ORDER-INDEPENDENT (load-bearing — mirrors the TS / Java / C#
+  * harvesters): the CFG walk is NOT source-order (`visitFor` builds the init block
+  * after the body, the `for`-clause condition before the update), so resolving
+- * names against a scope stack populated *during* the walk would mis-resolve.
++ * names against a scope stack populated *during* the walk would mis-resolveBinding.
+  * Phase 1 pre-scans the whole function subtree once into a completed lexical
+  * scope tree; phase 2 resolves defs/uses against that finished tree from any
+  * walk order.
+@@ -59,7 +59,7 @@
+  * machinery is kept for switch/select case-test parity.)
+  *
+  * Identifiers with no in-function declaration (package-level vars, imported
+- * names, functions) resolve to a SYNTHETIC module-level binding (`name@module`),
++ * names, functions) resolveBinding to a SYNTHETIC module-level binding (`name@module`),
+  * applied identically by def and use harvesting.
+  *
+  * NOTE: nothing serialized here may carry a field named `nodeId` — the durable
+@@ -347,14 +347,14 @@ export class GoHarvester extends ScopeTreeHarvester {
+   /** Go override: the blank identifier (`_`) defines nothing. */
+   protected override def(nameNode: SyntaxNode, acc: FactAccumulator): void {
+     if (nameNode.text === '_') return; // blank identifier defines nothing
+-    if (this.conditionalDepth > 0) acc.addMayDef(this.resolve(nameNode));
+-    else acc.addDef(this.resolve(nameNode));
++    if (this.conditionalDepth > 0) acc.addMayDef(this.resolveBinding(nameNode));
++    else acc.addDef(this.resolveBinding(nameNode));
+   }
+ 
+   /** Go override: the blank identifier (`_`) is read of nothing. */
+   protected override use(nameNode: SyntaxNode, acc: FactAccumulator): void {
+     if (nameNode.text === '_') return;
+-    acc.addUse(this.resolve(nameNode));
++    acc.addUse(this.resolveBinding(nameNode));
+   }
+ 
+   /** Strip parenthesized wrappers around an lvalue (`(x) = 1`). */
+@@ -557,7 +557,7 @@ export class GoHarvester extends ScopeTreeHarvester {
+       const names = target.type === 'identifier' ? [target] : this.listIdentifiers(target);
+       for (const n of names) {
+         if (n.text === '_') continue;
+-        defs.push(this.resolve(n));
++        defs.push(this.resolveBinding(n));
+       }
+     }
+     if (defs.length > 0) this.resultDefTargets.set(root.id, defs);
+@@ -582,7 +582,7 @@ export class GoHarvester extends ScopeTreeHarvester {
+     if (calleeNode) {
+       const callee = this.unwrapLvalue(calleeNode);
+       if (callee.type === 'identifier') {
+-        if (callee.text !== '_') acc.addUseWithoutOccurrence(this.resolve(callee));
++        if (callee.text !== '_') acc.addUseWithoutOccurrence(this.resolveBinding(callee));
+         calleePath = callee.text;
+       } else if (callee.type === 'selector_expression') {
+         // skipFinalRead: the final `.field` IS the callee, carried by the path.
+@@ -647,7 +647,7 @@ export class GoHarvester extends ScopeTreeHarvester {
+     }
+     // The shared terminal: root-use record + innermost member-read + path-join.
+     return finalizeChain(acc, cur, accesses, skipFinalRead, (t) => t === 'identifier', {
+-      resolve: (n) => this.resolve(n),
++      resolveBinding: (n) => this.resolveBinding(n),
+       walkRoot: (n) => this.walkValue(n, acc),
+     });
+   }
+diff --git a/gitnexus/src/core/ingestion/cfg/visitors/java-harvest.ts b/gitnexus/src/core/ingestion/cfg/visitors/java-harvest.ts
+index 44b4568..4d6c143 100644
+--- a/gitnexus/src/core/ingestion/cfg/visitors/java-harvest.ts
++++ b/gitnexus/src/core/ingestion/cfg/visitors/java-harvest.ts
+@@ -11,7 +11,7 @@
+  * TWO-PHASE, ORDER-INDEPENDENT (load-bearing — mirrors the TS / C# harvesters):
+  * the CFG walk is NOT source-order (`visitFor` builds the init block after the
+  * body, `visitDoWhile` the condition before the body), so resolving names against
+- * a scope stack populated *during* the walk would mis-resolve. Phase 1 pre-scans
++ * a scope stack populated *during* the walk would mis-resolveBinding. Phase 1 pre-scans
+  * the whole function subtree once into a completed lexical scope tree; phase 2
+  * resolves defs/uses against that finished tree from any walk order.
+  *
+@@ -35,7 +35,7 @@
+  * falsely killed. (Java has no `??`.)
+  *
+  * Identifiers with no in-function declaration (fields, statics, imported names)
+- * resolve to a SYNTHETIC module-level binding (`name@module`), applied
++ * resolveBinding to a SYNTHETIC module-level binding (`name@module`), applied
+  * identically by def and use harvesting.
+  *
+  * NOTE: nothing serialized here may carry a field named `nodeId` — the durable
+@@ -434,7 +434,7 @@ export class JavaHarvester extends ScopeTreeHarvester {
+       // default descent — preserve it byte-identically, but never as a value
+       // occurrence in an enclosing argument (`exec(escape(x))` must not put the
+       // `escape` name into exec's arg 0).
+-      acc.addUseWithoutOccurrence(this.resolve(nameNode));
++      acc.addUseWithoutOccurrence(this.resolveBinding(nameNode));
+       const callee =
+         receiverPath !== undefined ? `${receiverPath}.${nameNode.text}` : nameNode.text;
+       acc.setSiteCallee(siteIdx, callee);
+@@ -508,7 +508,7 @@ export class JavaHarvester extends ScopeTreeHarvester {
+     let rootIdx: number | undefined;
+     let rootSegment: string | undefined;
+     if (cur.type === 'identifier') {
+-      rootIdx = this.resolve(cur);
++      rootIdx = this.resolveBinding(cur);
+       acc.addUse(rootIdx);
+       rootSegment = cur.text;
+     } else if (cur.type === 'this' || cur.type === 'super') {
+diff --git a/gitnexus/src/core/ingestion/cfg/visitors/kotlin-harvest.ts b/gitnexus/src/core/ingestion/cfg/visitors/kotlin-harvest.ts
+index 49ae192..e165d2b 100644
+--- a/gitnexus/src/core/ingestion/cfg/visitors/kotlin-harvest.ts
++++ b/gitnexus/src/core/ingestion/cfg/visitors/kotlin-harvest.ts
+@@ -382,7 +382,7 @@ export class KotlinHarvester {
+     return acc.defCount() ? acc.finish() : undefined;
+   }
+ 
+-  private resolve(nameNode: SyntaxNode): number {
++  private resolveBinding(nameNode: SyntaxNode): number {
+     const name = nameNode.text;
+     const idx = this.table.get(name);
+     if (idx !== undefined) return idx;
+@@ -397,13 +397,13 @@ export class KotlinHarvester {
+ 
+   private def(nameNode: SyntaxNode, acc: FactAccumulator): void {
+     if (nameNode.text === '_') return; // blank target defines nothing
+-    if (this.conditionalDepth > 0) acc.addMayDef(this.resolve(nameNode));
+-    else acc.addDef(this.resolve(nameNode));
++    if (this.conditionalDepth > 0) acc.addMayDef(this.resolveBinding(nameNode));
++    else acc.addDef(this.resolveBinding(nameNode));
+   }
+ 
+   private use(nameNode: SyntaxNode, acc: FactAccumulator): void {
+     if (nameNode.text === '_') return;
+-    acc.addUse(this.resolve(nameNode));
++    acc.addUse(this.resolveBinding(nameNode));
+   }
+ 
+   /** Run `fn` with defs demoted to may-defs (conditionally-evaluated context). */
+@@ -659,7 +659,7 @@ export class KotlinHarvester {
+     const defs: number[] = [];
+     for (const target of targets) {
+       if (target.type !== 'simple_identifier' || target.text === '_') continue;
+-      defs.push(this.resolve(target));
++      defs.push(this.resolveBinding(target));
+     }
+     if (defs.length > 0) this.resultDefTargets.set(root.id, defs);
+   }
+@@ -698,7 +698,7 @@ export class KotlinHarvester {
+       if (callee.type === 'simple_identifier') {
+         // A bare free call — the callee NAME is a statement-level use but NOT a
+         // value occurrence in any enclosing argument.
+-        if (callee.text !== '_') acc.addUseWithoutOccurrence(this.resolve(callee));
++        if (callee.text !== '_') acc.addUseWithoutOccurrence(this.resolveBinding(callee));
+         acc.setSiteCallee(siteIdx, callee.text);
+       } else if (callee.type === 'navigation_expression') {
+         // skipFinalRead: the final `.name` IS the callee, carried by the path.
+@@ -803,7 +803,7 @@ export class KotlinHarvester {
+     }
+     // The shared terminal: root-use record + innermost member-read + path-join.
+     return finalizeChain(acc, cur, accesses, skipFinalRead, (t) => t === 'simple_identifier', {
+-      resolve: (n) => this.resolve(n),
++      resolveBinding: (n) => this.resolveBinding(n),
+       walkRoot: (n) => this.walkValue(n, acc),
+     });
+   }
+diff --git a/gitnexus/src/core/ingestion/cfg/visitors/python-harvest.ts b/gitnexus/src/core/ingestion/cfg/visitors/python-harvest.ts
+index acecf42..1f621e4 100644
+--- a/gitnexus/src/core/ingestion/cfg/visitors/python-harvest.ts
++++ b/gitnexus/src/core/ingestion/cfg/visitors/python-harvest.ts
+@@ -478,7 +478,7 @@ export class PythonHarvester {
+     }
+   }
+ 
+-  private resolve(nameNode: SyntaxNode): number {
++  private resolveBinding(nameNode: SyntaxNode): number {
+     const name = nameNode.text;
+     if (!this.globalNames.has(name)) {
+       const idx = this.table.get(name);
+@@ -495,13 +495,13 @@ export class PythonHarvester {
+ 
+   private def(nameNode: SyntaxNode, acc: FactAccumulator): void {
+     if (nameNode.text === '_') return; // blank target defines nothing of interest
+-    if (this.conditionalDepth > 0) acc.addMayDef(this.resolve(nameNode));
+-    else acc.addDef(this.resolve(nameNode));
++    if (this.conditionalDepth > 0) acc.addMayDef(this.resolveBinding(nameNode));
++    else acc.addDef(this.resolveBinding(nameNode));
+   }
+ 
+   private use(nameNode: SyntaxNode, acc: FactAccumulator): void {
+     if (nameNode.text === '_') return;
+-    acc.addUse(this.resolve(nameNode));
++    acc.addUse(this.resolveBinding(nameNode));
+   }
+ 
+   /** Run `fn` with defs demoted to may-defs (conditionally-evaluated context). */
+@@ -688,7 +688,8 @@ export class PythonHarvester {
+ 
+   /** Binding indices assigned by a target pattern, without mutating statement facts. */
+   private targetDefIndices(target: SyntaxNode): number[] {
+-    if (target.type === 'identifier') return target.text === '_' ? [] : [this.resolve(target)];
++    if (target.type === 'identifier')
++      return target.text === '_' ? [] : [this.resolveBinding(target)];
+     if (PATTERN_LIST_TYPES.has(target.type)) {
+       const out: number[] = [];
+       for (let i = 0; i < target.namedChildCount; i++) {
+@@ -745,7 +746,7 @@ export class PythonHarvester {
+     if (calleeNode) {
+       const callee = this.unwrapValue(calleeNode);
+       if (callee.type === 'identifier') {
+-        if (callee.text !== '_') acc.addUseWithoutOccurrence(this.resolve(callee));
++        if (callee.text !== '_') acc.addUseWithoutOccurrence(this.resolveBinding(callee));
+         acc.setSiteCallee(siteIdx, callee.text);
+       } else if (callee.type === 'attribute') {
+         // skipFinalRead: the final `.attr` IS the callee, carried by the path.
+@@ -820,7 +821,7 @@ export class PythonHarvester {
+     }
+     // The shared terminal: root-use record + innermost member-read + path-join.
+     return finalizeChain(acc, cur, accesses, skipFinalRead, (t) => t === 'identifier', {
+-      resolve: (n) => this.resolve(n),
++      resolveBinding: (n) => this.resolveBinding(n),
+       walkRoot: (n) => this.walkValue(n, acc),
+     });
+   }
+diff --git a/gitnexus/src/core/ingestion/cfg/visitors/rust-harvest.ts b/gitnexus/src/core/ingestion/cfg/visitors/rust-harvest.ts
+index fc810bf..687ff58 100644
+--- a/gitnexus/src/core/ingestion/cfg/visitors/rust-harvest.ts
++++ b/gitnexus/src/core/ingestion/cfg/visitors/rust-harvest.ts
+@@ -476,7 +476,7 @@ export class RustHarvester {
+     return acc.defCount() ? acc.finish() : undefined;
+   }
+ 
+-  private resolve(nameNode: SyntaxNode): number {
++  private resolveBinding(nameNode: SyntaxNode): number {
+     const name = nameNode.text;
+     const idx = this.table.get(name);
+     if (idx !== undefined) return idx;
+@@ -491,13 +491,13 @@ export class RustHarvester {
+ 
+   private def(nameNode: SyntaxNode, acc: FactAccumulator): void {
+     if (nameNode.text === '_') return; // blank target defines nothing
+-    if (this.conditionalDepth > 0) acc.addMayDef(this.resolve(nameNode));
+-    else acc.addDef(this.resolve(nameNode));
++    if (this.conditionalDepth > 0) acc.addMayDef(this.resolveBinding(nameNode));
++    else acc.addDef(this.resolveBinding(nameNode));
+   }
+ 
+   private use(nameNode: SyntaxNode, acc: FactAccumulator): void {
+     if (nameNode.text === '_') return;
+-    acc.addUse(this.resolve(nameNode));
++    acc.addUse(this.resolveBinding(nameNode));
+   }
+ 
+   /** Run `fn` with defs demoted to may-defs (conditionally-evaluated context). */
+@@ -706,7 +706,7 @@ export class RustHarvester {
+     const defs: number[] = [];
+     for (const target of targets) {
+       if (target.type !== 'identifier' || target.text === '_') continue;
+-      defs.push(this.resolve(target));
++      defs.push(this.resolveBinding(target));
+     }
+     if (defs.length > 0) this.resultDefTargets.set(root.id, defs);
+   }
+@@ -872,7 +872,7 @@ export class RustHarvester {
+     if (callee.type === 'identifier') {
+       // A bare free call — the callee NAME is a statement-level use but NOT a
+       // value occurrence in any enclosing argument.
+-      if (callee.text !== '_') acc.addUseWithoutOccurrence(this.resolve(callee));
++      if (callee.text !== '_') acc.addUseWithoutOccurrence(this.resolveBinding(callee));
+       acc.setSiteCallee(siteIdx, callee.text);
+       return;
+     }
+@@ -934,7 +934,7 @@ export class RustHarvester {
+     // Only a head segment that is a bound LOCAL is a receiver (taint substrate);
+     // a type / module path head launders no value.
+     if (cur.type === 'identifier' && cur.text !== '_' && this.table.has(cur.text)) {
+-      rootIdx = this.resolve(cur);
++      rootIdx = this.resolveBinding(cur);
+       acc.addUse(rootIdx);
+     }
+     const path = segments.every((s) => s !== '') ? segments.join('.') : undefined;
+@@ -972,7 +972,7 @@ export class RustHarvester {
+     // The non-identifier root (`self.x.f()`, `foo().bar`, a tuple index) walks for
+     // uses + nested sites.
+     return finalizeChain(acc, cur, accesses, skipFinalRead, (t) => t === 'identifier', {
+-      resolve: (n) => this.resolve(n),
++      resolveBinding: (n) => this.resolveBinding(n),
+       walkRoot: (n) => this.walkValue(n, acc),
+     });
+   }
+diff --git a/gitnexus/src/core/ingestion/cfg/visitors/scope-tree-harvest.ts b/gitnexus/src/core/ingestion/cfg/visitors/scope-tree-harvest.ts
+index 1822e58..7120ee4 100644
+--- a/gitnexus/src/core/ingestion/cfg/visitors/scope-tree-harvest.ts
++++ b/gitnexus/src/core/ingestion/cfg/visitors/scope-tree-harvest.ts
+@@ -8,7 +8,7 @@
+  * import('./c-cpp-harvest.js').CCppHarvester}) harvesters each carried a
+  * BYTE-IDENTICAL copy of the lexical scope tree machinery: the {@link Scope}
+  * record, the binding/scope/synthetic state, the two-phase resolution cache, and
+- * the `openScope` / `nearestScopeOf` / `resolve` / `def` / `use` / `conditional`
++ * the `openScope` / `nearestScopeOf` / `resolveBinding` / `def` / `use` / `conditional`
+  * / `bindingTable` methods. This base holds that one copy; the four harvesters
+  * extend it and supply ONLY their genuine per-language variation — the
+  * `prescan` switch (abstract) and, for Go, the blank-identifier (`_`) overrides
+@@ -17,12 +17,12 @@
+  * TWO-PHASE, ORDER-INDEPENDENT (load-bearing): the CFG walk is NOT source-order
+  * (`visitFor` builds the init block after the body, `visitDoWhile` the condition
+  * before the body), so resolving names against a scope stack populated *during*
+- * the walk would mis-resolve. Phase 1 (`prescan`, per-language) pre-scans the
++ * the walk would mis-resolveBinding. Phase 1 (`prescan`, per-language) pre-scans the
+  * whole function subtree once into a completed lexical scope tree; phase 2
+- * (`resolve`) resolves defs/uses against that finished tree from any walk order.
++ * (`resolveBinding`) resolves defs/uses against that finished tree from any walk order.
+  *
+  * Identifiers with no in-function declaration (globals, fields, imports, …)
+- * resolve to a SYNTHETIC module-level binding (`name@module`), created on first
++ * resolveBinding to a SYNTHETIC module-level binding (`name@module`), created on first
+  * reference and applied identically by def and use harvesting.
+  *
+  * NOTE: nothing serialized via the harvested bindings/facts may carry a field
+@@ -120,7 +120,7 @@ export abstract class ScopeTreeHarvester {
+ 
+   // ── phase 2: per-statement fact extraction ───────────────────────────────
+ 
+-  protected resolve(nameNode: SyntaxNode): number {
++  protected resolveBinding(nameNode: SyntaxNode): number {
+     const name = nameNode.text;
+     const cached = this.nearestScopeCache.get(nameNode.id);
+     let startScope: Scope | null = cached ?? null;
+@@ -151,12 +151,12 @@ export abstract class ScopeTreeHarvester {
+   }
+ 
+   protected def(nameNode: SyntaxNode, acc: FactAccumulator): void {
+-    if (this.conditionalDepth > 0) acc.addMayDef(this.resolve(nameNode));
+-    else acc.addDef(this.resolve(nameNode));
++    if (this.conditionalDepth > 0) acc.addMayDef(this.resolveBinding(nameNode));
++    else acc.addDef(this.resolveBinding(nameNode));
+   }
+ 
+   protected use(nameNode: SyntaxNode, acc: FactAccumulator): void {
+-    acc.addUse(this.resolve(nameNode));
++    acc.addUse(this.resolveBinding(nameNode));
+   }
+ 
+   /** Run `fn` with defs demoted to may-defs (conditionally-evaluated context). */
+diff --git a/gitnexus/src/core/ingestion/cfg/visitors/swift-harvest.ts b/gitnexus/src/core/ingestion/cfg/visitors/swift-harvest.ts
+index 8f3b615..230cbf3 100644
+--- a/gitnexus/src/core/ingestion/cfg/visitors/swift-harvest.ts
++++ b/gitnexus/src/core/ingestion/cfg/visitors/swift-harvest.ts
+@@ -438,7 +438,7 @@ export class SwiftHarvester {
+     return acc.defCount() ? acc.finish() : undefined;
+   }
+ 
+-  private resolve(nameNode: SyntaxNode): number {
++  private resolveBinding(nameNode: SyntaxNode): number {
+     const name = nameNode.text;
+     const idx = this.table.get(name);
+     if (idx !== undefined) return idx;
+@@ -453,13 +453,13 @@ export class SwiftHarvester {
+ 
+   private def(nameNode: SyntaxNode, acc: FactAccumulator): void {
+     if (nameNode.text === '_') return; // blank target defines nothing
+-    if (this.conditionalDepth > 0) acc.addMayDef(this.resolve(nameNode));
+-    else acc.addDef(this.resolve(nameNode));
++    if (this.conditionalDepth > 0) acc.addMayDef(this.resolveBinding(nameNode));
++    else acc.addDef(this.resolveBinding(nameNode));
+   }
+ 
+   private use(nameNode: SyntaxNode, acc: FactAccumulator): void {
+     if (nameNode.text === '_') return;
+-    acc.addUse(this.resolve(nameNode));
++    acc.addUse(this.resolveBinding(nameNode));
+   }
+ 
+   /** Run `fn` with defs demoted to may-defs (conditionally-evaluated context). */
+@@ -638,7 +638,7 @@ export class SwiftHarvester {
+     const defs: number[] = [];
+     for (const target of targets) {
+       if (target.type !== 'simple_identifier' || target.text === '_') continue;
+-      defs.push(this.resolve(target));
++      defs.push(this.resolveBinding(target));
+     }
+     if (defs.length > 0) this.resultDefTargets.set(root.id, defs);
+   }
+@@ -674,7 +674,7 @@ export class SwiftHarvester {
+       if (callee.type === 'simple_identifier') {
+         // A bare free / init call — the callee NAME is a statement-level use but
+         // NOT a value occurrence in any enclosing argument.
+-        if (callee.text !== '_') acc.addUseWithoutOccurrence(this.resolve(callee));
++        if (callee.text !== '_') acc.addUseWithoutOccurrence(this.resolveBinding(callee));
+         acc.setSiteCallee(siteIdx, callee.text);
+       } else if (callee.type === 'navigation_expression') {
+         // skipFinalRead: the final `.name` IS the callee, carried by the path.
+@@ -746,7 +746,7 @@ export class SwiftHarvester {
+     }
+     // The shared terminal: root-use record + innermost member-read + path-join.
+     return finalizeChain(acc, cur, accesses, skipFinalRead, (t) => t === 'simple_identifier', {
+-      resolve: (n) => this.resolve(n),
++      resolveBinding: (n) => this.resolveBinding(n),
+       walkRoot: (n) => this.walkValue(n, acc),
+     });
+   }

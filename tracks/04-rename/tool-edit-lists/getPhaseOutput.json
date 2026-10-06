@@ -1,0 +1,987 @@
+{
+ "source_run": "runs-p2/p2-getPhaseOutput-H2-t1",
+ "tool": "rename",
+ "calls": [
+  {
+   "status": "success",
+   "old_name": "getPhaseOutput",
+   "new_name": "readPhaseOutput",
+   "files_affected": 20,
+   "total_edits": 63,
+   "graph_edits": 63,
+   "text_search_edits": 0,
+   "changes": [
+    {
+     "file_path": "gitnexus/src/core/ingestion/pipeline-phases/types.ts",
+     "edits": [
+      {
+       "line": 99,
+       "old_text": "export function getPhaseOutput<T>(",
+       "new_text": "export function readPhaseOutput<T>(",
+       "confidence": "graph"
+      }
+     ]
+    },
+    {
+     "file_path": "gitnexus/test/unit/pipeline-runner.test.ts",
+     "edits": [
+      {
+       "line": 8,
+       "old_text": "import { getPhaseOutput } from '../../src/core/ingestion/pipeline-phases/types.js';",
+       "new_text": "import { readPhaseOutput } from '../../src/core/ingestion/pipeline-phases/types.js';",
+       "confidence": "graph"
+      },
+      {
+       "line": 37,
+       "old_text": "const a = getPhaseOutput<string>(deps, 'a');",
+       "new_text": "const a = readPhaseOutput<string>(deps, 'a');",
+       "confidence": "graph"
+      },
+      {
+       "line": 47,
+       "old_text": "const a = getPhaseOutput<string>(deps, 'a');",
+       "new_text": "const a = readPhaseOutput<string>(deps, 'a');",
+       "confidence": "graph"
+      },
+      {
+       "line": 57,
+       "old_text": "const b = getPhaseOutput<string>(deps, 'b');",
+       "new_text": "const b = readPhaseOutput<string>(deps, 'b');",
+       "confidence": "graph"
+      },
+      {
+       "line": 58,
+       "old_text": "const c = getPhaseOutput<string>(deps, 'c');",
+       "new_text": "const c = readPhaseOutput<string>(deps, 'c');",
+       "confidence": "graph"
+      },
+      {
+       "line": 256,
+       "old_text": "const prev = getPhaseOutput<number>(deps, `step${idx - 1}`);",
+       "new_text": "const prev = readPhaseOutput<number>(deps, `step${idx - 1}`);",
+       "confidence": "graph"
+      },
+      {
+       "line": 412,
+       "old_text": "return `${getPhaseOutput<string>(deps, 'earlier')}+later`;",
+       "new_text": "return `${readPhaseOutput<string>(deps, 'earlier')}+later`;",
+       "confidence": "graph"
+      },
+      {
+       "line": 418,
+       "old_text": "expect(getPhaseOutput<string>(results, 'later')).toBe('earlierOutput+later');",
+       "new_text": "expect(readPhaseOutput<string>(results, 'later')).toBe('earlierOutput+later');",
+       "confidence": "graph"
+      },
+      {
+       "line": 475,
+       "old_text": "describe('getPhaseOutput', () => {",
+       "new_text": "describe('readPhaseOutput', () => {",
+       "confidence": "graph"
+      },
+      {
+       "line": 480,
+       "old_text": "const result = getPhaseOutput<{ value: number }>(deps, 'test');",
+       "new_text": "const result = readPhaseOutput<{ value: number }>(deps, 'test');",
+       "confidence": "graph"
+      },
+      {
+       "line": 487,
+       "old_text": "expect(() => getPhaseOutput(deps, 'missing')).toThrow(/Phase 'missing' not found/);",
+       "new_text": "expect(() => readPhaseOutput(deps, 'missing')).toThrow(/Phase 'missing' not found/);",
+       "confidence": "graph"
+      }
+     ]
+    },
+    {
+     "file_path": "gitnexus/src/core/ingestion/pipeline.ts",
+     "edits": [
+      {
+       "line": 26,
+       "old_text": "getPhaseOutput,",
+       "new_text": "readPhaseOutput,",
+       "confidence": "graph"
+      },
+      {
+       "line": 345,
+       "old_text": "// phase depends on it (a filtered-out dep would throw in getPhaseOutput).",
+       "new_text": "// phase depends on it (a filtered-out dep would throw in readPhaseOutput).",
+       "confidence": "graph"
+      },
+      {
+       "line": 427,
+       "old_text": "} = getPhaseOutput<{",
+       "new_text": "} = readPhaseOutput<{",
+       "confidence": "graph"
+      },
+      {
+       "line": 437,
+       "old_text": "const scopeResolutionOutput = getPhaseOutput<ScopeResolutionOutput>(results, 'scopeResolution');",
+       "new_text": "const scopeResolutionOutput = readPhaseOutput<ScopeResolutionOutput>(results, 'scopeResolution');",
+       "confidence": "graph"
+      },
+      {
+       "line": 447,
+       "old_text": "// too), and `getPhaseOutput` THROWS on a phase that was never resolved. Keying",
+       "new_text": "// too), and `readPhaseOutput` THROWS on a phase that was never resolved. Keying",
+       "confidence": "graph"
+      },
+      {
+       "line": 451,
+       "old_text": "communityResult = getPhaseOutput<CommunitiesOutput>(results, 'communities').communityResult;",
+       "new_text": "communityResult = readPhaseOutput<CommunitiesOutput>(results, 'communities').communityResult;",
+       "confidence": "graph"
+      },
+      {
+       "line": 452,
+       "old_text": "processResult = getPhaseOutput<ProcessesOutput>(results, 'processes').processResult;",
+       "new_text": "processResult = readPhaseOutput<ProcessesOutput>(results, 'processes').processResult;",
+       "confidence": "graph"
+      },
+      {
+       "line": 514,
+       "old_text": "// registry filtered out is absent, and `getPhaseOutput` throws on absent.",
+       "new_text": "// registry filtered out is absent, and `readPhaseOutput` throws on absent.",
+       "confidence": "graph"
+      },
+      {
+       "line": 516,
+       "old_text": "result.communityResult = getPhaseOutput<CommunitiesOutput>(",
+       "new_text": "result.communityResult = readPhaseOutput<CommunitiesOutput>(",
+       "confidence": "graph"
+      },
+      {
+       "line": 522,
+       "old_text": "result.processResult = getPhaseOutput<ProcessesOutput>(derived, 'processes').processResult;",
+       "new_text": "result.processResult = readPhaseOutput<ProcessesOutput>(derived, 'processes').processResult;",
+       "confidence": "graph"
+      }
+     ]
+    },
+    {
+     "file_path": "gitnexus/src/core/ingestion/pipeline-phases/call-summaries.ts",
+     "edits": [
+      {
+       "line": 21,
+       "old_text": "import { getPhaseOutput } from './types.js';",
+       "new_text": "import { readPhaseOutput } from './types.js';",
+       "confidence": "graph"
+      },
+      {
+       "line": 46,
+       "old_text": "const scope = getPhaseOutput<ScopeResolutionOutput>(deps, 'scopeResolution');",
+       "new_text": "const scope = readPhaseOutput<ScopeResolutionOutput>(deps, 'scopeResolution');",
+       "confidence": "graph"
+      }
+     ]
+    },
+    {
+     "file_path": "gitnexus/src/core/ingestion/pipeline-phases/cobol.ts",
+     "edits": [
+      {
+       "line": 12,
+       "old_text": "import { getPhaseOutput } from './types.js';",
+       "new_text": "import { readPhaseOutput } from './types.js';",
+       "confidence": "graph"
+      },
+      {
+       "line": 33,
+       "old_text": "const { scannedFiles, allPathSet } = getPhaseOutput<StructureOutput>(deps, 'structure');",
+       "new_text": "const { scannedFiles, allPathSet } = readPhaseOutput<StructureOutput>(deps, 'structure');",
+       "confidence": "graph"
+      }
+     ]
+    },
+    {
+     "file_path": "gitnexus/src/core/ingestion/pipeline-phases/communities.ts",
+     "edits": [
+      {
+       "line": 13,
+       "old_text": "import { getPhaseOutput } from './types.js';",
+       "new_text": "import { readPhaseOutput } from './types.js';",
+       "confidence": "graph"
+      },
+      {
+       "line": 34,
+       "old_text": "const { totalFiles } = getPhaseOutput<StructureOutput>(deps, 'structure');",
+       "new_text": "const { totalFiles } = readPhaseOutput<StructureOutput>(deps, 'structure');",
+       "confidence": "graph"
+      }
+     ]
+    },
+    {
+     "file_path": "gitnexus/src/core/ingestion/pipeline-phases/cross-file.ts",
+     "edits": [
+      {
+       "line": 35,
+       "old_text": "import { getPhaseOutput } from './types.js';",
+       "new_text": "import { readPhaseOutput } from './types.js';",
+       "confidence": "graph"
+      },
+      {
+       "line": 53,
+       "old_text": "const { totalFiles, bindingAccumulator } = getPhaseOutput<ParseOutput>(deps, 'parse');",
+       "new_text": "const { totalFiles, bindingAccumulator } = readPhaseOutput<ParseOutput>(deps, 'parse');",
+       "confidence": "graph"
+      }
+     ]
+    },
+    {
+     "file_path": "gitnexus/src/core/ingestion/pipeline-phases/markdown.ts",
+     "edits": [
+      {
+       "line": 12,
+       "old_text": "import { getPhaseOutput } from './types.js';",
+       "new_text": "import { readPhaseOutput } from './types.js';",
+       "confidence": "graph"
+      },
+      {
+       "line": 34,
+       "old_text": "const { scannedFiles, allPathSet } = getPhaseOutput<StructureOutput>(deps, 'structure');",
+       "new_text": "const { scannedFiles, allPathSet } = readPhaseOutput<StructureOutput>(deps, 'structure');",
+       "confidence": "graph"
+      }
+     ]
+    },
+    {
+     "file_path": "gitnexus/src/core/ingestion/pipeline-phases/mro.ts",
+     "edits": [
+      {
+       "line": 13,
+       "old_text": "import { getPhaseOutput } from './types.js';",
+       "new_text": "import { readPhaseOutput } from './types.js';",
+       "confidence": "graph"
+      },
+      {
+       "line": 34,
+       "old_text": "const { totalFiles } = getPhaseOutput<StructureOutput>(deps, 'structure');",
+       "new_text": "const { totalFiles } = readPhaseOutput<StructureOutput>(deps, 'structure');",
+       "confidence": "graph"
+      }
+     ]
+    },
+    {
+     "file_path": "gitnexus/src/core/ingestion/pipeline-phases/orm.ts",
+     "edits": [
+      {
+       "line": 12,
+       "old_text": "import { getPhaseOutput } from './types.js';",
+       "new_text": "import { readPhaseOutput } from './types.js';",
+       "confidence": "graph"
+      },
+      {
+       "line": 33,
+       "old_text": "const { allORMQueries } = getPhaseOutput<ParseOutput>(deps, 'parse');",
+       "new_text": "const { allORMQueries } = readPhaseOutput<ParseOutput>(deps, 'parse');",
+       "confidence": "graph"
+      }
+     ]
+    },
+    {
+     "file_path": "gitnexus/src/core/ingestion/pipeline-phases/parse.ts",
+     "edits": [
+      {
+       "line": 20,
+       "old_text": "import { getPhaseOutput } from './types.js';",
+       "new_text": "import { readPhaseOutput } from './types.js';",
+       "confidence": "graph"
+      },
+      {
+       "line": 128,
+       "old_text": "const { scannedFiles, allPaths, allPathSet, totalFiles } = getPhaseOutput<StructureOutput>(",
+       "new_text": "const { scannedFiles, allPaths, allPathSet, totalFiles } = readPhaseOutput<StructureOutput>(",
+       "confidence": "graph"
+      }
+     ]
+    },
+    {
+     "file_path": "gitnexus/src/core/ingestion/pipeline-phases/processes.ts",
+     "edits": [
+      {
+       "line": 15,
+       "old_text": "import { getPhaseOutput } from './types.js';",
+       "new_text": "import { readPhaseOutput } from './types.js';",
+       "confidence": "graph"
+      },
+      {
+       "line": 70,
+       "old_text": "const { totalFiles } = getPhaseOutput<StructureOutput>(deps, 'structure');",
+       "new_text": "const { totalFiles } = readPhaseOutput<StructureOutput>(deps, 'structure');",
+       "confidence": "graph"
+      },
+      {
+       "line": 71,
+       "old_text": "const { communityResult } = getPhaseOutput<CommunitiesOutput>(deps, 'communities');",
+       "new_text": "const { communityResult } = readPhaseOutput<CommunitiesOutput>(deps, 'communities');",
+       "confidence": "graph"
+      },
+      {
+       "line": 72,
+       "old_text": "const { routeRegistry } = getPhaseOutput<RoutesOutput>(deps, 'routes');",
+       "new_text": "const { routeRegistry } = readPhaseOutput<RoutesOutput>(deps, 'routes');",
+       "confidence": "graph"
+      },
+      {
+       "line": 73,
+       "old_text": "const { toolDefs } = getPhaseOutput<ToolsOutput>(deps, 'tools');",
+       "new_text": "const { toolDefs } = readPhaseOutput<ToolsOutput>(deps, 'tools');",
+       "confidence": "graph"
+      },
+      {
+       "line": 96,
+       "old_text": "// routes.ts, tools.ts). `getPhaseOutput` is a raw `as T` cast, so a local",
+       "new_text": "// routes.ts, tools.ts). `readPhaseOutput` is a raw `as T` cast, so a local",
+       "confidence": "graph"
+      },
+      {
+       "line": 103,
+       "old_text": "parseOutput = getPhaseOutput<ParseOutput>(deps, 'parse');",
+       "new_text": "parseOutput = readPhaseOutput<ParseOutput>(deps, 'parse');",
+       "confidence": "graph"
+      }
+     ]
+    },
+    {
+     "file_path": "gitnexus/src/core/ingestion/pipeline-phases/routes.ts",
+     "edits": [
+      {
+       "line": 15,
+       "old_text": "import { getPhaseOutput } from './types.js';",
+       "new_text": "import { readPhaseOutput } from './types.js';",
+       "confidence": "graph"
+      },
+      {
+       "line": 192,
+       "old_text": "} = getPhaseOutput<ParseOutput>(deps, 'parse');",
+       "new_text": "} = readPhaseOutput<ParseOutput>(deps, 'parse');",
+       "confidence": "graph"
+      }
+     ]
+    },
+    {
+     "file_path": "gitnexus/src/core/ingestion/pipeline-phases/spring-auto-configuration.ts",
+     "edits": [
+      {
+       "line": 32,
+       "old_text": "import { getPhaseOutput } from './types.js';",
+       "new_text": "import { readPhaseOutput } from './types.js';",
+       "confidence": "graph"
+      },
+      {
+       "line": 243,
+       "old_text": "const { scannedFiles } = getPhaseOutput<StructureOutput>(deps, 'structure');",
+       "new_text": "const { scannedFiles } = readPhaseOutput<StructureOutput>(deps, 'structure');",
+       "confidence": "graph"
+      }
+     ]
+    },
+    {
+     "file_path": "gitnexus/src/core/ingestion/pipeline-phases/spring-config.ts",
+     "edits": [
+      {
+       "line": 22,
+       "old_text": "import { getPhaseOutput } from './types.js';",
+       "new_text": "import { readPhaseOutput } from './types.js';",
+       "confidence": "graph"
+      },
+      {
+       "line": 519,
+       "old_text": "const { scannedFiles } = getPhaseOutput<StructureOutput>(deps, 'structure');",
+       "new_text": "const { scannedFiles } = readPhaseOutput<StructureOutput>(deps, 'structure');",
+       "confidence": "graph"
+      }
+     ]
+    },
+    {
+     "file_path": "gitnexus/src/core/ingestion/pipeline-phases/spring-destinations.ts",
+     "edits": [
+      {
+       "line": 97,
+       "old_text": "import { getPhaseOutput } from './types.js';",
+       "new_text": "import { readPhaseOutput } from './types.js';",
+       "confidence": "graph"
+      },
+      {
+       "line": 530,
+       "old_text": "const { allPaths, moduleConstants } = getPhaseOutput<ParseOutput>(deps, 'parse');",
+       "new_text": "const { allPaths, moduleConstants } = readPhaseOutput<ParseOutput>(deps, 'parse');",
+       "confidence": "graph"
+      }
+     ]
+    },
+    {
+     "file_path": "gitnexus/src/core/ingestion/pipeline-phases/structure.ts",
+     "edits": [
+      {
+       "line": 12,
+       "old_text": "import { getPhaseOutput } from './types.js';",
+       "new_text": "import { readPhaseOutput } from './types.js';",
+       "confidence": "graph"
+      },
+      {
+       "line": 38,
+       "old_text": "const { scannedFiles, allPaths, totalFiles } = getPhaseOutput<ScanOutput>(deps, 'scan');",
+       "new_text": "const { scannedFiles, allPaths, totalFiles } = readPhaseOutput<ScanOutput>(deps, 'scan');",
+       "confidence": "graph"
+      }
+     ]
+    },
+    {
+     "file_path": "gitnexus/src/core/ingestion/pipeline-phases/taint-summaries.ts",
+     "edits": [
+      {
+       "line": 12,
+       "old_text": "* throw in `getPhaseOutput`).",
+       "new_text": "* throw in `readPhaseOutput`).",
+       "confidence": "graph"
+      },
+      {
+       "line": 21,
+       "old_text": "import { getPhaseOutput } from './types.js';",
+       "new_text": "import { readPhaseOutput } from './types.js';",
+       "confidence": "graph"
+      },
+      {
+       "line": 59,
+       "old_text": "const scope = getPhaseOutput<ScopeResolutionOutput>(deps, 'scopeResolution');",
+       "new_text": "const scope = readPhaseOutput<ScopeResolutionOutput>(deps, 'scopeResolution');",
+       "confidence": "graph"
+      }
+     ]
+    },
+    {
+     "file_path": "gitnexus/src/core/ingestion/pipeline-phases/tools.ts",
+     "edits": [
+      {
+       "line": 13,
+       "old_text": "import { getPhaseOutput } from './types.js';",
+       "new_text": "import { readPhaseOutput } from './types.js';",
+       "confidence": "graph"
+      },
+      {
+       "line": 39,
+       "old_text": "const { allToolDefs, allPaths } = getPhaseOutput<ParseOutput>(deps, 'parse');",
+       "new_text": "const { allToolDefs, allPaths } = readPhaseOutput<ParseOutput>(deps, 'parse');",
+       "confidence": "graph"
+      }
+     ]
+    },
+    {
+     "file_path": "gitnexus/src/core/ingestion/scope-resolution/pipeline/phase.ts",
+     "edits": [
+      {
+       "line": 28,
+       "old_text": "import { getPhaseOutput } from '../../pipeline-phases/types.js';",
+       "new_text": "import { readPhaseOutput } from '../../pipeline-phases/types.js';",
+       "confidence": "graph"
+      },
+      {
+       "line": 179,
+       "old_text": "const { scannedFiles } = getPhaseOutput<StructureOutput>(deps, 'structure');",
+       "new_text": "const { scannedFiles } = readPhaseOutput<StructureOutput>(deps, 'structure');",
+       "confidence": "graph"
+      },
+      {
+       "line": 180,
+       "old_text": "const parseOutput = getPhaseOutput<ParseOutput>(deps, 'parse');",
+       "new_text": "const parseOutput = readPhaseOutput<ParseOutput>(deps, 'parse');",
+       "confidence": "graph"
+      }
+     ]
+    }
+   ],
+   "applied": false
+  },
+  {
+   "status": "success",
+   "old_name": "getPhaseOutput",
+   "new_name": "readPhaseOutput",
+   "files_affected": 20,
+   "total_edits": 63,
+   "graph_edits": 63,
+   "text_search_edits": 0,
+   "changes": [
+    {
+     "file_path": "gitnexus/src/core/ingestion/pipeline-phases/types.ts",
+     "edits": [
+      {
+       "line": 99,
+       "old_text": "export function getPhaseOutput<T>(",
+       "new_text": "export function readPhaseOutput<T>(",
+       "confidence": "graph"
+      }
+     ]
+    },
+    {
+     "file_path": "gitnexus/test/unit/pipeline-runner.test.ts",
+     "edits": [
+      {
+       "line": 8,
+       "old_text": "import { getPhaseOutput } from '../../src/core/ingestion/pipeline-phases/types.js';",
+       "new_text": "import { readPhaseOutput } from '../../src/core/ingestion/pipeline-phases/types.js';",
+       "confidence": "graph"
+      },
+      {
+       "line": 37,
+       "old_text": "const a = getPhaseOutput<string>(deps, 'a');",
+       "new_text": "const a = readPhaseOutput<string>(deps, 'a');",
+       "confidence": "graph"
+      },
+      {
+       "line": 47,
+       "old_text": "const a = getPhaseOutput<string>(deps, 'a');",
+       "new_text": "const a = readPhaseOutput<string>(deps, 'a');",
+       "confidence": "graph"
+      },
+      {
+       "line": 57,
+       "old_text": "const b = getPhaseOutput<string>(deps, 'b');",
+       "new_text": "const b = readPhaseOutput<string>(deps, 'b');",
+       "confidence": "graph"
+      },
+      {
+       "line": 58,
+       "old_text": "const c = getPhaseOutput<string>(deps, 'c');",
+       "new_text": "const c = readPhaseOutput<string>(deps, 'c');",
+       "confidence": "graph"
+      },
+      {
+       "line": 256,
+       "old_text": "const prev = getPhaseOutput<number>(deps, `step${idx - 1}`);",
+       "new_text": "const prev = readPhaseOutput<number>(deps, `step${idx - 1}`);",
+       "confidence": "graph"
+      },
+      {
+       "line": 412,
+       "old_text": "return `${getPhaseOutput<string>(deps, 'earlier')}+later`;",
+       "new_text": "return `${readPhaseOutput<string>(deps, 'earlier')}+later`;",
+       "confidence": "graph"
+      },
+      {
+       "line": 418,
+       "old_text": "expect(getPhaseOutput<string>(results, 'later')).toBe('earlierOutput+later');",
+       "new_text": "expect(readPhaseOutput<string>(results, 'later')).toBe('earlierOutput+later');",
+       "confidence": "graph"
+      },
+      {
+       "line": 475,
+       "old_text": "describe('getPhaseOutput', () => {",
+       "new_text": "describe('readPhaseOutput', () => {",
+       "confidence": "graph"
+      },
+      {
+       "line": 480,
+       "old_text": "const result = getPhaseOutput<{ value: number }>(deps, 'test');",
+       "new_text": "const result = readPhaseOutput<{ value: number }>(deps, 'test');",
+       "confidence": "graph"
+      },
+      {
+       "line": 487,
+       "old_text": "expect(() => getPhaseOutput(deps, 'missing')).toThrow(/Phase 'missing' not found/);",
+       "new_text": "expect(() => readPhaseOutput(deps, 'missing')).toThrow(/Phase 'missing' not found/);",
+       "confidence": "graph"
+      }
+     ]
+    },
+    {
+     "file_path": "gitnexus/src/core/ingestion/pipeline.ts",
+     "edits": [
+      {
+       "line": 26,
+       "old_text": "getPhaseOutput,",
+       "new_text": "readPhaseOutput,",
+       "confidence": "graph"
+      },
+      {
+       "line": 345,
+       "old_text": "// phase depends on it (a filtered-out dep would throw in getPhaseOutput).",
+       "new_text": "// phase depends on it (a filtered-out dep would throw in readPhaseOutput).",
+       "confidence": "graph"
+      },
+      {
+       "line": 427,
+       "old_text": "} = getPhaseOutput<{",
+       "new_text": "} = readPhaseOutput<{",
+       "confidence": "graph"
+      },
+      {
+       "line": 437,
+       "old_text": "const scopeResolutionOutput = getPhaseOutput<ScopeResolutionOutput>(results, 'scopeResolution');",
+       "new_text": "const scopeResolutionOutput = readPhaseOutput<ScopeResolutionOutput>(results, 'scopeResolution');",
+       "confidence": "graph"
+      },
+      {
+       "line": 447,
+       "old_text": "// too), and `getPhaseOutput` THROWS on a phase that was never resolved. Keying",
+       "new_text": "// too), and `readPhaseOutput` THROWS on a phase that was never resolved. Keying",
+       "confidence": "graph"
+      },
+      {
+       "line": 451,
+       "old_text": "communityResult = getPhaseOutput<CommunitiesOutput>(results, 'communities').communityResult;",
+       "new_text": "communityResult = readPhaseOutput<CommunitiesOutput>(results, 'communities').communityResult;",
+       "confidence": "graph"
+      },
+      {
+       "line": 452,
+       "old_text": "processResult = getPhaseOutput<ProcessesOutput>(results, 'processes').processResult;",
+       "new_text": "processResult = readPhaseOutput<ProcessesOutput>(results, 'processes').processResult;",
+       "confidence": "graph"
+      },
+      {
+       "line": 514,
+       "old_text": "// registry filtered out is absent, and `getPhaseOutput` throws on absent.",
+       "new_text": "// registry filtered out is absent, and `readPhaseOutput` throws on absent.",
+       "confidence": "graph"
+      },
+      {
+       "line": 516,
+       "old_text": "result.communityResult = getPhaseOutput<CommunitiesOutput>(",
+       "new_text": "result.communityResult = readPhaseOutput<CommunitiesOutput>(",
+       "confidence": "graph"
+      },
+      {
+       "line": 522,
+       "old_text": "result.processResult = getPhaseOutput<ProcessesOutput>(derived, 'processes').processResult;",
+       "new_text": "result.processResult = readPhaseOutput<ProcessesOutput>(derived, 'processes').processResult;",
+       "confidence": "graph"
+      }
+     ]
+    },
+    {
+     "file_path": "gitnexus/src/core/ingestion/pipeline-phases/call-summaries.ts",
+     "edits": [
+      {
+       "line": 21,
+       "old_text": "import { getPhaseOutput } from './types.js';",
+       "new_text": "import { readPhaseOutput } from './types.js';",
+       "confidence": "graph"
+      },
+      {
+       "line": 46,
+       "old_text": "const scope = getPhaseOutput<ScopeResolutionOutput>(deps, 'scopeResolution');",
+       "new_text": "const scope = readPhaseOutput<ScopeResolutionOutput>(deps, 'scopeResolution');",
+       "confidence": "graph"
+      }
+     ]
+    },
+    {
+     "file_path": "gitnexus/src/core/ingestion/pipeline-phases/cobol.ts",
+     "edits": [
+      {
+       "line": 12,
+       "old_text": "import { getPhaseOutput } from './types.js';",
+       "new_text": "import { readPhaseOutput } from './types.js';",
+       "confidence": "graph"
+      },
+      {
+       "line": 33,
+       "old_text": "const { scannedFiles, allPathSet } = getPhaseOutput<StructureOutput>(deps, 'structure');",
+       "new_text": "const { scannedFiles, allPathSet } = readPhaseOutput<StructureOutput>(deps, 'structure');",
+       "confidence": "graph"
+      }
+     ]
+    },
+    {
+     "file_path": "gitnexus/src/core/ingestion/pipeline-phases/communities.ts",
+     "edits": [
+      {
+       "line": 13,
+       "old_text": "import { getPhaseOutput } from './types.js';",
+       "new_text": "import { readPhaseOutput } from './types.js';",
+       "confidence": "graph"
+      },
+      {
+       "line": 34,
+       "old_text": "const { totalFiles } = getPhaseOutput<StructureOutput>(deps, 'structure');",
+       "new_text": "const { totalFiles } = readPhaseOutput<StructureOutput>(deps, 'structure');",
+       "confidence": "graph"
+      }
+     ]
+    },
+    {
+     "file_path": "gitnexus/src/core/ingestion/pipeline-phases/cross-file.ts",
+     "edits": [
+      {
+       "line": 35,
+       "old_text": "import { getPhaseOutput } from './types.js';",
+       "new_text": "import { readPhaseOutput } from './types.js';",
+       "confidence": "graph"
+      },
+      {
+       "line": 53,
+       "old_text": "const { totalFiles, bindingAccumulator } = getPhaseOutput<ParseOutput>(deps, 'parse');",
+       "new_text": "const { totalFiles, bindingAccumulator } = readPhaseOutput<ParseOutput>(deps, 'parse');",
+       "confidence": "graph"
+      }
+     ]
+    },
+    {
+     "file_path": "gitnexus/src/core/ingestion/pipeline-phases/markdown.ts",
+     "edits": [
+      {
+       "line": 12,
+       "old_text": "import { getPhaseOutput } from './types.js';",
+       "new_text": "import { readPhaseOutput } from './types.js';",
+       "confidence": "graph"
+      },
+      {
+       "line": 34,
+       "old_text": "const { scannedFiles, allPathSet } = getPhaseOutput<StructureOutput>(deps, 'structure');",
+       "new_text": "const { scannedFiles, allPathSet } = readPhaseOutput<StructureOutput>(deps, 'structure');",
+       "confidence": "graph"
+      }
+     ]
+    },
+    {
+     "file_path": "gitnexus/src/core/ingestion/pipeline-phases/mro.ts",
+     "edits": [
+      {
+       "line": 13,
+       "old_text": "import { getPhaseOutput } from './types.js';",
+       "new_text": "import { readPhaseOutput } from './types.js';",
+       "confidence": "graph"
+      },
+      {
+       "line": 34,
+       "old_text": "const { totalFiles } = getPhaseOutput<StructureOutput>(deps, 'structure');",
+       "new_text": "const { totalFiles } = readPhaseOutput<StructureOutput>(deps, 'structure');",
+       "confidence": "graph"
+      }
+     ]
+    },
+    {
+     "file_path": "gitnexus/src/core/ingestion/pipeline-phases/orm.ts",
+     "edits": [
+      {
+       "line": 12,
+       "old_text": "import { getPhaseOutput } from './types.js';",
+       "new_text": "import { readPhaseOutput } from './types.js';",
+       "confidence": "graph"
+      },
+      {
+       "line": 33,
+       "old_text": "const { allORMQueries } = getPhaseOutput<ParseOutput>(deps, 'parse');",
+       "new_text": "const { allORMQueries } = readPhaseOutput<ParseOutput>(deps, 'parse');",
+       "confidence": "graph"
+      }
+     ]
+    },
+    {
+     "file_path": "gitnexus/src/core/ingestion/pipeline-phases/parse.ts",
+     "edits": [
+      {
+       "line": 20,
+       "old_text": "import { getPhaseOutput } from './types.js';",
+       "new_text": "import { readPhaseOutput } from './types.js';",
+       "confidence": "graph"
+      },
+      {
+       "line": 128,
+       "old_text": "const { scannedFiles, allPaths, allPathSet, totalFiles } = getPhaseOutput<StructureOutput>(",
+       "new_text": "const { scannedFiles, allPaths, allPathSet, totalFiles } = readPhaseOutput<StructureOutput>(",
+       "confidence": "graph"
+      }
+     ]
+    },
+    {
+     "file_path": "gitnexus/src/core/ingestion/pipeline-phases/processes.ts",
+     "edits": [
+      {
+       "line": 15,
+       "old_text": "import { getPhaseOutput } from './types.js';",
+       "new_text": "import { readPhaseOutput } from './types.js';",
+       "confidence": "graph"
+      },
+      {
+       "line": 70,
+       "old_text": "const { totalFiles } = getPhaseOutput<StructureOutput>(deps, 'structure');",
+       "new_text": "const { totalFiles } = readPhaseOutput<StructureOutput>(deps, 'structure');",
+       "confidence": "graph"
+      },
+      {
+       "line": 71,
+       "old_text": "const { communityResult } = getPhaseOutput<CommunitiesOutput>(deps, 'communities');",
+       "new_text": "const { communityResult } = readPhaseOutput<CommunitiesOutput>(deps, 'communities');",
+       "confidence": "graph"
+      },
+      {
+       "line": 72,
+       "old_text": "const { routeRegistry } = getPhaseOutput<RoutesOutput>(deps, 'routes');",
+       "new_text": "const { routeRegistry } = readPhaseOutput<RoutesOutput>(deps, 'routes');",
+       "confidence": "graph"
+      },
+      {
+       "line": 73,
+       "old_text": "const { toolDefs } = getPhaseOutput<ToolsOutput>(deps, 'tools');",
+       "new_text": "const { toolDefs } = readPhaseOutput<ToolsOutput>(deps, 'tools');",
+       "confidence": "graph"
+      },
+      {
+       "line": 96,
+       "old_text": "// routes.ts, tools.ts). `getPhaseOutput` is a raw `as T` cast, so a local",
+       "new_text": "// routes.ts, tools.ts). `readPhaseOutput` is a raw `as T` cast, so a local",
+       "confidence": "graph"
+      },
+      {
+       "line": 103,
+       "old_text": "parseOutput = getPhaseOutput<ParseOutput>(deps, 'parse');",
+       "new_text": "parseOutput = readPhaseOutput<ParseOutput>(deps, 'parse');",
+       "confidence": "graph"
+      }
+     ]
+    },
+    {
+     "file_path": "gitnexus/src/core/ingestion/pipeline-phases/routes.ts",
+     "edits": [
+      {
+       "line": 15,
+       "old_text": "import { getPhaseOutput } from './types.js';",
+       "new_text": "import { readPhaseOutput } from './types.js';",
+       "confidence": "graph"
+      },
+      {
+       "line": 192,
+       "old_text": "} = getPhaseOutput<ParseOutput>(deps, 'parse');",
+       "new_text": "} = readPhaseOutput<ParseOutput>(deps, 'parse');",
+       "confidence": "graph"
+      }
+     ]
+    },
+    {
+     "file_path": "gitnexus/src/core/ingestion/pipeline-phases/spring-auto-configuration.ts",
+     "edits": [
+      {
+       "line": 32,
+       "old_text": "import { getPhaseOutput } from './types.js';",
+       "new_text": "import { readPhaseOutput } from './types.js';",
+       "confidence": "graph"
+      },
+      {
+       "line": 243,
+       "old_text": "const { scannedFiles } = getPhaseOutput<StructureOutput>(deps, 'structure');",
+       "new_text": "const { scannedFiles } = readPhaseOutput<StructureOutput>(deps, 'structure');",
+       "confidence": "graph"
+      }
+     ]
+    },
+    {
+     "file_path": "gitnexus/src/core/ingestion/pipeline-phases/spring-config.ts",
+     "edits": [
+      {
+       "line": 22,
+       "old_text": "import { getPhaseOutput } from './types.js';",
+       "new_text": "import { readPhaseOutput } from './types.js';",
+       "confidence": "graph"
+      },
+      {
+       "line": 519,
+       "old_text": "const { scannedFiles } = getPhaseOutput<StructureOutput>(deps, 'structure');",
+       "new_text": "const { scannedFiles } = readPhaseOutput<StructureOutput>(deps, 'structure');",
+       "confidence": "graph"
+      }
+     ]
+    },
+    {
+     "file_path": "gitnexus/src/core/ingestion/pipeline-phases/spring-destinations.ts",
+     "edits": [
+      {
+       "line": 97,
+       "old_text": "import { getPhaseOutput } from './types.js';",
+       "new_text": "import { readPhaseOutput } from './types.js';",
+       "confidence": "graph"
+      },
+      {
+       "line": 530,
+       "old_text": "const { allPaths, moduleConstants } = getPhaseOutput<ParseOutput>(deps, 'parse');",
+       "new_text": "const { allPaths, moduleConstants } = readPhaseOutput<ParseOutput>(deps, 'parse');",
+       "confidence": "graph"
+      }
+     ]
+    },
+    {
+     "file_path": "gitnexus/src/core/ingestion/pipeline-phases/structure.ts",
+     "edits": [
+      {
+       "line": 12,
+       "old_text": "import { getPhaseOutput } from './types.js';",
+       "new_text": "import { readPhaseOutput } from './types.js';",
+       "confidence": "graph"
+      },
+      {
+       "line": 38,
+       "old_text": "const { scannedFiles, allPaths, totalFiles } = getPhaseOutput<ScanOutput>(deps, 'scan');",
+       "new_text": "const { scannedFiles, allPaths, totalFiles } = readPhaseOutput<ScanOutput>(deps, 'scan');",
+       "confidence": "graph"
+      }
+     ]
+    },
+    {
+     "file_path": "gitnexus/src/core/ingestion/pipeline-phases/taint-summaries.ts",
+     "edits": [
+      {
+       "line": 12,
+       "old_text": "* throw in `getPhaseOutput`).",
+       "new_text": "* throw in `readPhaseOutput`).",
+       "confidence": "graph"
+      },
+      {
+       "line": 21,
+       "old_text": "import { getPhaseOutput } from './types.js';",
+       "new_text": "import { readPhaseOutput } from './types.js';",
+       "confidence": "graph"
+      },
+      {
+       "line": 59,
+       "old_text": "const scope = getPhaseOutput<ScopeResolutionOutput>(deps, 'scopeResolution');",
+       "new_text": "const scope = readPhaseOutput<ScopeResolutionOutput>(deps, 'scopeResolution');",
+       "confidence": "graph"
+      }
+     ]
+    },
+    {
+     "file_path": "gitnexus/src/core/ingestion/pipeline-phases/tools.ts",
+     "edits": [
+      {
+       "line": 13,
+       "old_text": "import { getPhaseOutput } from './types.js';",
+       "new_text": "import { readPhaseOutput } from './types.js';",
+       "confidence": "graph"
+      },
+      {
+       "line": 39,
+       "old_text": "const { allToolDefs, allPaths } = getPhaseOutput<ParseOutput>(deps, 'parse');",
+       "new_text": "const { allToolDefs, allPaths } = readPhaseOutput<ParseOutput>(deps, 'parse');",
+       "confidence": "graph"
+      }
+     ]
+    },
+    {
+     "file_path": "gitnexus/src/core/ingestion/scope-resolution/pipeline/phase.ts",
+     "edits": [
+      {
+       "line": 28,
+       "old_text": "import { getPhaseOutput } from '../../pipeline-phases/types.js';",
+       "new_text": "import { readPhaseOutput } from '../../pipeline-phases/types.js';",
+       "confidence": "graph"
+      },
+      {
+       "line": 179,
+       "old_text": "const { scannedFiles } = getPhaseOutput<StructureOutput>(deps, 'structure');",
+       "new_text": "const { scannedFiles } = readPhaseOutput<StructureOutput>(deps, 'structure');",
+       "confidence": "graph"
+      },
+      {
+       "line": 180,
+       "old_text": "const parseOutput = getPhaseOutput<ParseOutput>(deps, 'parse');",
+       "new_text": "const parseOutput = readPhaseOutput<ParseOutput>(deps, 'parse');",
+       "confidence": "graph"
+      }
+     ]
+    }
+   ],
+   "applied": true
+  }
+ ],
+ "used_by_apply_and_check": "calls[0]"
+}

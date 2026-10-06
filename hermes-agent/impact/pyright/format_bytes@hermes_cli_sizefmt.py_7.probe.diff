@@ -1,0 +1,13 @@
+diff --git a/hermes_cli/sizefmt.py b/hermes_cli/sizefmt.py
+index 29dddcfa85..c06b287248 100644
+--- a/hermes_cli/sizefmt.py
++++ b/hermes_cli/sizefmt.py
+@@ -4,7 +4,7 @@ a tiny purpose-named module lightweight consumers can import without the CLI sur
+ from __future__ import annotations
+ 
+ 
+-def format_bytes(n) -> str:
++def format_bytes(n, bench_probe) -> str:
+     """1234567 -> '1.2 MB' (B/KB/MB/GB/TB; integer bytes, one decimal above). Returns ``"?"`` for
+     None or unparseable input so display call sites never raise."""
+     try:

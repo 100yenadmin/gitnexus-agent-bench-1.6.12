@@ -1,0 +1,121 @@
+{
+ "platform": "Windows",
+ "summary": {
+  "filesAnalyzed": 2383,
+  "errorCount": 15431,
+  "warningCount": 77,
+  "informationCount": 0,
+  "timeInSec": 158.756
+ },
+ "added": [
+  {
+   "file": "agent/agent_init.py",
+   "line": 111,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "agent/agent_init.py",
+   "line": 142,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "agent/agent_init.py",
+   "line": 143,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "agent/agent_init.py",
+   "line": 860,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "agent/title_generator.py",
+   "line": 215,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "hermes_cli/auth.py",
+   "line": 2061,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "hermes_cli/model_setup_flows.py",
+   "line": 953,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "hermes_cli/model_switch.py",
+   "line": 413,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "hermes_cli/model_switch.py",
+   "line": 738,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "hermes_cli/providers.py",
+   "line": 173,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "hermes_cli/providers.py",
+   "line": 197,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "hermes_cli/providers.py",
+   "line": 252,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "hermes_cli/providers.py",
+   "line": 261,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "hermes_cli/providers.py",
+   "line": 281,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "hermes_cli/providers.py",
+   "line": 488,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "hermes_cli/providers.py",
+   "line": 540,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "hermes_cli/route_identity.py",
+   "line": 64,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "hermes_cli/route_identity.py",
+   "line": 83,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  }
+ ],
+ "removed_keys": []
+}

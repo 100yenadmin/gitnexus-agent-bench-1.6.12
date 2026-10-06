@@ -1,0 +1,167 @@
+diff --git a/dag.py b/dag.py
+index 084411e..6116e79 100644
+--- a/dag.py
++++ b/dag.py
+@@ -522,6 +522,20 @@ class SummaryDAG:
+         ).fetchone()
+         return int(row[0] if row else 0)
+ 
++    def get_session_depths(self, session_id: str) -> List[int]:
++        """Get all distinct depths for a session in ascending order, unbounded.
++
++        Returns an empty list for an unknown session.
++        """
++        with self._db_lock:
++            rows = self._conn.execute(
++                """SELECT DISTINCT depth FROM summary_nodes
++                   WHERE session_id = ?
++                   ORDER BY depth""",
++                (session_id,),
++            ).fetchall()
++        return [int(row[0]) for row in rows if row[0] is not None]
++
+     def get_session_depth_stats(self, session_id: str) -> Dict[int, Dict[str, int]]:
+         """Aggregate per-depth node/token stats for a session."""
+         rows = self._conn.execute(
+diff --git a/engine.py b/engine.py
+index e5533cb..bacbd15 100644
+--- a/engine.py
++++ b/engine.py
+@@ -7706,13 +7706,13 @@ class LCMEngine(
+         # Node ids placed in the summary prefix — used to dedupe proactive-recall
+         # injection against summaries already visible in the active context.
+         active_summary_node_ids: set = set()
+-        all_nodes = self._dag.get_session_nodes(self._session_id)
+-        if all_nodes:
++        depths = self._dag.get_session_depths(self._session_id)
++        if depths:
+             # Group by depth, take the most recent uncondensed at each level
+             # For active context, we want the highest-level summaries
+             # that haven't been condensed into even higher levels
+-            depths = sorted(set(n.depth for n in all_nodes), reverse=True)
+-            for group, d in enumerate(depths):
++            depths_sorted = sorted(depths, reverse=True)
++            for group, d in enumerate(depths_sorted):
+                 uncondensed = self._dag.get_uncondensed_at_depth(self._session_id, d, newest=True)
+                 for node in uncondensed:
+                     part_keys.append((group, node.node_id))
+diff --git a/tests/test_issue_750_get_session_depths.py b/tests/test_issue_750_get_session_depths.py
+new file mode 100644
+index 0000000..4bd3b46
+--- /dev/null
++++ b/tests/test_issue_750_get_session_depths.py
+@@ -0,0 +1,114 @@
++"""Test for issue #750: get_session_depths unbounded depth retrieval.
++
++Long sessions with many nodes lose their deepest condensed summaries from
++the assembled context because the assembly code was extracting depths from
++a limited node list (1000 node limit). This test ensures get_session_depths
++returns all distinct depths without any row cap.
++"""
++
++from hermes_lcm.config import LCMConfig
++from hermes_lcm.dag import SummaryDAG, SummaryNode
++from hermes_lcm.store import MessageStore
++
++
++def _stores(tmp_path):
++    config = LCMConfig(database_path=str(tmp_path / "lcm.db"))
++    messages = MessageStore(
++        config.database_path, ingest_protection_config=config
++    )
++    dag = SummaryDAG(config.database_path)
++    return messages, dag
++
++
++def _node(dag, session_id: str, source_type: str, source_ids: list[int], depth: int) -> int:
++    return dag.add_node(SummaryNode(
++        session_id=session_id,
++        depth=depth,
++        summary=f"depth {depth}",
++        token_count=2,
++        source_token_count=4,
++        source_ids=source_ids,
++        source_type=source_type,
++    ))
++
++
++def test_get_session_depths_returns_empty_for_unknown_session(tmp_path):
++    """get_session_depths returns an empty list for an unknown session."""
++    _, dag = _stores(tmp_path)
++    try:
++        depths = dag.get_session_depths("unknown-session")
++        assert depths == []
++    finally:
++        dag.close()
++
++
++def test_get_session_depths_single_depth(tmp_path):
++    """get_session_depths returns depths when nodes exist."""
++    _, dag = _stores(tmp_path)
++    try:
++        _node(dag, "session-a", "messages", [], depth=0)
++        depths = dag.get_session_depths("session-a")
++        assert depths == [0]
++    finally:
++        dag.close()
++
++
++def test_get_session_depths_multiple_depths_ordered(tmp_path):
++    """get_session_depths returns all depths in ascending order."""
++    _, dag = _stores(tmp_path)
++    try:
++        _node(dag, "session-a", "nodes", [], depth=2)
++        _node(dag, "session-a", "nodes", [], depth=0)
++        _node(dag, "session-a", "nodes", [], depth=3)
++        _node(dag, "session-a", "nodes", [], depth=1)
++
++        depths = dag.get_session_depths("session-a")
++        assert depths == [0, 1, 2, 3]
++    finally:
++        dag.close()
++
++
++def test_get_session_depths_unbounded_many_nodes(tmp_path):
++    """get_session_depths returns all depths even with many nodes (>1000).
++
++    This tests the fix for #750 where get_session_nodes with its 1000-node
++    limit was causing higher depths to be dropped from the assembly.
++    """
++    _, dag = _stores(tmp_path)
++    try:
++        # Create nodes at multiple depths, exceeding the 1000-node limit
++        # from get_session_nodes to ensure get_session_depths is unbounded
++        session_id = "session-many-nodes"
++
++        # Create many nodes at depth 0 to exceed the limit
++        for i in range(1100):
++            _node(dag, session_id, "messages", [], depth=0)
++
++        # Create nodes at higher depths
++        _node(dag, session_id, "nodes", [1, 2], depth=1)
++        _node(dag, session_id, "nodes", [3, 4], depth=2)
++        _node(dag, session_id, "nodes", [5, 6], depth=3)
++
++        # get_session_depths should return all depths
++        depths = dag.get_session_depths(session_id)
++        assert depths == [0, 1, 2, 3]
++    finally:
++        dag.close()
++
++
++def test_get_session_depths_isolated_per_session(tmp_path):
++    """get_session_depths returns depths only for the specified session."""
++    _, dag = _stores(tmp_path)
++    try:
++        _node(dag, "session-a", "nodes", [], depth=0)
++        _node(dag, "session-a", "nodes", [], depth=1)
++        _node(dag, "session-b", "nodes", [], depth=0)
++        _node(dag, "session-b", "nodes", [], depth=2)
++
++        depths_a = dag.get_session_depths("session-a")
++        depths_b = dag.get_session_depths("session-b")
++
++        assert depths_a == [0, 1]
++        assert depths_b == [0, 2]
++    finally:
++        dag.close()

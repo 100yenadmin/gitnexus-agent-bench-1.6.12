@@ -1,0 +1,12 @@
+{
+ "locations": [
+  {
+   "path": "gitnexus/src/server/api.ts",
+   "line": 1755
+  },
+  {
+   "path": "gitnexus/src/cli/analyze-config.ts",
+   "line": 166
+  }
+ ]
+}

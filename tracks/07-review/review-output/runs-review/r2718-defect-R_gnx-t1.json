@@ -1,0 +1,18 @@
+{
+ "schema_version": 1,
+ "verdict": "request_changes",
+ "findings": [
+  {
+   "id": "ts-ctor-param-property-requalified",
+   "severity": "medium",
+   "path": "gitnexus/src/core/ingestion/workers/parse-worker.ts",
+   "line": 2310,
+   "end_line": 2312,
+   "category": "compatibility",
+   "scenario": "A TypeScript class with constructor parameter properties (`export class A { constructor(public count: number, private readonly name: string) {} }`) now gets class-member Property ids `Property:a.ts:A.constructor.count@1:14` / `Property:a.ts:A.constructor.name@1:36` instead of `Property:a.ts:A.count` / `Property:a.ts:A.name`. These are public class members (HAS_PROPERTY from Class:A, ACCESSED cross-file from b.ts), not function-locals, so every stored reference, MCP uid, and diff/incremental consumer keyed on the old id breaks, and the qualified name wrongly claims the field belongs to `constructor`.",
+   "evidence": "Widening the prefix gate from callables to `isPositionQualifiedLocalLabel` (callable-labels.ts:42, adds Variable/Const/Property/Static) routes Property defs through `enclosingCallablePrefix`; for a parameter property the definition node sits inside the constructor's `method_definition` (a LOCAL_SCOPE_BODY type) below the `class_body` boundary, so the walk returns the constructor. Empirical probe with the diff compiled (runPipelineFromRepo, workerPoolSize 1): head => `Property:a.ts:A.constructor.count@1:14`, `HAS_PROPERTY Class:a.ts:A -> Property:a.ts:A.constructor.count@1:14`, `ACCESSES Function:b.ts:use -> Property:a.ts:A.constructor.count@1:14`; base dist => `Property:a.ts:A.count`. This contradicts the diff's own stated invariant in callable-labels.ts ('A class field stays unqualified even inside a function ... top-level and class-member ids are untouched'). The only new value-identity test (function-local-identity.test.ts) covers a plain function-local `const`, not class members.",
+   "recommendation": "Exclude class-member definitions from the value prefix: e.g. only apply the prefix to Property/Static when the def has no enclosing class owner (or treat `required_parameter`/`optional_parameter` with an accessibility modifier, and constructor bodies generally, as a prefix boundary for Property). Add a regression test asserting `Property:a.ts:A.count` for a TS parameter property alongside the existing local-value test.",
+   "blocking": true
+  }
+ ]
+}

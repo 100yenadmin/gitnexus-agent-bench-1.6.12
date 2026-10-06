@@ -1,0 +1,202 @@
+diff --git a/assertion_store.py b/assertion_store.py
+index 6b12b8e..b95885d 100644
+--- a/assertion_store.py
++++ b/assertion_store.py
+@@ -24,6 +24,7 @@ from .db_bootstrap import (
+     ASSERTION_MIGRATION_STEP,
+     configure_connection,
+     ensure_assertion_tables,
++    is_schema_current_without_writes,
+     mark_migration_step_complete,
+     refuse_schema_version_too_new,
+     run_versioned_migrations,
+@@ -262,7 +263,8 @@ class AssertionStore:
+                 )
+             return
+ 
+-        run_versioned_migrations(self._conn)
++        if not is_schema_current_without_writes(self._conn):
++            run_versioned_migrations(self._conn)
+         ensure_assertion_tables(self._conn)
+         findings = verify_assertion_schema(self._conn)
+         if findings:
+diff --git a/dag.py b/dag.py
+index de31e48..ccb0259 100644
+--- a/dag.py
++++ b/dag.py
+@@ -25,6 +25,7 @@ from .db_bootstrap import (
+     add_column_if_missing,
+     configure_connection,
+     ensure_external_content_fts,
++    is_schema_current_without_writes,
+     refuse_schema_version_too_new,
+     run_versioned_migrations,
+ )
+@@ -215,7 +216,8 @@ class SummaryDAG:
+             self._conn,
+             build_nodes_fts_spec(),
+         )
+-        run_versioned_migrations(self._conn)
++        if not is_schema_current_without_writes(self._conn):
++            run_versioned_migrations(self._conn)
+         self._ensure_source_window_columns()
+         self._conn.commit()
+ 
+diff --git a/db_bootstrap.py b/db_bootstrap.py
+index 5b31c38..0041437 100644
+--- a/db_bootstrap.py
++++ b/db_bootstrap.py
+@@ -3278,6 +3278,24 @@ def ensure_external_content_fts(
+     repair_external_content_fts(conn, spec, now=now, throttle=True)
+ 
+ 
++def is_schema_current_without_writes(conn: sqlite3.Connection) -> bool:
++    """Check if database is already at the current schema version (read-only check).
++
++    Returns True only if the database is at SCHEMA_VERSION = 5, meaning all
++    startup migrations have been completed. This allows schema initialization
++    to skip writes when cloning under active WAL writer contention.
++
++    Uses read-only operations only: no DDL, no DML, no metadata updates.
++    The check relies on the invariant that once a database is upgraded to
++    the current schema version, all required tables and columns exist.
++    """
++    try:
++        current_version = read_existing_schema_version(conn)
++        return current_version == SCHEMA_VERSION
++    except Exception:
++        return False
++
++
+ def run_versioned_migrations(conn: sqlite3.Connection) -> None:
+     refuse_schema_version_too_new(conn)
+ 
+diff --git a/lifecycle_state.py b/lifecycle_state.py
+index 4aeea2b..02b224f 100644
+--- a/lifecycle_state.py
++++ b/lifecycle_state.py
+@@ -18,7 +18,7 @@ from dataclasses import dataclass
+ from pathlib import Path
+ from typing import Any, Optional
+ 
+-from .db_bootstrap import configure_connection, refuse_schema_version_too_new, run_versioned_migrations
++from .db_bootstrap import configure_connection, is_schema_current_without_writes, refuse_schema_version_too_new, run_versioned_migrations
+ 
+ 
+ class LifecycleBindingChangedError(RuntimeError):
+@@ -83,8 +83,9 @@ class LifecycleStateStore:
+         refuse_schema_version_too_new(self._conn)
+         configure_connection(self._conn)
+         self._conn.row_factory = sqlite3.Row
+-        run_versioned_migrations(self._conn)
+-        self._conn.commit()
++        if not is_schema_current_without_writes(self._conn):
++            run_versioned_migrations(self._conn)
++            self._conn.commit()
+ 
+     def close(self) -> None:
+         conn = getattr(self, "_conn", None)
+diff --git a/query_view_store.py b/query_view_store.py
+index 7c7385c..673f525 100644
+--- a/query_view_store.py
++++ b/query_view_store.py
+@@ -23,6 +23,7 @@ import uuid
+ 
+ from .db_bootstrap import (
+     configure_connection,
++    is_schema_current_without_writes,
+     mark_migration_step_complete,
+     refuse_schema_version_too_new,
+     run_versioned_migrations,
+@@ -543,7 +544,8 @@ class QueryViewStore:
+             refuse_schema_version_too_new(self._conn)
+             configure_connection(self._conn)
+             self._conn.row_factory = sqlite3.Row
+-            run_versioned_migrations(self._conn)
++            if not is_schema_current_without_writes(self._conn):
++                run_versioned_migrations(self._conn)
+             _ensure_query_view_schema(self._conn)
+             missing = _verify_query_view_schema(self._conn)
+             if missing:
+diff --git a/store.py b/store.py
+index 3ebfcd0..1a8765a 100644
+--- a/store.py
++++ b/store.py
+@@ -24,6 +24,7 @@ from .db_bootstrap import (
+     add_column_if_missing,
+     configure_connection,
+     ensure_external_content_fts,
++    is_schema_current_without_writes,
+     refuse_schema_version_too_new,
+     run_versioned_migrations,
+ )
+@@ -326,7 +327,8 @@ class MessageStore:
+             self._conn,
+             build_message_fts_spec(),
+         )
+-        run_versioned_migrations(self._conn)
++        if not is_schema_current_without_writes(self._conn):
++            run_versioned_migrations(self._conn)
+         self._ensure_source_column()
+         self._ensure_conversation_id_column()
+         self._ensure_time_contract_columns()
+@@ -384,9 +386,13 @@ class MessageStore:
+             "observed_at_source",
+             "ALTER TABLE messages ADD COLUMN observed_at_source TEXT",
+         )
+-        self._conn.execute(
+-            "UPDATE messages SET ingested_at = timestamp WHERE ingested_at IS NULL"
+-        )
++        need_update = self._conn.execute(
++            "SELECT 1 FROM messages WHERE ingested_at IS NULL LIMIT 1"
++        ).fetchone()
++        if need_update:
++            self._conn.execute(
++                "UPDATE messages SET ingested_at = timestamp WHERE ingested_at IS NULL"
++            )
+ 
+     # -- Write operations ---------------------------------------------------
+ 
+diff --git a/tests/test_lcm_engine.py b/tests/test_lcm_engine.py
+index 4dd801e..929371a 100644
+--- a/tests/test_lcm_engine.py
++++ b/tests/test_lcm_engine.py
+@@ -29214,3 +29214,38 @@ class TestExtractionDuringCompress:
+         result = eng.compress(messages)
+         assert result[0]["role"] == "system"
+         assert len(eng._dag.get_session_nodes("extract-fail")) > 0
++
++
++def test_deepcopy_engine_under_wal_contention(tmp_path):
++    """Test that deepcopy of LCMEngine works with active WAL writer lock."""
++    import copy
++
++    db_path = tmp_path / "lcm_deepcopy_test.db"
++    config = LCMConfig(database_path=str(db_path))
++
++    prototype = LCMEngine(config=config)
++    prototype._session_id = "test-session"
++    prototype.context_length = 200000
++    prototype.threshold_tokens = int(200000 * config.context_threshold)
++
++    try:
++        prototype.on_session_start("test-session", platform="test", conversation_id="test-conv")
++        prototype.ingest([{"role": "user", "content": "test message"}])
++
++        conn_writer = sqlite3.connect(str(db_path), timeout=0.1, check_same_thread=False)
++        try:
++            conn_writer.execute("BEGIN IMMEDIATE")
++
++            cloned = copy.deepcopy(prototype)
++            assert cloned is not None
++            assert cloned._store is not None
++            assert cloned._dag is not None
++            assert cloned._lifecycle is not None
++            assert cloned.context_length == prototype.context_length
++            cloned.shutdown()
++
++        finally:
++            conn_writer.rollback()
++            conn_writer.close()
++    finally:
++        prototype.shutdown()

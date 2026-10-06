@@ -1,0 +1,38 @@
+{
+ "route_gt": 27,
+ "route_found": 21,
+ "route_missed": [
+  [
+   "ALL",
+   "/api/mcp"
+  ],
+  [
+   "GET",
+   "/api/analyze/:jobId/progress"
+  ],
+  [
+   "GET",
+   "/api/embed/:jobId/progress"
+  ],
+  [
+   "GET",
+   "/api/info"
+  ],
+  [
+   "GET",
+   "<SPA fallback regex>"
+  ],
+  [
+   "POST",
+   "/api/query"
+  ]
+ ],
+ "route_other_entries": 32,
+ "route_total_entries": 59,
+ "tools_gt": 17,
+ "tools_found": 17,
+ "tools_extra": 0,
+ "consumers_gt": 9,
+ "consumers_found": 0,
+ "note": "Direct MCP calls on the gnxu-taint index (gnxu-pdg + P4 seed; its 5 seeded routes excluded). route_map reports ALL /api/mcp as GET."
+}

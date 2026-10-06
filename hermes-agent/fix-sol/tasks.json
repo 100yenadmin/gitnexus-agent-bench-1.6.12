@@ -1,0 +1,508 @@
+[
+ {
+  "id": "hermes-t01",
+  "class": "trivial",
+  "repo": "NousResearch/hermes-agent",
+  "pr": "https://github.com/NousResearch/hermes-agent/pull/133157",
+  "base_sha": "b63305f37920fbad9c6dd6c500dc70d7a098fbd5",
+  "fix_sha": "6c032827a12992b02db05ae79280e5b9f803fba1",
+  "statement": "A post_gateway_admission consumer can move an admitted message to another platform.\n\n`invoke_post_admission_hook` snapshots an admitted message's destination (platform, chat_id, thread_id, chat_type, profile, user_id) before the `post_gateway_admission` hook runs. If a consumer changed any of those fields, it restores them, because destinations never come from plugins. The restore puts back every field except `platform`. A consumer that sets `event.source.platform = Platform.TELEGRAM` on a WhatsApp message gets its `chat_id` change undone, but the platform stays TELEGRAM. The turn is then pinned to another platform's lane (filtered subscriptions, allowance accounting).\n\nRepro: register a `post_gateway_admission` hook that sets `event.source.chat_id = \"EVIL-CHAT\"` and `event.source.platform = Platform.TELEGRAM` and returns `[{\"action\": \"pass\"}]`. Call `invoke_post_admission_hook(runner, event, event.source, \"k\")` for a WhatsApp event. The returned source still says TELEGRAM.\n\nExpected:\n- After a consumer mutates the destination, the returned `source` and the returned `event.source` both carry the original platform as the `Platform` enum member (`Platform.WHATSAPP` itself, not its string value), together with the original `chat_id`.\n- The rest of the hook's behaviour is unchanged: a \"pass\" result still runs the ordinary turn, and a consumer may still change `event.text`.\n\nAdd or update tests as appropriate.\n\nTo run tests, use the hermetic pytest wrapper from the repository root: `bash $HARNESS/hermes/mining/hermes_pytest.sh <pytest args>` (for example `bash $HARNESS/hermes/mining/hermes_pytest.sh -q tests/agent/test_x.py`); it runs the checkout's prepared `.venv` in a scrubbed environment with a temporary HOME. The repository's own `scripts/run_tests.sh <paths>` also works (HERMES_PYTHON points at the checkout's `.venv/bin/python`). `HERMES_HOME` points at a per-run temporary directory (the wrapper and `scripts/run_tests.sh` clear it for tests), and a `hermes` command on PATH runs this checkout's own CLI (`.venv/bin/python -m hermes_cli.main`), never an installed Hermes.",
+  "oracle": {
+   "files": [
+    {
+     "src": "oracle/hermes-t01/tests/gateway/test_post_gateway_admission.py",
+     "dst": "tests/gateway/test_post_gateway_admission.py"
+    }
+   ],
+   "cmd": "bash $HARNESS/hermes/mining/hermes_pytest.sh -q tests/gateway/test_post_gateway_admission.py",
+   "timeout_s": 1500
+  },
+  "regression": {
+   "files_from": "regression-files/hermes-t01.txt",
+   "cmd": "bash $HARNESS/hermes/mining/hermes_pytest.sh --suite --files-from $BUNDLE/hermes-agent/fix-sol/regression-files/hermes-t01.txt -q --deselect=tests/gateway/test_update_streaming.py::TestCmdUpdateGatewayMode::test_gateway_flag_enables_gateway_prompt_for_stash",
+   "rerun": "bash $HARNESS/hermes/mining/hermes_pytest.sh {IDS} -q",
+   "timeout_s": 2400
+  },
+  "env": {
+   "HERMES_PYTHON": "{RUNDIR}/.venv/bin/python",
+   "HERMES_HOME": "{TMP}/hermes-home",
+   "HERMES_DISABLE_LAZY_INSTALLS": "1",
+   "UV_NO_SYNC": "1"
+  },
+  "validation": {
+   "diff": [
+    "M gateway/run_inbound_consumer.py",
+    "M tests/gateway/test_post_gateway_admission.py"
+   ],
+   "tests_changed": [
+    "tests/gateway/test_post_gateway_admission.py"
+   ],
+   "oracle_files": [
+    "tests/gateway/test_post_gateway_admission.py"
+   ],
+   "lock_changed": false,
+   "dist_first_parent": 231,
+   "base_rc": 1,
+   "base_tail": [
+    "FAILED tests/gateway/test_post_gateway_admission.py::test_destination_mutation_is_restored",
+    "1 failed, 15 passed, 12 warnings in 10.25s"
+   ],
+   "fix_rc1": 0,
+   "fix_tail1": [
+    "16 passed, 12 warnings in 5.15s"
+   ],
+   "fix_rc2": 0,
+   "fix_tail2": [
+    "16 passed, 12 warnings in 6.53s"
+   ]
+  }
+ },
+ {
+  "id": "hermes-t02",
+  "class": "trivial",
+  "repo": "NousResearch/hermes-agent",
+  "pr": "https://github.com/NousResearch/hermes-agent/pull/133012",
+  "base_sha": "15cf1417e4c53ebea9d415abb5bcd6af8b1577d3",
+  "fix_sha": "6cd2817a6d6c8bd811cd7e35dc278a3f2534a90b",
+  "statement": "`hermes plugins list` reports a user-installed model-provider plugin as \"not enabled\" although it is loaded.\n\nThe plugin loader loads every `kind: model-provider` plugin, from any source, without a `plugins.enabled` entry. Plugin status (`hermes plugins list`, and the Desktop Plugins hub, which reads the same status) treats only bundled model providers as on by default. A model provider installed under `$HERMES_HOME/plugins/` (for example from the plugin catalog) is therefore live but shows \"not enabled\", and its switch in the Desktop hub is off.\n\nRepro: create `$HERMES_HOME/plugins/fakeprov/plugin.yaml` declaring `kind: model-provider`, with no `plugins.enabled` entry. Take its name, source and directory from `hermes_cli.plugins_cmd._discover_all_plugins()` and ask `hermes_cli.plugins_cmd._plugin_status(name, enabled, disabled, key=..., source=..., dir_path=...)`. The answer is \"not enabled\".\n\nExpected:\n- A user-installed model-provider plugin with no `plugins.enabled` entry reports \"enabled\", matching what the loader does.\n- A user-installed standalone plugin (no `kind`) with no entry still reports \"not enabled\".\n- An explicit disable still wins: \"disabled\".\n- The defaults for bundled plugins are unchanged.\n\nAdd or update tests as appropriate.\n\nTo run tests, use the hermetic pytest wrapper from the repository root: `bash $HARNESS/hermes/mining/hermes_pytest.sh <pytest args>` (for example `bash $HARNESS/hermes/mining/hermes_pytest.sh -q tests/agent/test_x.py`); it runs the checkout's prepared `.venv` in a scrubbed environment with a temporary HOME. The repository's own `scripts/run_tests.sh <paths>` also works (HERMES_PYTHON points at the checkout's `.venv/bin/python`). `HERMES_HOME` points at a per-run temporary directory (the wrapper and `scripts/run_tests.sh` clear it for tests), and a `hermes` command on PATH runs this checkout's own CLI (`.venv/bin/python -m hermes_cli.main`), never an installed Hermes.",
+  "oracle": {
+   "files": [
+    {
+     "src": "oracle/hermes-t02/tests/hermes_cli/test_plugins_cmd_activation_keys.py",
+     "dst": "tests/hermes_cli/test_plugins_cmd_activation_keys.py"
+    }
+   ],
+   "cmd": "bash $HARNESS/hermes/mining/hermes_pytest.sh -q tests/hermes_cli/test_plugins_cmd_activation_keys.py",
+   "timeout_s": 1500
+  },
+  "regression": {
+   "files_from": "regression-files/hermes-t02.txt",
+   "cmd": "bash $HARNESS/hermes/mining/hermes_pytest.sh --suite --files-from $BUNDLE/hermes-agent/fix-sol/regression-files/hermes-t02.txt -q",
+   "rerun": "bash $HARNESS/hermes/mining/hermes_pytest.sh {IDS} -q",
+   "timeout_s": 2400
+  },
+  "env": {
+   "HERMES_PYTHON": "{RUNDIR}/.venv/bin/python",
+   "HERMES_HOME": "{TMP}/hermes-home",
+   "HERMES_DISABLE_LAZY_INSTALLS": "1",
+   "UV_NO_SYNC": "1"
+  },
+  "validation": {
+   "diff": [
+    "M hermes_cli/plugins_cmd.py",
+    "M tests/hermes_cli/test_plugins_cmd_activation_keys.py"
+   ],
+   "tests_changed": [
+    "tests/hermes_cli/test_plugins_cmd_activation_keys.py"
+   ],
+   "oracle_files": [
+    "tests/hermes_cli/test_plugins_cmd_activation_keys.py"
+   ],
+   "lock_changed": false,
+   "dist_first_parent": 21,
+   "base_rc": 1,
+   "base_tail": [
+    "FAILED tests/hermes_cli/test_plugins_cmd_activation_keys.py::test_status_matches_the_loader_for_a_user_installed_model_provider",
+    "1 failed, 3 passed in 9.78s"
+   ],
+   "fix_rc1": 0,
+   "fix_tail1": [
+    "4 passed in 6.17s"
+   ],
+   "fix_rc2": 0,
+   "fix_tail2": [
+    "4 passed in 4.96s"
+   ]
+  }
+ },
+ {
+  "id": "hermes-i01",
+  "class": "investigation",
+  "repo": "NousResearch/hermes-agent",
+  "pr": "https://github.com/NousResearch/hermes-agent/pull/132997",
+  "base_sha": "1fd75357e92d217199e04849b819e7de10f35e1d",
+  "fix_sha": "0b088a78a6f510cc3b9f13d110ebb1b52dff6da3",
+  "statement": "Claude's summarized thinking is returned as the final answer.\n\nOn Claude 4.7+ and the 5.x models, Hermes requests thinking with `display: \"summarized\"`. That summary is written by a separate model; it is not an answer. When a response holds only a thinking block (no text, no tool calls, `stop_reason=\"end_turn\"`), the turn ends and `run_conversation` returns the thinking summary as `final_response`, so the user gets the summary as the reply. The same happens on chat_completions plugins that replay native Claude turns through a `reasoning_details` carrier whose `type` ends in `.native_assistant` (for example `claude-subscription-directsdk-experimental.native_assistant`, whose messages hold a signed `thinking` block).\n\nRepro: set the agent to `api_mode=\"anthropic_messages\"` and provider \"anthropic\". The first API response's only content block is `type=\"thinking\"` with a summary text and `signature=\"sig-abc\"` (`stop_reason=\"end_turn\"`); the second is a text block \"391 = 17 x 23.\". `run_conversation(\"factor 391\")` returns the summary after one API call.\n\nExpected:\n- A clean stop with no content and no tool calls whose `reasoning_details` hold a signed Anthropic thinking block (`thinking` or `redacted_thinking` carrying a `signature` or `data`) or a `*.native_assistant` carrier is not promoted to the answer. The turn continues and the next response's text becomes `final_response` (`api_calls == 2` in the repro); this holds for the native Anthropic path and for the chat_completions carrier.\n- Other reasoning-only answers are still promoted as today (for example a vLLM nemotron or DeepSeek response that files the whole answer as reasoning).\n\nAdd or update tests as appropriate.\n\nTo run tests, use the hermetic pytest wrapper from the repository root: `bash $HARNESS/hermes/mining/hermes_pytest.sh <pytest args>` (for example `bash $HARNESS/hermes/mining/hermes_pytest.sh -q tests/agent/test_x.py`); it runs the checkout's prepared `.venv` in a scrubbed environment with a temporary HOME. The repository's own `scripts/run_tests.sh <paths>` also works (HERMES_PYTHON points at the checkout's `.venv/bin/python`). `HERMES_HOME` points at a per-run temporary directory (the wrapper and `scripts/run_tests.sh` clear it for tests), and a `hermes` command on PATH runs this checkout's own CLI (`.venv/bin/python -m hermes_cli.main`), never an installed Hermes.",
+  "oracle": {
+   "files": [
+    {
+     "src": "oracle/hermes-i01/tests/agent/test_reasoning_only_stop_persistence.py",
+     "dst": "tests/agent/test_reasoning_only_stop_persistence.py"
+    }
+   ],
+   "cmd": "bash $HARNESS/hermes/mining/hermes_pytest.sh -q tests/agent/test_reasoning_only_stop_persistence.py",
+   "timeout_s": 1500
+  },
+  "regression": {
+   "files_from": "regression-files/hermes-i01.txt",
+   "cmd": "bash $HARNESS/hermes/mining/hermes_pytest.sh --suite --files-from $BUNDLE/hermes-agent/fix-sol/regression-files/hermes-i01.txt -q",
+   "rerun": "bash $HARNESS/hermes/mining/hermes_pytest.sh {IDS} -q",
+   "timeout_s": 2400
+  },
+  "env": {
+   "HERMES_PYTHON": "{RUNDIR}/.venv/bin/python",
+   "HERMES_HOME": "{TMP}/hermes-home",
+   "HERMES_DISABLE_LAZY_INSTALLS": "1",
+   "UV_NO_SYNC": "1"
+  },
+  "validation": {
+   "diff": [
+    "M agent/turn_final_response.py",
+    "M tests/agent/test_reasoning_only_stop_persistence.py"
+   ],
+   "tests_changed": [
+    "tests/agent/test_reasoning_only_stop_persistence.py"
+   ],
+   "oracle_files": [
+    "tests/agent/test_reasoning_only_stop_persistence.py"
+   ],
+   "lock_changed": false,
+   "dist_first_parent": 14,
+   "base_rc": 1,
+   "base_tail": [
+    "FAILED tests/agent/test_reasoning_only_stop_persistence.py::test_anthropic_signed_thinking_only_stop_continues_instead_of_promoting",
+    "FAILED tests/agent/test_reasoning_only_stop_persistence.py::test_native_claude_carrier_thinking_only_stop_continues_instead_of_promoting",
+    "2 failed, 7 passed in 23.21s"
+   ],
+   "fix_rc1": 0,
+   "fix_tail1": [
+    "9 passed in 12.64s"
+   ],
+   "fix_rc2": 0,
+   "fix_tail2": [
+    "9 passed in 12.33s"
+   ]
+  }
+ },
+ {
+  "id": "hermes-i02",
+  "class": "investigation",
+  "repo": "NousResearch/hermes-agent",
+  "pr": "https://github.com/NousResearch/hermes-agent/pull/133229",
+  "base_sha": "e1fdf003a668f97bf5a53d7675c1e70b1dcfec34",
+  "fix_sha": "762f419fe8374ea14b0d5c3ffedca7ad8ac02b9a",
+  "statement": "`hermes chat -q` hangs for the full approval timeout on an MCP or vault consent prompt.\n\nSince MCP/vault consent prompts started using the classic-CLI approval panel, a consent request (an untrusted MCP server's tool, an MCP elicitation, a vault card fill) waits for the whole approval timeout in sessions where nobody can answer. `hermes chat -q` keeps the CLI's panel callback registered, and cron jobs and unattended platforms (for example webhook) have no user either. The untrusted-server turn of `tests/e2e/core/mcp_plugins/test_mcp_stdio_conformance.py` now hits its 240 s limit. Before the regression these requests were declined at once.\n\nRepro: set `HERMES_SINGLE_QUERY_SESSION=1` and bind session vars with `gateway.session_context.set_session_vars()`. Register a callback with `tools.terminal_tool.set_approval_callback(...)` that returns \"once\". `tools.approval_prompt.request_elicitation_consent(\"write\", \"Approve once or deny.\")` asks the callback and returns \"accept\".\n\nExpected:\n- In a single-query (`-q`) session, a cron session (`set_session_vars(cron_session=\"1\")`) or an unattended-platform session (`set_session_vars(platform=\"webhook\")`), `request_elicitation_consent` returns \"decline\" at once and never asks the registered approval callback. These are the same no-user contexts that the dangerous-command approval gate already resolves without a prompt.\n- An interactive CLI session still gets the panel, and the gateway path is unchanged.\n\nAdd or update tests as appropriate.\n\nTo run tests, use the hermetic pytest wrapper from the repository root: `bash $HARNESS/hermes/mining/hermes_pytest.sh <pytest args>` (for example `bash $HARNESS/hermes/mining/hermes_pytest.sh -q tests/agent/test_x.py`); it runs the checkout's prepared `.venv` in a scrubbed environment with a temporary HOME. The repository's own `scripts/run_tests.sh <paths>` also works (HERMES_PYTHON points at the checkout's `.venv/bin/python`). `HERMES_HOME` points at a per-run temporary directory (the wrapper and `scripts/run_tests.sh` clear it for tests), and a `hermes` command on PATH runs this checkout's own CLI (`.venv/bin/python -m hermes_cli.main`), never an installed Hermes.",
+  "oracle": {
+   "files": [
+    {
+     "src": "oracle/hermes-i02/tests/tools/test_mcp_trust_gating.py",
+     "dst": "tests/tools/test_mcp_trust_gating.py"
+    }
+   ],
+   "cmd": "bash $HARNESS/hermes/mining/hermes_pytest.sh -q tests/tools/test_mcp_trust_gating.py",
+   "timeout_s": 1500
+  },
+  "regression": {
+   "files_from": "regression-files/hermes-i02.txt",
+   "cmd": "bash $HARNESS/hermes/mining/hermes_pytest.sh --suite --files-from $BUNDLE/hermes-agent/fix-sol/regression-files/hermes-i02.txt -q",
+   "rerun": "bash $HARNESS/hermes/mining/hermes_pytest.sh {IDS} -q",
+   "timeout_s": 2400
+  },
+  "env": {
+   "HERMES_PYTHON": "{RUNDIR}/.venv/bin/python",
+   "HERMES_HOME": "{TMP}/hermes-home",
+   "HERMES_DISABLE_LAZY_INSTALLS": "1",
+   "UV_NO_SYNC": "1"
+  },
+  "validation": {
+   "diff": [
+    "M tests/tools/test_mcp_trust_gating.py",
+    "M tools/approval_prompt.py"
+   ],
+   "tests_changed": [
+    "tests/tools/test_mcp_trust_gating.py"
+   ],
+   "oracle_files": [
+    "tests/tools/test_mcp_trust_gating.py"
+   ],
+   "lock_changed": false,
+   "dist_first_parent": 237,
+   "base_rc": 1,
+   "base_tail": [
+    "FAILED tests/tools/test_mcp_trust_gating.py::TestTrustGateApprovalRouting::test_cli_panel_callback_is_never_asked_without_a_user[single_query]",
+    "FAILED tests/tools/test_mcp_trust_gating.py::TestTrustGateApprovalRouting::test_cli_panel_callback_is_never_asked_without_a_user[cron]",
+    "FAILED tests/tools/test_mcp_trust_gating.py::TestTrustGateApprovalRouting::test_cli_panel_callback_is_never_asked_without_a_user[webhook]",
+    "3 failed, 15 passed in 12.73s"
+   ],
+   "fix_rc1": 0,
+   "fix_tail1": [
+    "18 passed in 4.37s"
+   ],
+   "fix_rc2": 0,
+   "fix_tail2": [
+    "18 passed in 5.05s"
+   ]
+  }
+ },
+ {
+  "id": "hermes-i03",
+  "class": "investigation",
+  "repo": "NousResearch/hermes-agent",
+  "pr": "https://github.com/NousResearch/hermes-agent/pull/133231",
+  "base_sha": "a94ef2fea57455b6ce96bf9558383de29c46bc4b",
+  "fix_sha": "a03d0f8e7d14a85a0b17b9ca855fc32d530524d6",
+  "statement": "`hermes config set model '<json>'` saves the JSON text as the model id.\n\n`hermes config set model '{\"provider\": \"openai-codex\", \"default\": \"gpt-6.1-sol\"}'` prints a success line, but it stores the raw JSON text as `model.default` when a `model` section already exists. Every runtime reader then fails to resolve the route, while `hermes config get` echoes the text back. With `--force`, the whole `model` section is replaced by that string instead of by a mapping.\n\nRepro: with a config holding `model: {default: glm-5.3-flash, provider: zai}`, call `hermes_cli.config.set_config_value(\"model\", '{\"provider\": \"openai-codex\", \"default\": \"gpt-6.1-sol\"}')`. It returns normally and `model.default` becomes the JSON text.\n\nExpected:\n- Bare `model` with a JSON/YAML mapping literal, without `--force`, over an existing `model` section: refused with exit status 1 (`SystemExit` with code 1). The message tells the user to set `model.provider` / `model.default` individually or to use `--force`. The config file is left unchanged.\n- With `force=True`, the mapping replaces the whole `model` section as a real mapping. For example `{\"provider\": \"openrouter\", \"default\": \"z-ai/glm-5.3-flash\"}` becomes exactly that section, and no old sub-keys are kept.\n- Plain model ids (`gpt-5.6-sol`, `z-ai/glm-5.3-flash`) and `model.default <id>` behave as before.\n\nAdd or update tests as appropriate.\n\nTo run tests, use the hermetic pytest wrapper from the repository root: `bash $HARNESS/hermes/mining/hermes_pytest.sh <pytest args>` (for example `bash $HARNESS/hermes/mining/hermes_pytest.sh -q tests/agent/test_x.py`); it runs the checkout's prepared `.venv` in a scrubbed environment with a temporary HOME. The repository's own `scripts/run_tests.sh <paths>` also works (HERMES_PYTHON points at the checkout's `.venv/bin/python`). `HERMES_HOME` points at a per-run temporary directory (the wrapper and `scripts/run_tests.sh` clear it for tests), and a `hermes` command on PATH runs this checkout's own CLI (`.venv/bin/python -m hermes_cli.main`), never an installed Hermes.",
+  "oracle": {
+   "files": [
+    {
+     "src": "oracle/hermes-i03/tests/hermes_cli/test_set_config_value.py",
+     "dst": "tests/hermes_cli/test_set_config_value.py"
+    }
+   ],
+   "cmd": "bash $HARNESS/hermes/mining/hermes_pytest.sh -q tests/hermes_cli/test_set_config_value.py",
+   "timeout_s": 1500
+  },
+  "regression": {
+   "files_from": "regression-files/hermes-i03.txt",
+   "cmd": "bash $HARNESS/hermes/mining/hermes_pytest.sh --suite --files-from $BUNDLE/hermes-agent/fix-sol/regression-files/hermes-i03.txt -q --deselect=tests/hermes_cli/test_doctor.py::TestGitHubTokenCheck::test_gh_authenticated_on_gh_without_authenticated_json_field --deselect=tests/hermes_cli/test_local_models_routes.py::test_download_resume_completes_bytes --deselect=tests/hermes_cli/test_local_models_routes.py::test_quickstart_pause_stops_the_sequence --deselect=tests/hermes_cli/test_local_models_routes.py::test_repeated_resume_never_spawns_concurrent_writers --deselect=tests/hermes_cli/test_plugin_validate.py::test_portable_validation_fails_orphan_and_reports_availability --deselect=tests/hermes_cli/test_shared_metrics_harness.py::test_foreground_terminal_commands_count_by_kind_and_outcome --deselect=tests/hermes_cli/test_update_channel.py::TestSetChannelCLI::test_metadata_commands_precede_managed_refusal_and_write_once --deselect=tests/hermes_cli/test_update_channel.py::TestSetChannelCLI::test_metadata_refusals_leave_config_unchanged --deselect=tests/hermes_cli/test_update_channel.py::TestSetChannelCLI::test_stable_switch_warns_about_state_without_requiring_a_newer_release --deselect=tests/hermes_cli/test_update_fleet_restart_pending.py::test_clean_update_defers_desktop_owned_serve_and_clears_marker --deselect=tests/hermes_cli/test_update_fleet_restart_pending.py::test_clean_update_escalates_surviving_serve_as_unaccounted --deselect=tests/hermes_cli/test_update_fleet_restart_pending.py::test_interrupt_between_pull_and_restart_leaves_marker --deselect=tests/hermes_cli/test_update_fleet_restart_pending.py::test_marker_written_after_pull_cleared_after_successful_restart --deselect=tests/hermes_cli/test_update_fleet_restart_pending.py::test_pending_fleet_restart_cleared_instead_of_exit_1 --deselect=tests/hermes_cli/test_update_fleet_restart_pending.py::test_up_to_date_update_leaves_current_fleet_alone --deselect=tests/hermes_cli/test_update_fleet_restart_pending.py::test_up_to_date_update_still_restarts_a_stale_gateway --deselect=tests/hermes_cli/test_update_parked_branch_guard.py::test_switch_branch_flag_overrides_in_place_strategy --deselect=tests/hermes_cli/test_update_parked_branch_guard.py::test_update_auto_switches_clean_merged_parked_branch --deselect=tests/hermes_cli/test_update_parked_branch_guard.py::test_update_on_main_fast_path_unchanged --deselect=tests/hermes_cli/test_update_parked_branch_guard.py::test_update_skips_and_warns_on_dirty_parked_branch --deselect=tests/hermes_cli/test_update_parked_branch_guard.py::test_update_switches_unmerged_parked_branch_with_kept_notice --deselect=tests/hermes_cli/test_update_parked_branch_guard.py::test_update_up_to_date_path_does_not_repark_merged_branch --deselect=tests/hermes_cli/test_update_parked_branch_guard.py::test_update_updates_unmerged_branch_in_place_when_configured",
+   "rerun": "bash $HARNESS/hermes/mining/hermes_pytest.sh {IDS} -q",
+   "timeout_s": 2400
+  },
+  "env": {
+   "HERMES_PYTHON": "{RUNDIR}/.venv/bin/python",
+   "HERMES_HOME": "{TMP}/hermes-home",
+   "HERMES_DISABLE_LAZY_INSTALLS": "1",
+   "UV_NO_SYNC": "1"
+  },
+  "validation": {
+   "diff": [
+    "M hermes_cli/config.py",
+    "M tests/hermes_cli/test_set_config_value.py"
+   ],
+   "tests_changed": [
+    "tests/hermes_cli/test_set_config_value.py"
+   ],
+   "oracle_files": [
+    "tests/hermes_cli/test_set_config_value.py"
+   ],
+   "lock_changed": false,
+   "dist_first_parent": 265,
+   "base_rc": 1,
+   "base_tail": [
+    "FAILED tests/hermes_cli/test_set_config_value.py::TestMappingGuard::test_bare_model_mapping_literal_is_refused",
+    "FAILED tests/hermes_cli/test_set_config_value.py::TestMappingGuard::test_bare_model_mapping_force_replaces_section",
+    "2 failed, 99 passed in 19.31s"
+   ],
+   "fix_rc1": 0,
+   "fix_tail1": [
+    "101 passed in 18.42s"
+   ],
+   "fix_rc2": 0,
+   "fix_tail2": [
+    "101 passed in 8.94s"
+   ]
+  }
+ },
+ {
+  "id": "hermes-c01",
+  "class": "cross-module",
+  "repo": "NousResearch/hermes-agent",
+  "pr": "https://github.com/NousResearch/hermes-agent/pull/133004",
+  "base_sha": "0b088a78a6f510cc3b9f13d110ebb1b52dff6da3",
+  "fix_sha": "fc4c176eecdb1081fa6fc4bc654bd59db3489df1",
+  "statement": "A Claude Code CLI installed outside PATH is reported missing by external-process providers and by `claude setup-token`.\n\nA backend started by a macOS LaunchAgent or spawned by Hermes Desktop inherits a bare PATH. Take a provider whose `process_command` is `claude`. Its status, its setup and every request report \"Could not find the '<provider>' CLI command 'claude'\", even though the CLI is installed in `~/.local/bin` (or another Claude Code install prefix). The Anthropic adapter's Claude Code version detection already probes those install prefixes and finds the same binary. `run_oauth_setup_token` (the `claude setup-token` flow) has the same PATH-only lookup, so it raises `FileNotFoundError: The 'claude' CLI is not installed`.\n\nRepro: set HOME to a temp dir, create an executable `~/.local/bin/claude`, and point PATH at an empty directory. Register a `providers.base.ProviderProfile(name=\"claude-cli-acp-test\", auth_type=\"external_process\", process_command=\"claude\", base_url=\"process://claude-cli-acp-test\", ...)` with `providers.register_provider`. Then `hermes_cli.auth.resolve_external_process_provider_credentials(\"claude-cli-acp-test\")` raises `AuthError`.\n\nExpected:\n- Add `find_claude_code_cli(command: str) -> Optional[str]` to `agent/anthropic_adapter.py`. For a bare Claude Code command name (`claude`, `claude-code`) it returns the path found on PATH, or else the path in one of the install prefixes the adapter already probes. For any other command it returns `None`.\n- External-process providers resolve `claude` from an install prefix when PATH has none. `resolve_external_process_provider_credentials(...)[\"command\"]` and `get_external_process_provider_status(...)[\"resolved_command\"]` are that binary, and the status reports `configured: True`. A `claude` on PATH still wins, and other commands stay PATH-only.\n- `agent.anthropic_credentials.run_oauth_setup_token()` resolves the CLI by calling `agent.anthropic_adapter.find_claude_code_cli(\"claude\")` when it runs (tests patch that module attribute), and runs `[<that path>, \"setup-token\"]`.\n\nAdd or update tests as appropriate.\n\nTo run tests, use the hermetic pytest wrapper from the repository root: `bash $HARNESS/hermes/mining/hermes_pytest.sh <pytest args>` (for example `bash $HARNESS/hermes/mining/hermes_pytest.sh -q tests/agent/test_x.py`); it runs the checkout's prepared `.venv` in a scrubbed environment with a temporary HOME. The repository's own `scripts/run_tests.sh <paths>` also works (HERMES_PYTHON points at the checkout's `.venv/bin/python`). `HERMES_HOME` points at a per-run temporary directory (the wrapper and `scripts/run_tests.sh` clear it for tests), and a `hermes` command on PATH runs this checkout's own CLI (`.venv/bin/python -m hermes_cli.main`), never an installed Hermes.",
+  "oracle": {
+   "files": [
+    {
+     "src": "oracle/hermes-c01/tests/agent/test_anthropic_adapter.py",
+     "dst": "tests/agent/test_anthropic_adapter.py"
+    },
+    {
+     "src": "oracle/hermes-c01/tests/hermes_cli/test_external_process_cli_prefixes.py",
+     "dst": "tests/hermes_cli/test_external_process_cli_prefixes.py"
+    }
+   ],
+   "cmd": "bash $HARNESS/hermes/mining/hermes_pytest.sh -q tests/agent/test_anthropic_adapter.py tests/hermes_cli/test_external_process_cli_prefixes.py",
+   "timeout_s": 1500
+  },
+  "regression": {
+   "files_from": "regression-files/hermes-c01.txt",
+   "cmd": "bash $HARNESS/hermes/mining/hermes_pytest.sh --suite --files-from $BUNDLE/hermes-agent/fix-sol/regression-files/hermes-c01.txt -q --deselect=tests/hermes_cli/test_doctor.py::TestGitHubTokenCheck::test_gh_authenticated_on_gh_without_authenticated_json_field",
+   "rerun": "bash $HARNESS/hermes/mining/hermes_pytest.sh {IDS} -q",
+   "timeout_s": 2400
+  },
+  "env": {
+   "HERMES_PYTHON": "{RUNDIR}/.venv/bin/python",
+   "HERMES_HOME": "{TMP}/hermes-home",
+   "HERMES_DISABLE_LAZY_INSTALLS": "1",
+   "UV_NO_SYNC": "1"
+  },
+  "validation": {
+   "diff": [
+    "M agent/anthropic_adapter.py",
+    "M agent/anthropic_credentials.py",
+    "M hermes_cli/auth.py",
+    "M tests/agent/test_anthropic_adapter.py",
+    "M tests/fixtures/resolution_allowlist.json",
+    "A tests/hermes_cli/test_external_process_cli_prefixes.py"
+   ],
+   "tests_changed": [
+    "tests/agent/test_anthropic_adapter.py",
+    "tests/hermes_cli/test_external_process_cli_prefixes.py"
+   ],
+   "oracle_files": [
+    "tests/agent/test_anthropic_adapter.py",
+    "tests/hermes_cli/test_external_process_cli_prefixes.py"
+   ],
+   "lock_changed": false,
+   "dist_first_parent": 15,
+   "base_rc": 1,
+   "base_tail": [
+    "FAILED tests/agent/test_anthropic_adapter.py::TestRunOauthSetupToken::test_returns_token_from_credential_files",
+    "FAILED tests/agent/test_anthropic_adapter.py::TestRunOauthSetupToken::test_returns_none_when_no_creds_found",
+    "FAILED tests/hermes_cli/test_external_process_cli_prefixes.py::test_external_process_provider_finds_claude_in_an_install_prefix",
+    "FAILED tests/hermes_cli/test_external_process_cli_prefixes.py::test_setup_token_runs_claude_from_an_install_prefix",
+    "4 failed, 92 passed in 8.96s"
+   ],
+   "fix_rc1": 0,
+   "fix_tail1": [
+    "96 passed in 8.39s"
+   ],
+   "fix_rc2": 0,
+   "fix_tail2": [
+    "96 passed in 9.81s"
+   ]
+  }
+ },
+ {
+  "id": "hermes-c02",
+  "class": "cross-module",
+  "repo": "NousResearch/hermes-agent",
+  "pr": "https://github.com/NousResearch/hermes-agent/pull/132773",
+  "base_sha": "4cfffca7cd043f2f4faacfd2b5b62357edb0f844",
+  "fix_sha": "f33d817404dd714eb1b2535670a81766980d2afa",
+  "statement": "Desktop paints the same reply twice in one bubble after a housekeeping tool call.\n\nSometimes the model answers beside a housekeeping tool call (memory, todo_list, skill_manage, session_search) and the follow-up response is empty. The turn then ends on the answer sent before the tool (`turn_exit_reason == \"fallback_prior_turn_content\"`). That final text repeats a response the client has already streamed, but nothing in the turn result or on the wire says so. The TUI/Desktop `message.complete` event looks like a new response, and the renderer appends the same reply a second time in the same bubble.\n\nRepro: the model returns \"Here is the answer.\" with a `todo_list` tool call, then an empty response. `run_conversation` ends with `final_response == \"Here is the answer.\"`, and neither the result nor `message.complete` marks it as already delivered.\n\nExpected:\n- The `run_conversation` result carries a boolean `response_reused`. It is True when the final response is, byte for byte, a response this turn already delivered: the housekeeping-tool fallback above, and the reuse of an already previewed verification candidate when the iteration budget runs out. It is False otherwise. Equal text alone is not a reuse: if the model says \"Done.\", calls a tool, then says \"Done.\" again, `response_reused` is False. If text is appended to the reused response before the turn ends, it is False too.\n- The `message.complete` payload that `tui_gateway` builds for a finished turn carries `response_reused: true` when the result has it set and the final text is non-empty. The key is absent otherwise. The message.complete event frame keeps the field, so the `MessageCompletePayload` contract allows it.\n\nAdd or update tests as appropriate.\n\nTo run tests, use the hermetic pytest wrapper from the repository root: `bash $HARNESS/hermes/mining/hermes_pytest.sh <pytest args>` (for example `bash $HARNESS/hermes/mining/hermes_pytest.sh -q tests/agent/test_x.py`); it runs the checkout's prepared `.venv` in a scrubbed environment with a temporary HOME. The repository's own `scripts/run_tests.sh <paths>` also works (HERMES_PYTHON points at the checkout's `.venv/bin/python`). `HERMES_HOME` points at a per-run temporary directory (the wrapper and `scripts/run_tests.sh` clear it for tests), and a `hermes` command on PATH runs this checkout's own CLI (`.venv/bin/python -m hermes_cli.main`), never an installed Hermes.",
+  "oracle": {
+   "files": [
+    {
+     "src": "oracle/hermes-c02/tests/agent/test_empty_response_recovery_persistence.py",
+     "dst": "tests/agent/test_empty_response_recovery_persistence.py"
+    },
+    {
+     "src": "oracle/hermes-c02/tests/tui_gateway/test_turn_payload_reused_final.py",
+     "dst": "tests/tui_gateway/test_turn_payload_reused_final.py"
+    }
+   ],
+   "cmd": "bash $HARNESS/hermes/mining/hermes_pytest.sh -q tests/agent/test_empty_response_recovery_persistence.py tests/tui_gateway/test_turn_payload_reused_final.py",
+   "timeout_s": 1500
+  },
+  "regression": {
+   "files_from": "regression-files/hermes-c02.txt",
+   "cmd": "bash $HARNESS/hermes/mining/hermes_pytest.sh --suite --files-from $BUNDLE/hermes-agent/fix-sol/regression-files/hermes-c02.txt -q",
+   "rerun": "bash $HARNESS/hermes/mining/hermes_pytest.sh {IDS} -q",
+   "timeout_s": 2400
+  },
+  "env": {
+   "HERMES_PYTHON": "{RUNDIR}/.venv/bin/python",
+   "HERMES_HOME": "{TMP}/hermes-home",
+   "HERMES_DISABLE_LAZY_INSTALLS": "1",
+   "UV_NO_SYNC": "1"
+  },
+  "validation": {
+   "diff": [
+    "M agent/turn_context.py",
+    "M agent/turn_empty_response.py",
+    "M agent/turn_finalizer.py",
+    "M apps/shared/src/gateway-contract.generated.ts",
+    "M apps/shared/src/gateway-contract.openrpc.json",
+    "M tests/agent/test_empty_response_recovery_persistence.py",
+    "A tests/tui_gateway/test_turn_payload_reused_final.py",
+    "M tui_gateway/contracts/events.py",
+    "M tui_gateway/prompt_turn.py"
+   ],
+   "tests_changed": [
+    "tests/agent/test_empty_response_recovery_persistence.py",
+    "tests/tui_gateway/test_turn_payload_reused_final.py"
+   ],
+   "oracle_files": [
+    "tests/agent/test_empty_response_recovery_persistence.py",
+    "tests/tui_gateway/test_turn_payload_reused_final.py"
+   ],
+   "lock_changed": false,
+   "dist_first_parent": 18,
+   "base_rc": 1,
+   "base_tail": [
+    "FAILED tests/agent/test_empty_response_recovery_persistence.py::test_housekeeping_fallback_names_its_final_a_reused_response",
+    "FAILED tests/agent/test_empty_response_recovery_persistence.py::test_same_words_in_a_second_response_are_not_a_reused_response",
+    "FAILED tests/tui_gateway/test_turn_payload_reused_final.py::test_reused_final_is_named_on_the_wire",
+    "3 failed, 7 passed, 1 warning in 16.32s"
+   ],
+   "fix_rc1": 0,
+   "fix_tail1": [
+    "10 passed in 5.03s"
+   ],
+   "fix_rc2": 0,
+   "fix_tail2": [
+    "10 passed in 4.60s"
+   ]
+  }
+ },
+ {
+  "id": "hermes-c03",
+  "class": "cross-module",
+  "repo": "NousResearch/hermes-agent",
+  "pr": "https://github.com/NousResearch/hermes-agent/pull/133289",
+  "base_sha": "ea99d85ad42e495af7dde4318ae41b7b0dbfb9a4",
+  "fix_sha": "02367369f65b5acca025fc6045d4f9018c072944",
+  "statement": "A platform whose plugin failed to load at gateway startup never comes back without a restart.\n\nTake a bundled platform plugin (for example irc) whose deferred load raises or overruns its load deadline at gateway startup, for example under startup I/O contention. Its registry lease is disposed, so the platform registry forgets the platform. The gateway's reconnect watcher keeps the platform queued as `adapter_unavailable`, but nothing ever runs the plugin import again. The platform only heals after a manual `reload-plugins` or a gateway restart, even once the cause of the failure is gone.\n\nRepro: register a deferred platform plugin whose first `register(ctx)` raises `TimeoutError` and whose second registers the platform. After the failed load, `gateway.platform_registry.platform_registry.get(name)` stays `None`, and the reconnect watcher never heals it.\n\nExpected:\n- `PluginManager.rearm_failed_platform(platform_name: str) -> bool` (`hermes_cli.plugins.PluginManager`) re-arms the deferred loader of a platform plugin whose load failed. The next `platform_registry.get(name)` then retries the import, and the platform registers if the import now succeeds. It returns True when a loader was re-armed. It returns False when that platform has no failed load, for example once it has loaded. A plain registry lookup still never retries a failed load by itself.\n- When the reconnect watcher (`_reconnect_failed_platform`) finds an unregistered plugin platform (`adapter_unavailable`), it calls `rearm_failed_platform(platform.value)` on the current profile's plugin manager, looked up as `hermes_cli.plugins.get_plugin_manager()` when it runs (tests patch that module attribute), once per watcher tick, and keeps the platform queued. The next tick creates and installs the adapter.\n\nAdd or update tests as appropriate.\n\nTo run tests, use the hermetic pytest wrapper from the repository root: `bash $HARNESS/hermes/mining/hermes_pytest.sh <pytest args>` (for example `bash $HARNESS/hermes/mining/hermes_pytest.sh -q tests/agent/test_x.py`); it runs the checkout's prepared `.venv` in a scrubbed environment with a temporary HOME. The repository's own `scripts/run_tests.sh <paths>` also works (HERMES_PYTHON points at the checkout's `.venv/bin/python`). `HERMES_HOME` points at a per-run temporary directory (the wrapper and `scripts/run_tests.sh` clear it for tests), and a `hermes` command on PATH runs this checkout's own CLI (`.venv/bin/python -m hermes_cli.main`), never an installed Hermes.",
+  "oracle": {
+   "files": [
+    {
+     "src": "oracle/hermes-c03/tests/gateway/test_platform_reconnect.py",
+     "dst": "tests/gateway/test_platform_reconnect.py"
+    },
+    {
+     "src": "oracle/hermes-c03/tests/hermes_cli/test_deferred_platform_client_tools.py",
+     "dst": "tests/hermes_cli/test_deferred_platform_client_tools.py"
+    }
+   ],
+   "cmd": "bash $HARNESS/hermes/mining/hermes_pytest.sh -q tests/gateway/test_platform_reconnect.py tests/hermes_cli/test_deferred_platform_client_tools.py",
+   "timeout_s": 1500
+  },
+  "regression": {
+   "files_from": "regression-files/hermes-c03.txt",
+   "cmd": "bash $HARNESS/hermes/mining/hermes_pytest.sh --suite --files-from $BUNDLE/hermes-agent/fix-sol/regression-files/hermes-c03.txt -q --deselect=tests/gateway/test_update_streaming.py::TestCmdUpdateGatewayMode::test_gateway_flag_enables_gateway_prompt_for_stash",
+   "rerun": "bash $HARNESS/hermes/mining/hermes_pytest.sh {IDS} -q",
+   "timeout_s": 2400
+  },
+  "env": {
+   "HERMES_PYTHON": "{RUNDIR}/.venv/bin/python",
+   "HERMES_HOME": "{TMP}/hermes-home",
+   "HERMES_DISABLE_LAZY_INSTALLS": "1",
+   "UV_NO_SYNC": "1"
+  },
+  "validation": {
+   "diff": [
+    "M gateway/run_adapters.py",
+    "M gateway/run_plugin_rewire.py",
+    "M hermes_cli/plugins_loader.py",
+    "M tests/gateway/test_platform_reconnect.py",
+    "M tests/hermes_cli/test_deferred_platform_client_tools.py"
+   ],
+   "tests_changed": [
+    "tests/gateway/test_platform_reconnect.py",
+    "tests/hermes_cli/test_deferred_platform_client_tools.py"
+   ],
+   "oracle_files": [
+    "tests/gateway/test_platform_reconnect.py",
+    "tests/hermes_cli/test_deferred_platform_client_tools.py"
+   ],
+   "lock_changed": false,
+   "dist_first_parent": 301,
+   "base_rc": 1,
+   "base_tail": [
+    "FAILED tests/gateway/test_platform_reconnect.py::TestPlatformReconnectWatcher::test_failed_plugin_load_is_rearmed_by_the_watcher",
+    "FAILED tests/hermes_cli/test_deferred_platform_client_tools.py::TestDeferredPlatformToolPreregistration::test_failed_load_is_rearmed_and_heals_on_next_lookup",
+    "2 failed, 40 passed in 10.99s"
+   ],
+   "fix_rc1": 0,
+   "fix_tail1": [
+    "42 passed in 6.02s"
+   ],
+   "fix_rc2": 0,
+   "fix_tail2": [
+    "42 passed in 5.93s"
+   ]
+  }
+ }
+]

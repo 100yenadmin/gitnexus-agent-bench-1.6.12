@@ -1,0 +1,76 @@
+diff --git a/gitnexus/src/cli/index.ts b/gitnexus/src/cli/index.ts
+index 22bb3c0..da85c35 100644
+--- a/gitnexus/src/cli/index.ts
++++ b/gitnexus/src/cli/index.ts
+@@ -292,7 +292,7 @@ program
+   .command('status')
+   .description('Show index status for the current repo or a registered index')
+   .option('-r, --repo <name>', 'Registered repository alias or path (works after checkout removal)')
+-  .option('--json', 'Emit machine-readable index and analyzer provenance')
++  .option('-j, --json', 'Emit machine-readable index and analyzer provenance')
+   .addHelpText('after', () => t('help.identityCache.environment'))
+   .action(createLazyAction(() => import('./status.js'), 'statusCommand'));
+ 
+diff --git a/gitnexus/test/unit/status-json-alias.test.ts b/gitnexus/test/unit/status-json-alias.test.ts
+new file mode 100644
+index 0000000..787b363
+--- /dev/null
++++ b/gitnexus/test/unit/status-json-alias.test.ts
+@@ -0,0 +1,57 @@
++/**
++ * Unit Tests: `gitnexus status -j` alias
++ *
++ * Drives the real CLI dispatcher with a mocked status module and checks that
++ * `-j` is parsed as `--json`.
++ */
++import { describe, it, expect, vi, beforeEach } from 'vitest';
++
++const { statusCommand } = vi.hoisted(() => ({
++  statusCommand: vi.fn().mockResolvedValue(undefined),
++}));
++
++vi.mock('../../src/cli/status.js', () => ({ statusCommand }));
++
++async function runCli(args: string[]): Promise<void> {
++  const originalArgv = process.argv;
++  process.argv = ['node', 'gitnexus', ...args];
++  try {
++    vi.resetModules();
++    await import('../../src/cli/index.js');
++    await vi.waitFor(() => {
++      expect(statusCommand).toHaveBeenCalled();
++    });
++  } finally {
++    process.argv = originalArgv;
++  }
++}
++
++describe('CLI status -j alias', () => {
++  beforeEach(() => {
++    statusCommand.mockClear();
++  });
++
++  it('parses -j as --json', async () => {
++    await runCli(['status', '-j']);
++    expect(statusCommand).toHaveBeenCalledWith(expect.objectContaining({ json: true }), expect.anything());
++  });
++
++  it('still parses --json', async () => {
++    await runCli(['status', '--json']);
++    expect(statusCommand).toHaveBeenCalledWith(expect.objectContaining({ json: true }), expect.anything());
++  });
++
++  it('combines -j with -r', async () => {
++    await runCli(['status', '-j', '-r', 'my-repo']);
++    expect(statusCommand).toHaveBeenCalledWith(
++      expect.objectContaining({ json: true, repo: 'my-repo' }),
++      expect.anything(),
++    );
++  });
++
++  it('leaves json unset without the flag', async () => {
++    await runCli(['status']);
++    const [opts] = statusCommand.mock.calls[0];
++    expect(opts.json).toBeUndefined();
++  });
++});

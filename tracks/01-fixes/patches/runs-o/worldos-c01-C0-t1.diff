@@ -1,0 +1,308 @@
+diff --git a/servers/engine/models.py b/servers/engine/models.py
+index 051e476..3158952 100644
+--- a/servers/engine/models.py
++++ b/servers/engine/models.py
+@@ -1409,6 +1409,7 @@ class Combat(_StrictModel):
+     turn_index: int = 0
+     order: list[Combatant] = Field(default_factory=list)  # sorted desc by initiative
+     action_used: bool = False  # current turn's action economy
++    action_purpose: Literal["", "cast", "skip"] = ""
+     bonus_action_used: bool = False
+     # Attack-action economy for the CURRENT turn (additive; resets every next_turn):
+     #  * action_attacks_made — how many attack() calls have resolved under the
+diff --git a/servers/engine/server.py b/servers/engine/server.py
+index 8b44a5c..f65193e 100644
+--- a/servers/engine/server.py
++++ b/servers/engine/server.py
+@@ -4879,6 +4879,7 @@ def next_turn(campaign_id: str) -> dict:
+         # Fresh action economy for the new turn; the current combatant's reaction
+         # recharges at the start of their turn.
+         c.combat.action_used = False
++        c.combat.action_purpose = ""
+         c.combat.bonus_action_used = False
+         # Reset the per-turn attack-action economy too: a new turn starts with one
+         # Attack action's worth of strikes and no Action Surge spent yet.
+@@ -5145,6 +5146,7 @@ def use_action(campaign_id: str, character_id: str, kind: str = "action") -> dic
+                 ok, reason = False, "action already used this turn (already acted or skipped)"
+             else:
+                 c.combat.action_used = True
++                c.combat.action_purpose = "skip"
+         elif kind in ("action", "bonus"):
+             if not is_current:
+                 ok, reason = False, f"it is not {ch.name}'s turn (only a reaction acts off-turn)"
+@@ -5537,6 +5539,10 @@ def attack(
+                 # and Multiattack-aware for monsters with a stat-block entry). The
+                 # named attack scopes the Multiattack budget to its composition
+                 # (a Ghoul Claw is NOT part of its 'two Bite' Multiattack — cs F-3).
++                if c.combat.action_purpose == "cast":
++                    raise ValueError(f"{attacker.name} already cast a spell this turn")
++                if c.combat.action_purpose == "skip":
++                    raise ValueError(f"{attacker.name} skipped this turn")
+                 ma = _attacker_multiattack_count(attacker, c, attack_name)
+                 ok, reason = combat.check_action_attack(
+                     is_current=True,
+@@ -7412,6 +7418,10 @@ def cast_spell(
+     canonical = (curated or srd).get("name", spell_name)
+     spell_level = int((curated.get("level", 0) if curated else srd.get("level", 0)) or 0)
+     concentrates = bool(curated.get("concentration") if curated else srd.get("concentration"))
++    casting_time = str(
++        (curated or {}).get("casting_time") or (srd or {}).get("casting_time") or "1 action"
++    ).lower().replace("-", " ")
++    bonus_cast = "bonus action" in casting_time
+     # Ritual tag (#813): the srd524 records carry `ritual`; curated records may too.
+     is_ritual = bool((curated or {}).get("ritual") or (srd or {}).get("ritual"))
+     if as_ritual and not is_ritual:
+@@ -7470,20 +7480,22 @@ def cast_spell(
+                 f"takes 10 extra minutes. Cast it normally (spending a slot) or wait "
+                 f"until combat ends."
+             )
++        if c.combat.active and ("minute" in casting_time or "hour" in casting_time):
++            raise ValueError(f"{canonical} has a casting time too long for active combat")
+         # Turn ownership (mirrors attack()): while combat is active and the caster is in
+         # the initiative order, an action-cast is legal only on the caster's own turn.
+         # An off-turn cast (or an explicitly-declared reaction spell — Shield, Counterspell,
+         # an Absorb Elements) is a REACTION: legal once per round, gated by reaction_used.
+         # A rejected cast spends NOTHING (no slot, no concentration). Inert with no combat
+-        # or for a non-combatant caster. Spells aren't subject to the per-Attack-action
+-        # budget, so this enforces ownership only (not an attack count).
++        # or for a non-combatant caster. On-turn casts share the action/bonus budget
++        # with use_action and attack, according to the spell's casting time.
+         caster_cb = next(
+             (cb for cb in c.combat.order if cb.character_id == character_id), None
+         ) if c.combat.active else None
+         cast_consumes_reaction = False
+         if caster_cb is not None:
+             is_current = c.combat.current_combatant_id == character_id
+-            if is_reaction or not is_current:
++            if is_reaction or not is_current or "reaction" in casting_time:
+                 if caster_cb.reaction_used:
+                     cur = c.characters.get(c.combat.current_combatant_id)
+                     cur_name = cur.name if cur else c.combat.current_combatant_id
+@@ -7494,6 +7506,11 @@ def cast_spell(
+                         f"advance with next_turn so the order stays in sync."
+                     )
+                 cast_consumes_reaction = True
++            elif bonus_cast:
++                if c.combat.bonus_action_used:
++                    raise ValueError(f"{ch.name} has already used its bonus action this turn")
++            elif c.combat.action_used:
++                raise ValueError(f"{ch.name} has already used its action this turn")
+         # KNOWN / PREPARED GATE (F03-7 + F03-8). Compare CASE-INSENSITIVELY (F03-7): the
+         # cast-side `canonical` is the proper-cased SRD name, but legacy snapshots may carry
+         # raw-cased strings (learn_spells/prepare_spells now canonicalize on write, but old
+@@ -7829,10 +7846,13 @@ def cast_spell(
+         # is separate from the character, so the re-validation above didn't touch it).
+         if cast_consumes_reaction and caster_cb is not None:
+             caster_cb.reaction_used = True
+-        # An on-turn cast consumes the combatant's action (mirrors attack()'s action_used
+-        # bookkeeping). Required so next_turn's PC-skip guard recognises a spell as "acted".
++        # Commit the casting-time resource only after the cast succeeds.
+         elif caster_cb is not None and not cast_consumes_reaction:
+-            c.combat.action_used = True
++            if bonus_cast:
++                c.combat.bonus_action_used = True
++            else:
++                c.combat.action_used = True
++                c.combat.action_purpose = "cast"
+         save_campaign(c)
+         updated = c.characters[character_id]
+         result = {
+@@ -8983,7 +9003,18 @@ def use_resource(
+             and c.combat.active
+             and c.combat.current_combatant_id == character_id
+         ):
++            # A cast/pass or an action declared without attacks used a whole action.
++            # Reserve its strikes before reopening the action for Surge.
++            if c.combat.action_purpose or (
++                c.combat.action_used and c.combat.action_attacks_made == 0
++            ):
++                c.combat.action_attacks_made = combat.attacks_allowed(
++                    getattr(ch, "extra_attacks", 0), c.combat.surge_actions,
++                    _attacker_multiattack_count(ch, c),
++                )
+             c.combat.surge_actions += amount
++            c.combat.action_used = False
++            c.combat.action_purpose = ""
+         c.characters[character_id] = Character.model_validate(ch.model_dump(mode="json"))
+         save_campaign(c)
+         new = ch.class_resources[resource]
+diff --git a/servers/engine/tests/test_combat_action_economy.py b/servers/engine/tests/test_combat_action_economy.py
+new file mode 100644
+index 0000000..69e2b1a
+--- /dev/null
++++ b/servers/engine/tests/test_combat_action_economy.py
+@@ -0,0 +1,174 @@
++"""#778: casting, attacking and declared actions share a turn's resources."""
++
++import pytest
++
++import server
++from models import Combat
++
++
++@pytest.fixture
++def fight(tmp_path, monkeypatch):
++    monkeypatch.setenv("WORLDOS_STATE_DIR", str(tmp_path))
++    cid = server.create_campaign("action economy")["id"]
++    ids = [server.create_character(cid, name, kind="player", max_hp=100)["id"]
++           for name in ("Caster", "Target")]
++    server.start_combat(cid, ids)
++    actor = server.get_state(cid)["current_turn"]
++    target = next(i for i in ids if i != actor)
++    server.update_character(cid, actor, {"spell_slots": {
++        1: {"maximum": 5, "used": 0}, 3: {"maximum": 5, "used": 0},
++        5: {"maximum": 5, "used": 0},
++    }})
++    return cid, actor, target
++
++
++def strike(fight):
++    cid, actor, target = fight
++    return server.attack(cid, actor, target, attack_bonus=0, damage_dice="1")
++
++
++def cast(fight, spell="Fire Bolt"):
++    cid, actor, _ = fight
++    return server.cast_spell(cid, actor, spell)
++
++
++@pytest.mark.parametrize("first", ["cast", "attack", "action", "skip"])
++def test_action_spell_rejected_after_action_spent(fight, first):
++    cid, actor, _ = fight
++    if first == "cast":
++        cast(fight)
++    elif first == "attack":
++        strike(fight)
++    else:
++        assert server.use_action(cid, actor, first)["ok"]
++    before = server.get_state(cid)
++    with pytest.raises(ValueError, match="already used its action"):
++        cast(fight, "Fireball")
++    assert server.get_state(cid) == before
++
++
++@pytest.mark.parametrize("first,message", [("cast", "already cast a spell"),
++                                           ("skip", "skipped this turn")])
++def test_attack_rejected_after_cast_or_skip(fight, first, message):
++    cid, actor, _ = fight
++    if first == "cast":
++        cast(fight)
++    else:
++        server.use_action(cid, actor, "skip")
++    before = server.get_state(cid)
++    with pytest.raises(ValueError, match=message):
++        strike(fight)
++    assert server.get_state(cid) == before
++    assert not server.use_action(cid, actor, "action")["ok"]
++
++
++@pytest.mark.parametrize("srd_only", [False, True])
++@pytest.mark.parametrize("following", ["action", "cast", "attack"])
++def test_bonus_spell_leaves_action_available(fight, monkeypatch, srd_only, following):
++    if srd_only:
++        # Exercise the bundled SRD's 'bonus-action' rather than curated '1 bonus action'.
++        monkeypatch.setattr(server.spells, "spell_data", lambda name: None)
++    cast(fight, "Healing Word")
++    cid, actor, _ = fight
++    state = server._require(cid).combat
++    assert state.bonus_action_used and not state.action_used
++    assert state.action_purpose == ""
++    if following == "action":
++        assert server.use_action(cid, actor, "action")["ok"]
++    elif following == "cast":
++        cast(fight, "Fireball")
++    else:
++        strike(fight)
++    with pytest.raises(ValueError, match="already used its bonus action"):
++        cast(fight, "Healing Word")
++
++
++def test_bonus_spell_honors_declared_bonus(fight):
++    cid, actor, _ = fight
++    assert server.use_action(cid, actor, "bonus")["ok"]
++    with pytest.raises(ValueError, match="already used its bonus action"):
++        cast(fight, "Healing Word")
++
++
++@pytest.mark.parametrize("spell", ["Mending", "Raise Dead"])
++def test_long_casting_time_rejected_before_spend(fight, spell):
++    before = server.get_state(fight[0])
++    with pytest.raises(ValueError, match="casting time"):
++        cast(fight, spell)
++    assert server.get_state(fight[0]) == before
++
++
++@pytest.mark.parametrize("first", ["cast", "attack", "action", "skip"])
++@pytest.mark.parametrize("following", ["cast", "attack", "action"])
++def test_action_surge_reopens_shared_action(fight, first, following):
++    cid, actor, _ = fight
++    server.set_class_resource(cid, actor, "action_surge", max=1, recharge="short")
++    if first == "cast":
++        cast(fight)
++    elif first == "attack":
++        strike(fight)
++    else:
++        server.use_action(cid, actor, first)
++    server.use_resource(cid, actor, "action_surge")
++    if following == "cast":
++        cast(fight)
++        with pytest.raises(ValueError, match="already cast a spell"):
++            strike(fight)
++    else:
++        if following == "action":
++            assert server.use_action(cid, actor, "action")["ok"]
++        strike(fight)
++        with pytest.raises(ValueError):
++            strike(fight)
++    with pytest.raises(ValueError, match="already used its action"):
++        cast(fight)
++
++
++def test_declared_action_keeps_extra_attack(fight):
++    cid, actor, _ = fight
++    server.update_character(cid, actor, {"extra_attacks": 1})
++    assert server.use_action(cid, actor, "action")["ok"]
++    strike(fight)
++    strike(fight)
++    with pytest.raises(ValueError, match="no attacks left"):
++        strike(fight)
++
++
++def test_surge_after_cast_grants_only_one_attack_action(fight):
++    cid, actor, _ = fight
++    server.update_character(cid, actor, {"extra_attacks": 1})
++    server.set_class_resource(cid, actor, "action_surge", max=1, recharge="short")
++    cast(fight)
++    server.use_resource(cid, actor, "action_surge")
++    strike(fight)
++    strike(fight)
++    with pytest.raises(ValueError, match="no attacks left"):
++        strike(fight)
++
++
++@pytest.mark.parametrize("purpose", ["cast", "skip"])
++def test_next_turn_resets_action_purpose(fight, purpose):
++    cid, actor, _ = fight
++    if purpose == "cast":
++        cast(fight)
++    else:
++        server.use_action(cid, actor, "skip")
++    assert server._require(cid).combat.action_purpose == purpose
++    server.next_turn(cid)
++    assert server._require(cid).combat.action_purpose == ""
++    assert not server._require(cid).combat.action_used
++
++
++def test_old_combat_snapshot_defaults_action_purpose():
++    snapshot = Combat(action_used=True).model_dump()
++    snapshot.pop("action_purpose")
++    assert Combat.model_validate(snapshot).action_purpose == ""
++
++
++def test_on_turn_reaction_spell_preserves_action(fight):
++    cid, actor, _ = fight
++    cast(fight, "Shield")
++    assert not server._require(cid).combat.action_used
++    strike(fight)
++    with pytest.raises(ValueError, match="reaction"):
++        cast(fight, "Shield")

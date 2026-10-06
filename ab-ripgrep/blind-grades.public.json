@@ -1,0 +1,808 @@
+{
+ "description": "Blind cross-model grades of the broad-question answers. Each packet held one question and 6 (realA/B/F x 2 trials) or 4 (two arms x 2 trials) answers under shuffled letters; the judge opened the cited files and scored correctness and completeness 0-10. The author model never graded its own answers. Answer text, judge prompts and the judges' free-text error lists are not included.",
+ "rubric": {
+  "correctness": "0-10; 10 = every concrete claim (file, function, line, call order) checks out; deduct per wrong or unverifiable claim",
+  "completeness": "0-10; 10 = covers every key mechanism or hop a maintainer would expect"
+ },
+ "blinding": "Labels A-F shuffled by sha256(question + trial id + arm). For the cx and aug packets, sentences mentioning GitNexus were removed from answers before grading (judge2.py blind()).",
+ "packets": [
+  {
+   "question": "H1",
+   "judge_set": "set-real",
+   "judge_model": "gpt-6.1-sol",
+   "judge_effort": "high",
+   "judge_harness": "codex exec, read-only sandbox, in the repository checkout",
+   "author_arms": [
+    "realA",
+    "realB",
+    "realF"
+   ],
+   "grades": [
+    {
+     "label": "A",
+     "arm": "realA",
+     "trial": 1,
+     "correctness": 8,
+     "completeness": 6,
+     "n_errors_listed": 3
+    },
+    {
+     "label": "B",
+     "arm": "realB",
+     "trial": 1,
+     "correctness": 8,
+     "completeness": 7,
+     "n_errors_listed": 3
+    },
+    {
+     "label": "C",
+     "arm": "realA",
+     "trial": 2,
+     "correctness": 7,
+     "completeness": 7,
+     "n_errors_listed": 3
+    },
+    {
+     "label": "D",
+     "arm": "realF",
+     "trial": 1,
+     "correctness": 8,
+     "completeness": 7,
+     "n_errors_listed": 3
+    },
+    {
+     "label": "E",
+     "arm": "realF",
+     "trial": 2,
+     "correctness": 8,
+     "completeness": 8,
+     "n_errors_listed": 3
+    },
+    {
+     "label": "F",
+     "arm": "realB",
+     "trial": 2,
+     "correctness": 7,
+     "completeness": 7,
+     "n_errors_listed": 3
+    }
+   ]
+  },
+  {
+   "question": "L1",
+   "judge_set": "set-real",
+   "judge_model": "gpt-6.1-sol",
+   "judge_effort": "high",
+   "judge_harness": "codex exec, read-only sandbox, in the repository checkout",
+   "author_arms": [
+    "realA",
+    "realB",
+    "realF"
+   ],
+   "grades": [
+    {
+     "label": "A",
+     "arm": "realA",
+     "trial": 2,
+     "correctness": 7,
+     "completeness": 5,
+     "n_errors_listed": 3
+    },
+    {
+     "label": "B",
+     "arm": "realB",
+     "trial": 2,
+     "correctness": 9,
+     "completeness": 6,
+     "n_errors_listed": 3
+    },
+    {
+     "label": "C",
+     "arm": "realB",
+     "trial": 1,
+     "correctness": 9,
+     "completeness": 8,
+     "n_errors_listed": 3
+    },
+    {
+     "label": "D",
+     "arm": "realF",
+     "trial": 2,
+     "correctness": 6,
+     "completeness": 5,
+     "n_errors_listed": 3
+    },
+    {
+     "label": "E",
+     "arm": "realA",
+     "trial": 1,
+     "correctness": 8,
+     "completeness": 6,
+     "n_errors_listed": 3
+    },
+    {
+     "label": "F",
+     "arm": "realF",
+     "trial": 1,
+     "correctness": 6,
+     "completeness": 6,
+     "n_errors_listed": 3
+    }
+   ]
+  },
+  {
+   "question": "W1",
+   "judge_set": "set-real",
+   "judge_model": "gpt-6.1-sol",
+   "judge_effort": "high",
+   "judge_harness": "codex exec, read-only sandbox, in the repository checkout",
+   "author_arms": [
+    "realA",
+    "realB",
+    "realF"
+   ],
+   "grades": [
+    {
+     "label": "A",
+     "arm": "realF",
+     "trial": 1,
+     "correctness": 7,
+     "completeness": 6,
+     "n_errors_listed": 3
+    },
+    {
+     "label": "B",
+     "arm": "realB",
+     "trial": 2,
+     "correctness": 9,
+     "completeness": 8,
+     "n_errors_listed": 3
+    },
+    {
+     "label": "C",
+     "arm": "realA",
+     "trial": 2,
+     "correctness": 9,
+     "completeness": 8,
+     "n_errors_listed": 3
+    },
+    {
+     "label": "D",
+     "arm": "realF",
+     "trial": 2,
+     "correctness": 8,
+     "completeness": 7,
+     "n_errors_listed": 3
+    },
+    {
+     "label": "E",
+     "arm": "realB",
+     "trial": 1,
+     "correctness": 8,
+     "completeness": 7,
+     "n_errors_listed": 3
+    },
+    {
+     "label": "F",
+     "arm": "realA",
+     "trial": 1,
+     "correctness": 9,
+     "completeness": 7,
+     "n_errors_listed": 3
+    }
+   ]
+  },
+  {
+   "question": "W2",
+   "judge_set": "set-real",
+   "judge_model": "gpt-6.1-sol",
+   "judge_effort": "high",
+   "judge_harness": "codex exec, read-only sandbox, in the repository checkout",
+   "author_arms": [
+    "realA",
+    "realB",
+    "realF"
+   ],
+   "grades": [
+    {
+     "label": "A",
+     "arm": "realB",
+     "trial": 1,
+     "correctness": 8,
+     "completeness": 8,
+     "n_errors_listed": 3
+    },
+    {
+     "label": "B",
+     "arm": "realA",
+     "trial": 2,
+     "correctness": 9,
+     "completeness": 9,
+     "n_errors_listed": 2
+    },
+    {
+     "label": "C",
+     "arm": "realB",
+     "trial": 2,
+     "correctness": 8,
+     "completeness": 8,
+     "n_errors_listed": 3
+    },
+    {
+     "label": "D",
+     "arm": "realA",
+     "trial": 1,
+     "correctness": 8,
+     "completeness": 8,
+     "n_errors_listed": 3
+    },
+    {
+     "label": "E",
+     "arm": "realF",
+     "trial": 1,
+     "correctness": 7,
+     "completeness": 8,
+     "n_errors_listed": 3
+    },
+    {
+     "label": "F",
+     "arm": "realF",
+     "trial": 2,
+     "correctness": 6,
+     "completeness": 7,
+     "n_errors_listed": 3
+    }
+   ]
+  },
+  {
+   "question": "W3",
+   "judge_set": "set-real",
+   "judge_model": "gpt-6.1-sol",
+   "judge_effort": "high",
+   "judge_harness": "codex exec, read-only sandbox, in the repository checkout",
+   "author_arms": [
+    "realA",
+    "realB",
+    "realF"
+   ],
+   "grades": [
+    {
+     "label": "A",
+     "arm": "realB",
+     "trial": 1,
+     "correctness": 9,
+     "completeness": 9,
+     "n_errors_listed": 2
+    },
+    {
+     "label": "B",
+     "arm": "realA",
+     "trial": 2,
+     "correctness": 8,
+     "completeness": 9,
+     "n_errors_listed": 3
+    },
+    {
+     "label": "C",
+     "arm": "realA",
+     "trial": 1,
+     "correctness": 10,
+     "completeness": 9,
+     "n_errors_listed": 1
+    },
+    {
+     "label": "D",
+     "arm": "realF",
+     "trial": 2,
+     "correctness": 10,
+     "completeness": 9,
+     "n_errors_listed": 1
+    },
+    {
+     "label": "E",
+     "arm": "realF",
+     "trial": 1,
+     "correctness": 10,
+     "completeness": 9,
+     "n_errors_listed": 1
+    },
+    {
+     "label": "F",
+     "arm": "realB",
+     "trial": 2,
+     "correctness": 7,
+     "completeness": 9,
+     "n_errors_listed": 3
+    }
+   ]
+  },
+  {
+   "question": "H1",
+   "judge_set": "set-codex",
+   "judge_model": "claude-opus-5-5",
+   "judge_effort": "high",
+   "judge_harness": "claude -p, Read/Grep/Glob only, no user settings, in the repository checkout",
+   "author_arms": [
+    "cxA",
+    "cxB"
+   ],
+   "grades": [
+    {
+     "label": "A",
+     "arm": "cxA",
+     "trial": 2,
+     "correctness": 8,
+     "completeness": 8,
+     "n_errors_listed": 3
+    },
+    {
+     "label": "B",
+     "arm": "cxB",
+     "trial": 1,
+     "correctness": 6,
+     "completeness": 7,
+     "n_errors_listed": 3
+    },
+    {
+     "label": "C",
+     "arm": "cxA",
+     "trial": 1,
+     "correctness": 9,
+     "completeness": 7,
+     "n_errors_listed": 3
+    },
+    {
+     "label": "D",
+     "arm": "cxB",
+     "trial": 2,
+     "correctness": 8,
+     "completeness": 9,
+     "n_errors_listed": 3
+    }
+   ]
+  },
+  {
+   "question": "L1",
+   "judge_set": "set-codex",
+   "judge_model": "claude-opus-5-5",
+   "judge_effort": "high",
+   "judge_harness": "claude -p, Read/Grep/Glob only, no user settings, in the repository checkout",
+   "author_arms": [
+    "cxA",
+    "cxB"
+   ],
+   "grades": [
+    {
+     "label": "A",
+     "arm": "cxA",
+     "trial": 1,
+     "correctness": 9,
+     "completeness": 9,
+     "n_errors_listed": 3
+    },
+    {
+     "label": "B",
+     "arm": "cxB",
+     "trial": 2,
+     "correctness": 8,
+     "completeness": 8,
+     "n_errors_listed": 3
+    },
+    {
+     "label": "C",
+     "arm": "cxA",
+     "trial": 2,
+     "correctness": 9,
+     "completeness": 8,
+     "n_errors_listed": 3
+    },
+    {
+     "label": "D",
+     "arm": "cxB",
+     "trial": 1,
+     "correctness": 9,
+     "completeness": 7,
+     "n_errors_listed": 3
+    }
+   ]
+  },
+  {
+   "question": "W1",
+   "judge_set": "set-codex",
+   "judge_model": "claude-opus-5-5",
+   "judge_effort": "high",
+   "judge_harness": "claude -p, Read/Grep/Glob only, no user settings, in the repository checkout",
+   "author_arms": [
+    "cxA",
+    "cxB"
+   ],
+   "grades": [
+    {
+     "label": "A",
+     "arm": "cxB",
+     "trial": 1,
+     "correctness": 10,
+     "completeness": 7,
+     "n_errors_listed": 3
+    },
+    {
+     "label": "B",
+     "arm": "cxA",
+     "trial": 1,
+     "correctness": 10,
+     "completeness": 8,
+     "n_errors_listed": 3
+    },
+    {
+     "label": "C",
+     "arm": "cxA",
+     "trial": 2,
+     "correctness": 9,
+     "completeness": 7,
+     "n_errors_listed": 3
+    },
+    {
+     "label": "D",
+     "arm": "cxB",
+     "trial": 2,
+     "correctness": 9,
+     "completeness": 9,
+     "n_errors_listed": 3
+    }
+   ]
+  },
+  {
+   "question": "W2",
+   "judge_set": "set-codex",
+   "judge_model": "claude-opus-5-5",
+   "judge_effort": "high",
+   "judge_harness": "claude -p, Read/Grep/Glob only, no user settings, in the repository checkout",
+   "author_arms": [
+    "cxA",
+    "cxB"
+   ],
+   "grades": [
+    {
+     "label": "A",
+     "arm": "cxB",
+     "trial": 1,
+     "correctness": 8,
+     "completeness": 8,
+     "n_errors_listed": 3
+    },
+    {
+     "label": "B",
+     "arm": "cxA",
+     "trial": 1,
+     "correctness": 9,
+     "completeness": 8,
+     "n_errors_listed": 3
+    },
+    {
+     "label": "C",
+     "arm": "cxA",
+     "trial": 2,
+     "correctness": 8,
+     "completeness": 7,
+     "n_errors_listed": 3
+    },
+    {
+     "label": "D",
+     "arm": "cxB",
+     "trial": 2,
+     "correctness": 8,
+     "completeness": 10,
+     "n_errors_listed": 3
+    }
+   ]
+  },
+  {
+   "question": "W3",
+   "judge_set": "set-codex",
+   "judge_model": "claude-opus-5-5",
+   "judge_effort": "high",
+   "judge_harness": "claude -p, Read/Grep/Glob only, no user settings, in the repository checkout",
+   "author_arms": [
+    "cxA",
+    "cxB"
+   ],
+   "grades": [
+    {
+     "label": "A",
+     "arm": "cxA",
+     "trial": 2,
+     "correctness": 10,
+     "completeness": 7,
+     "n_errors_listed": 3
+    },
+    {
+     "label": "B",
+     "arm": "cxA",
+     "trial": 1,
+     "correctness": 10,
+     "completeness": 9,
+     "n_errors_listed": 3
+    },
+    {
+     "label": "C",
+     "arm": "cxB",
+     "trial": 2,
+     "correctness": 10,
+     "completeness": 8,
+     "n_errors_listed": 3
+    },
+    {
+     "label": "D",
+     "arm": "cxB",
+     "trial": 1,
+     "correctness": 10,
+     "completeness": 9,
+     "n_errors_listed": 3
+    }
+   ]
+  },
+  {
+   "question": "H1",
+   "judge_set": "set-aug",
+   "judge_model": "gpt-6.1-sol",
+   "judge_effort": "high",
+   "judge_harness": "codex exec, read-only sandbox, in the repository checkout",
+   "author_arms": [
+    "augH0",
+    "augHk"
+   ],
+   "grades": [
+    {
+     "label": "A",
+     "arm": "augHk",
+     "trial": 1,
+     "correctness": 8,
+     "completeness": 7,
+     "n_errors_listed": 3
+    },
+    {
+     "label": "B",
+     "arm": "augH0",
+     "trial": 2,
+     "correctness": 8,
+     "completeness": 7,
+     "n_errors_listed": 3
+    },
+    {
+     "label": "C",
+     "arm": "augH0",
+     "trial": 1,
+     "correctness": 6,
+     "completeness": 6,
+     "n_errors_listed": 3
+    },
+    {
+     "label": "D",
+     "arm": "augHk",
+     "trial": 2,
+     "correctness": 6,
+     "completeness": 6,
+     "n_errors_listed": 3
+    }
+   ]
+  },
+  {
+   "question": "L1",
+   "judge_set": "set-aug",
+   "judge_model": "gpt-6.1-sol",
+   "judge_effort": "high",
+   "judge_harness": "codex exec, read-only sandbox, in the repository checkout",
+   "author_arms": [
+    "augH0",
+    "augHk"
+   ],
+   "grades": [
+    {
+     "label": "A",
+     "arm": "augHk",
+     "trial": 1,
+     "correctness": 7,
+     "completeness": 5,
+     "n_errors_listed": 3
+    },
+    {
+     "label": "B",
+     "arm": "augH0",
+     "trial": 1,
+     "correctness": 9,
+     "completeness": 8,
+     "n_errors_listed": 3
+    },
+    {
+     "label": "C",
+     "arm": "augH0",
+     "trial": 2,
+     "correctness": 8,
+     "completeness": 6,
+     "n_errors_listed": 3
+    },
+    {
+     "label": "D",
+     "arm": "augHk",
+     "trial": 2,
+     "correctness": 7,
+     "completeness": 7,
+     "n_errors_listed": 3
+    }
+   ]
+  },
+  {
+   "question": "W1",
+   "judge_set": "set-aug",
+   "judge_model": "gpt-6.1-sol",
+   "judge_effort": "high",
+   "judge_harness": "codex exec, read-only sandbox, in the repository checkout",
+   "author_arms": [
+    "augH0",
+    "augHk"
+   ],
+   "grades": [
+    {
+     "label": "A",
+     "arm": "augHk",
+     "trial": 1,
+     "correctness": 10,
+     "completeness": 7,
+     "n_errors_listed": 3
+    },
+    {
+     "label": "B",
+     "arm": "augHk",
+     "trial": 2,
+     "correctness": 8,
+     "completeness": 8,
+     "n_errors_listed": 3
+    },
+    {
+     "label": "C",
+     "arm": "augH0",
+     "trial": 2,
+     "correctness": 9,
+     "completeness": 8,
+     "n_errors_listed": 3
+    },
+    {
+     "label": "D",
+     "arm": "augH0",
+     "trial": 1,
+     "correctness": 8,
+     "completeness": 7,
+     "n_errors_listed": 3
+    }
+   ]
+  },
+  {
+   "question": "W2",
+   "judge_set": "set-aug",
+   "judge_model": "gpt-6.1-sol",
+   "judge_effort": "high",
+   "judge_harness": "codex exec, read-only sandbox, in the repository checkout",
+   "author_arms": [
+    "augH0",
+    "augHk"
+   ],
+   "grades": [
+    {
+     "label": "A",
+     "arm": "augHk",
+     "trial": 2,
+     "correctness": 8,
+     "completeness": 8,
+     "n_errors_listed": 3
+    },
+    {
+     "label": "B",
+     "arm": "augH0",
+     "trial": 1,
+     "correctness": 9,
+     "completeness": 8,
+     "n_errors_listed": 3
+    },
+    {
+     "label": "C",
+     "arm": "augH0",
+     "trial": 2,
+     "correctness": 8,
+     "completeness": 8,
+     "n_errors_listed": 3
+    },
+    {
+     "label": "D",
+     "arm": "augHk",
+     "trial": 1,
+     "correctness": 9,
+     "completeness": 8,
+     "n_errors_listed": 3
+    }
+   ]
+  },
+  {
+   "question": "W3",
+   "judge_set": "set-aug",
+   "judge_model": "gpt-6.1-sol",
+   "judge_effort": "high",
+   "judge_harness": "codex exec, read-only sandbox, in the repository checkout",
+   "author_arms": [
+    "augH0",
+    "augHk"
+   ],
+   "grades": [
+    {
+     "label": "A",
+     "arm": "augH0",
+     "trial": 2,
+     "correctness": 9,
+     "completeness": 9,
+     "n_errors_listed": 2
+    },
+    {
+     "label": "B",
+     "arm": "augH0",
+     "trial": 1,
+     "correctness": 7,
+     "completeness": 9,
+     "n_errors_listed": 3
+    },
+    {
+     "label": "C",
+     "arm": "augHk",
+     "trial": 2,
+     "correctness": 10,
+     "completeness": 9,
+     "n_errors_listed": 1
+    },
+    {
+     "label": "D",
+     "arm": "augHk",
+     "trial": 1,
+     "correctness": 9,
+     "completeness": 9,
+     "n_errors_listed": 2
+    }
+   ]
+  }
+ ],
+ "per_arm_means": {
+  "augH0": {
+   "n": 10,
+   "correctness": 8.1,
+   "completeness": 7.6
+  },
+  "augHk": {
+   "n": 10,
+   "correctness": 8.2,
+   "completeness": 7.4
+  },
+  "cxA": {
+   "n": 10,
+   "correctness": 9.1,
+   "completeness": 7.8
+  },
+  "cxB": {
+   "n": 10,
+   "correctness": 8.6,
+   "completeness": 8.2
+  },
+  "realA": {
+   "n": 10,
+   "correctness": 8.3,
+   "completeness": 7.4
+  },
+  "realB": {
+   "n": 10,
+   "correctness": 8.2,
+   "completeness": 7.7
+  },
+  "realF": {
+   "n": 10,
+   "correctness": 7.6,
+   "completeness": 7.2
+  }
+ },
+ "n_graded_answers": 70
+}

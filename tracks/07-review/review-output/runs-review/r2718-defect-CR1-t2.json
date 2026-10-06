@@ -1,0 +1,30 @@
+{
+ "schema_version": 1,
+ "verdict": "request_changes",
+ "findings": [
+  {
+   "id": "typescript-parameter-property-local-identity",
+   "severity": "medium",
+   "path": "gitnexus/src/core/ingestion/workers/parse-worker.ts",
+   "line": 2310,
+   "end_line": 2312,
+   "category": "correctness",
+   "scenario": "Index a compact TypeScript file containing class A { name: string = \"A\"; read() { return this.name; } } class B { constructor(public name: string) {} read() { return this.name; } } on one line. Both reads lose their ACCESSES edges, although name is a genuine class member in both classes.",
+   "evidence": "The widened label gate qualifies constructor parameter properties as function locals despite the existing parameter-list exception in isFunctionLocalProperty. An in-memory parse and scope-resolution comparison emitted Property:compact.ts:A.name and Property:compact.ts:B.name plus both read edges with the baseline, but the candidate emitted Property:compact.ts:B.constructor.name@0:83 and neither read edge. The two same-line Property position keys become AMBIGUOUS_POSITION; the newly registered localNameKey then makes resolveDefGraphId return undefined before trying the class-qualified keys.",
+   "recommendation": "Exclude genuine class-owned properties, including constructor parameter properties, from enclosing-callable qualification. Preserve their class-qualified IDs and add a regression assertion for same-line classes with parameter properties and field reads.",
+   "blocking": true
+  },
+  {
+   "id": "ruby-proc-lambda-phantom-caller",
+   "severity": "medium",
+   "path": "gitnexus/src/core/ingestion/languages/ruby/query.ts",
+   "line": 102,
+   "end_line": 114,
+   "category": "correctness",
+   "scenario": "A Ruby file defines def handler(x); x; end and def target(x); x; end, then assigns handler = proc { |x| target(x) } or handler = lambda { |x| target(x) }. The index incorrectly reports that the unrelated handler method calls target.",
+   "evidence": "These new patterns attach a callable definition to the block, but RUBY_QUERIES in tree-sitter-queries.ts emits closure Function nodes only for right: (lambda), not right: (call) with proc/lambda. In-memory worker parsing and runScopeResolution produced no closure node for either call form. The baseline emitted File:a.rb -> Method:a.rb:target#1; the candidate instead emitted Method:a.rb:handler#1 -> Method:a.rb:target#1, with the same regression for lambda. resolveDefGraphId misses the nonexistent Function and falls through to the label-agnostic simpleKey for the existing handler method.",
+   "recommendation": "Pair these scope declarations with matching graph Function-node emission for proc/lambda call forms, or restrict the declarations to forms that already emit closure nodes. Ensure a missing closure node cannot resolve to an unrelated same-named method, and cover both call forms in a regression test.",
+   "blocking": true
+  }
+ ]
+}

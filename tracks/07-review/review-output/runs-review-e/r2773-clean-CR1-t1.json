@@ -1,0 +1,18 @@
+{
+ "schema_version": 1,
+ "verdict": "request_changes",
+ "findings": [
+  {
+   "id": "fts-missing-index-counted-as-success",
+   "severity": "medium",
+   "path": "gitnexus/src/core/lbug/lbug-adapter.ts",
+   "line": 3179,
+   "end_line": 3180,
+   "category": "correctness",
+   "scenario": "An existing repository has the FTS extension loaded but no FTS indexes, for example after an earlier degraded analysis. HTTP /api/search in bm25 mode, or hybrid mode without an embedder, returns empty keyword results without the missing-index warning or repair guidance.",
+   "evidence": "The new missing-index catch returns [] from queryFTS. Its direct caller searchFTSFromLbug increments queriesSucceeded for every resolved call at bm25-index.ts:178, so these failures produce ftsAvailable:true. createServer attaches the degraded warning only when ftsAvailable is false at api.ts:1388. A live LadybugDB probe reproduced the raw error 'Prepare failed: Binder exception: Table File doesn't have an index with name file_fts.', followed by queryFTS returning [] and searchFTSFromLbug returning {results:[],ftsAvailable:true}. Before this diff, that error was rethrown because it does not contain 'does not exist'.",
+   "recommendation": "Preserve the missing-index failure signal on the core-adapter path: rethrow it from queryFTS and have searchFTSFromLbug classify it as benign without incrementing queriesSucceeded, or return an explicit success/failure outcome. Add coverage for loaded FTS with all indexes missing on the non-pool path.",
+   "blocking": true
+  }
+ ]
+}

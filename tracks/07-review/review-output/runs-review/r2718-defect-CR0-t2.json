@@ -1,0 +1,18 @@
+{
+ "schema_version": 1,
+ "verdict": "request_changes",
+ "findings": [
+  {
+   "id": "constructor-parameter-property-local-id",
+   "severity": "medium",
+   "path": "gitnexus/src/core/ingestion/workers/parse-worker.ts",
+   "line": 2310,
+   "end_line": 2312,
+   "category": "correctness",
+   "scenario": "Two TypeScript classes on the same source line each declare constructor(public name: string) and read this.name in a method. Both ACCESSES edges disappear after this change; these are class members, not function-local values.",
+   "evidence": "The widened label gate applies enclosingCallablePrefix to constructor parameter properties despite the existing parameter-list exception in isFunctionLocalProperty. An in-memory parse and scope-resolution probe emitted Property:params.ts:User.constructor.name@0:25 and the corresponding Book.constructor.name node, then emitted zero ACCESSES edges. Their same-line position keys become AMBIGUOUS_POSITION; resolveDefGraphId returns undefined because localNameKey is present, before trying the qualified User.name/Book.name keys. Restoring only the pre-diff class-qualified property IDs in the probe restored User.get -> User.name and Book.get -> Book.name.",
+   "recommendation": "Exclude genuine constructor parameter properties from local qualification, reusing the existing parameter-list/class-member distinction, so their IDs remain Class.property. Add a focused regression case with two same-named parameter properties on one line and verify both field-access edges.",
+   "blocking": true
+  }
+ ]
+}

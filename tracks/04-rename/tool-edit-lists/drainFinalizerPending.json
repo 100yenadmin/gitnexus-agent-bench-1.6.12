@@ -1,0 +1,248 @@
+{
+ "source_run": "runs-p2/p2-drainFinalizerPending-H2-t1",
+ "tool": "rename",
+ "calls": [
+  {
+   "status": "success",
+   "old_name": "drainFinalizerPending",
+   "new_name": "flushFinalizerPending",
+   "files_affected": 11,
+   "total_edits": 29,
+   "graph_edits": 29,
+   "text_search_edits": 0,
+   "changes": [
+    {
+     "file_path": "gitnexus/src/core/ingestion/cfg/control-flow-context.ts",
+     "edits": [
+      {
+       "line": 189,
+       "old_text": "* {@link drainFinalizerPending} once the finally's exits are known.",
+       "new_text": "* {@link flushFinalizerPending} once the finally's exits are known.",
+       "confidence": "graph"
+      },
+      {
+       "line": 220,
+       "old_text": "export function drainFinalizerPending(",
+       "new_text": "export function flushFinalizerPending(",
+       "confidence": "graph"
+      }
+     ]
+    },
+    {
+     "file_path": "gitnexus/src/core/ingestion/cfg/visitors/csharp.ts",
+     "edits": [
+      {
+       "line": 85,
+       "old_text": "drainFinalizerPending,",
+       "new_text": "flushFinalizerPending,",
+       "confidence": "graph"
+      },
+      {
+       "line": 916,
+       "old_text": "drainFinalizerPending(this.builder, finFrame, [disposeBlock]);",
+       "new_text": "flushFinalizerPending(this.builder, finFrame, [disposeBlock]);",
+       "confidence": "graph"
+      },
+      {
+       "line": 991,
+       "old_text": "drainFinalizerPending(this.builder, finFrame, finallyRes.exits);",
+       "new_text": "flushFinalizerPending(this.builder, finFrame, finallyRes.exits);",
+       "confidence": "graph"
+      },
+      {
+       "line": 1055,
+       "old_text": "drainFinalizerPending(this.builder, finFrame, finRes.exits);",
+       "new_text": "flushFinalizerPending(this.builder, finFrame, finRes.exits);",
+       "confidence": "graph"
+      }
+     ]
+    },
+    {
+     "file_path": "gitnexus/src/core/ingestion/cfg/visitors/dart.ts",
+     "edits": [
+      {
+       "line": 117,
+       "old_text": "drainFinalizerPending,",
+       "new_text": "flushFinalizerPending,",
+       "confidence": "graph"
+      },
+      {
+       "line": 947,
+       "old_text": "drainFinalizerPending(this.builder, finallyFrame, finallyRes.exits);",
+       "new_text": "flushFinalizerPending(this.builder, finallyFrame, finallyRes.exits);",
+       "confidence": "graph"
+      }
+     ]
+    },
+    {
+     "file_path": "gitnexus/src/core/ingestion/cfg/visitors/go.ts",
+     "edits": [
+      {
+       "line": 106,
+       "old_text": "drainFinalizerPending,",
+       "new_text": "flushFinalizerPending,",
+       "confidence": "graph"
+      },
+      {
+       "line": 459,
+       "old_text": "*    `wireJumpThroughFinalizers`; {@link drainFinalizerPending} wires them",
+       "new_text": "*    `wireJumpThroughFinalizers`; {@link flushFinalizerPending} wires them",
+       "confidence": "graph"
+      },
+      {
+       "line": 472,
+       "old_text": "for (const frame of lifo) drainFinalizerPending(this.builder, frame, [frame.entry]);",
+       "new_text": "for (const frame of lifo) flushFinalizerPending(this.builder, frame, [frame.entry]);",
+       "confidence": "graph"
+      }
+     ]
+    },
+    {
+     "file_path": "gitnexus/src/core/ingestion/cfg/visitors/java.ts",
+     "edits": [
+      {
+       "line": 99,
+       "old_text": "drainFinalizerPending,",
+       "new_text": "flushFinalizerPending,",
+       "confidence": "graph"
+      },
+      {
+       "line": 963,
+       "old_text": "drainFinalizerPending(this.builder, closeFrame, closeRes.exits);",
+       "new_text": "flushFinalizerPending(this.builder, closeFrame, closeRes.exits);",
+       "confidence": "graph"
+      },
+      {
+       "line": 967,
+       "old_text": "drainFinalizerPending(this.builder, explicitFrame, explicitFinRes.exits);",
+       "new_text": "flushFinalizerPending(this.builder, explicitFrame, explicitFinRes.exits);",
+       "confidence": "graph"
+      },
+      {
+       "line": 1029,
+       "old_text": "drainFinalizerPending(this.builder, finFrame, finRes.exits);",
+       "new_text": "flushFinalizerPending(this.builder, finFrame, finRes.exits);",
+       "confidence": "graph"
+      }
+     ]
+    },
+    {
+     "file_path": "gitnexus/src/core/ingestion/cfg/visitors/kotlin.ts",
+     "edits": [
+      {
+       "line": 119,
+       "old_text": "drainFinalizerPending,",
+       "new_text": "flushFinalizerPending,",
+       "confidence": "graph"
+      },
+      {
+       "line": 939,
+       "old_text": "drainFinalizerPending(this.builder, finallyFrame, finallyRes.exits);",
+       "new_text": "flushFinalizerPending(this.builder, finallyFrame, finallyRes.exits);",
+       "confidence": "graph"
+      }
+     ]
+    },
+    {
+     "file_path": "gitnexus/src/core/ingestion/cfg/visitors/php.ts",
+     "edits": [
+      {
+       "line": 94,
+       "old_text": "drainFinalizerPending,",
+       "new_text": "flushFinalizerPending,",
+       "confidence": "graph"
+      },
+      {
+       "line": 900,
+       "old_text": "drainFinalizerPending(this.builder, finFrame, finallyRes.exits);",
+       "new_text": "flushFinalizerPending(this.builder, finFrame, finallyRes.exits);",
+       "confidence": "graph"
+      }
+     ]
+    },
+    {
+     "file_path": "gitnexus/src/core/ingestion/cfg/visitors/python.ts",
+     "edits": [
+      {
+       "line": 101,
+       "old_text": "drainFinalizerPending,",
+       "new_text": "flushFinalizerPending,",
+       "confidence": "graph"
+      },
+      {
+       "line": 516,
+       "old_text": "drainFinalizerPending(this.builder, finFrame, [dispose]);",
+       "new_text": "flushFinalizerPending(this.builder, finFrame, [dispose]);",
+       "confidence": "graph"
+      },
+      {
+       "line": 632,
+       "old_text": "drainFinalizerPending(this.builder, finFrame, finallyRes.exits);",
+       "new_text": "flushFinalizerPending(this.builder, finFrame, finallyRes.exits);",
+       "confidence": "graph"
+      }
+     ]
+    },
+    {
+     "file_path": "gitnexus/src/core/ingestion/cfg/visitors/ruby.ts",
+     "edits": [
+      {
+       "line": 110,
+       "old_text": "drainFinalizerPending,",
+       "new_text": "flushFinalizerPending,",
+       "confidence": "graph"
+      },
+      {
+       "line": 904,
+       "old_text": "drainFinalizerPending(this.builder, finFrame, ensureRes.exits);",
+       "new_text": "flushFinalizerPending(this.builder, finFrame, ensureRes.exits);",
+       "confidence": "graph"
+      }
+     ]
+    },
+    {
+     "file_path": "gitnexus/src/core/ingestion/cfg/visitors/swift.ts",
+     "edits": [
+      {
+       "line": 113,
+       "old_text": "import { drainFinalizerPending } from '../control-flow-context.js';",
+       "new_text": "import { flushFinalizerPending } from '../control-flow-context.js';",
+       "confidence": "graph"
+      },
+      {
+       "line": 947,
+       "old_text": "for (const frame of lifo) drainFinalizerPending(this.builder, frame, [frame.entry]);",
+       "new_text": "for (const frame of lifo) flushFinalizerPending(this.builder, frame, [frame.entry]);",
+       "confidence": "graph"
+      }
+     ]
+    },
+    {
+     "file_path": "gitnexus/src/core/ingestion/cfg/visitors/typescript.ts",
+     "edits": [
+      {
+       "line": 64,
+       "old_text": "drainFinalizerPending,",
+       "new_text": "flushFinalizerPending,",
+       "confidence": "graph"
+      },
+      {
+       "line": 680,
+       "old_text": "// here from the finally's exits (see drainFinalizerPending for the",
+       "new_text": "// here from the finally's exits (see flushFinalizerPending for the",
+       "confidence": "graph"
+      },
+      {
+       "line": 684,
+       "old_text": "drainFinalizerPending(this.builder, finFrame, finallyRes.exits);",
+       "new_text": "flushFinalizerPending(this.builder, finFrame, finallyRes.exits);",
+       "confidence": "graph"
+      }
+     ]
+    }
+   ],
+   "applied": true
+  }
+ ],
+ "used_by_apply_and_check": "calls[0]"
+}

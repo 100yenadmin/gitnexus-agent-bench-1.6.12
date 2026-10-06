@@ -1,0 +1,297 @@
+diff --git a/gitnexus/src/core/ingestion/cfg/control-flow-context.ts b/gitnexus/src/core/ingestion/cfg/control-flow-context.ts
+index 0bfdef4..55efb25 100644
+--- a/gitnexus/src/core/ingestion/cfg/control-flow-context.ts
++++ b/gitnexus/src/core/ingestion/cfg/control-flow-context.ts
+@@ -186,7 +186,7 @@ export class ControlFlowContext {
+  * (preserving the "kind ⟹ source-block terminator" invariant in types.ts);
+  * each finally's completion leg is registered as pending on its frame with the
+  * matching `finally-*` kind and wired by the owning try via
+- * {@link drainFinalizerPending} once the finally's exits are known.
++ * {@link flushFinalizerPending} once the finally's exits are known.
+  *
+  * Language-agnostic on purpose (#2082 M2): the threading protocol encodes
+  * three subtle invariants every future language visitor needs identically —
+@@ -217,7 +217,7 @@ export function wireJumpThroughFinalizers(
+  * has no exits — its pending legs wire nowhere, matching JS's
+  * finally-override semantics.
+  */
+-export function drainFinalizerPending(
++export function flushFinalizerPending(
+   builder: CfgBuilder,
+   frame: FinalizerFrame,
+   finallyExits: readonly number[],
+diff --git a/gitnexus/src/core/ingestion/cfg/visitors/csharp.ts b/gitnexus/src/core/ingestion/cfg/visitors/csharp.ts
+index c3da50f..e171921 100644
+--- a/gitnexus/src/core/ingestion/cfg/visitors/csharp.ts
++++ b/gitnexus/src/core/ingestion/cfg/visitors/csharp.ts
+@@ -82,7 +82,7 @@ import type { SyntaxNode } from '../../utils/ast-helpers.js';
+ import { CfgBuilder } from '../cfg-builder.js';
+ import {
+   ControlFlowContext,
+-  drainFinalizerPending,
++  flushFinalizerPending,
+   wireJumpThroughFinalizers,
+ } from '../control-flow-context.js';
+ import type { TraversalResult } from '../traversal-result.js';
+@@ -913,7 +913,7 @@ class CsharpCfgWalk {
+     }
+ 
+     this.cfc.pop();
+-    drainFinalizerPending(this.builder, finFrame, [disposeBlock]);
++    flushFinalizerPending(this.builder, finFrame, [disposeBlock]);
+ 
+     if (bodyRes) this.builder.connect(bodyRes.exits, disposeBlock, 'seq');
+     this.builder.connect([disposeBlock], this.currentHandler(), 'throw');
+@@ -988,7 +988,7 @@ class CsharpCfgWalk {
+ 
+     if (finFrame && finallyRes) {
+       this.cfc.pop();
+-      drainFinalizerPending(this.builder, finFrame, finallyRes.exits);
++      flushFinalizerPending(this.builder, finFrame, finallyRes.exits);
+     }
+ 
+     const exits: number[] = [];
+@@ -1052,7 +1052,7 @@ class CsharpCfgWalk {
+     }
+ 
+     this.cfc.pop();
+-    drainFinalizerPending(this.builder, finFrame, finRes.exits);
++    flushFinalizerPending(this.builder, finFrame, finRes.exits);
+ 
+     // Normal completion of the body flows through the finalizer; the finalizer's
+     // exit re-propagates an exception to the outer handler (it had no catch).
+diff --git a/gitnexus/src/core/ingestion/cfg/visitors/dart.ts b/gitnexus/src/core/ingestion/cfg/visitors/dart.ts
+index e4ab651..27f2184 100644
+--- a/gitnexus/src/core/ingestion/cfg/visitors/dart.ts
++++ b/gitnexus/src/core/ingestion/cfg/visitors/dart.ts
+@@ -114,7 +114,7 @@ import type { SyntaxNode } from '../../utils/ast-helpers.js';
+ import { CfgBuilder } from '../cfg-builder.js';
+ import {
+   ControlFlowContext,
+-  drainFinalizerPending,
++  flushFinalizerPending,
+   wireJumpThroughFinalizers,
+ } from '../control-flow-context.js';
+ import type { TraversalResult } from '../traversal-result.js';
+@@ -944,7 +944,7 @@ class DartCfgWalk {
+     // Pop the finalizer frame and drain its pending completion legs.
+     if (finallyFrame && finallyRes) {
+       this.cfc.pop();
+-      drainFinalizerPending(this.builder, finallyFrame, finallyRes.exits);
++      flushFinalizerPending(this.builder, finallyFrame, finallyRes.exits);
+     }
+ 
+     const exits: number[] = [];
+diff --git a/gitnexus/src/core/ingestion/cfg/visitors/go.ts b/gitnexus/src/core/ingestion/cfg/visitors/go.ts
+index ccd0014..7089b22 100644
+--- a/gitnexus/src/core/ingestion/cfg/visitors/go.ts
++++ b/gitnexus/src/core/ingestion/cfg/visitors/go.ts
+@@ -103,7 +103,7 @@ import type { SyntaxNode } from '../../utils/ast-helpers.js';
+ import { CfgBuilder } from '../cfg-builder.js';
+ import {
+   ControlFlowContext,
+-  drainFinalizerPending,
++  flushFinalizerPending,
+   wireJumpThroughFinalizers,
+ } from '../control-flow-context.js';
+ import type { FinalizerFrame } from '../control-flow-context.js';
+@@ -456,7 +456,7 @@ class GoCfgWalk {
+    *
+    * Two completion sources converge here:
+    *  - `return` statements that crossed these frames registered pending legs via
+-   *    `wireJumpThroughFinalizers`; {@link drainFinalizerPending} wires them
++   *    `wireJumpThroughFinalizers`; {@link flushFinalizerPending} wires them
+    *    (return → defer[0]; defer[i] → defer[i+1]; defer[last] → EXIT).
+    *  - the function's NORMAL fall-off is threaded explicitly here through the
+    *    same chain (`return` first leg, `finally-return` inter-defer legs); the
+@@ -469,7 +469,7 @@ class GoCfgWalk {
+     // Pop the frames off the active stack and drain any pending completion legs
+     // the return/break handlers registered while these frames were active.
+     for (let i = 0; i < lifo.length; i++) this.cfc.pop();
+-    for (const frame of lifo) drainFinalizerPending(this.builder, frame, [frame.entry]);
++    for (const frame of lifo) flushFinalizerPending(this.builder, frame, [frame.entry]);
+ 
+     // Thread the normal fall-off through the chain innermost-first: the first leg
+     // keeps the bare `return` kind (the "kind ⟹ source terminator" invariant), the
+diff --git a/gitnexus/src/core/ingestion/cfg/visitors/java.ts b/gitnexus/src/core/ingestion/cfg/visitors/java.ts
+index 236185d..5419ed1 100644
+--- a/gitnexus/src/core/ingestion/cfg/visitors/java.ts
++++ b/gitnexus/src/core/ingestion/cfg/visitors/java.ts
+@@ -96,7 +96,7 @@ import type { SyntaxNode } from '../../utils/ast-helpers.js';
+ import { CfgBuilder } from '../cfg-builder.js';
+ import {
+   ControlFlowContext,
+-  drainFinalizerPending,
++  flushFinalizerPending,
+   wireJumpThroughFinalizers,
+ } from '../control-flow-context.js';
+ import type { TraversalResult } from '../traversal-result.js';
+@@ -960,11 +960,11 @@ class JavaCfgWalk {
+     // Pop the finalizer frames (inner→outer) and drain their pending legs.
+     if (closeFrame && closeRes) {
+       this.cfc.pop();
+-      drainFinalizerPending(this.builder, closeFrame, closeRes.exits);
++      flushFinalizerPending(this.builder, closeFrame, closeRes.exits);
+     }
+     if (explicitFrame && explicitFinRes) {
+       this.cfc.pop();
+-      drainFinalizerPending(this.builder, explicitFrame, explicitFinRes.exits);
++      flushFinalizerPending(this.builder, explicitFrame, explicitFinRes.exits);
+     }
+ 
+     const exits: number[] = [];
+@@ -1026,7 +1026,7 @@ class JavaCfgWalk {
+     }
+ 
+     this.cfc.pop();
+-    drainFinalizerPending(this.builder, finFrame, finRes.exits);
++    flushFinalizerPending(this.builder, finFrame, finRes.exits);
+ 
+     // Normal completion of the body flows through the finalizer; the finalizer's
+     // exit re-propagates an exception to the outer handler (it had no catch).
+diff --git a/gitnexus/src/core/ingestion/cfg/visitors/kotlin.ts b/gitnexus/src/core/ingestion/cfg/visitors/kotlin.ts
+index 68ef9f1..2b3d3a6 100644
+--- a/gitnexus/src/core/ingestion/cfg/visitors/kotlin.ts
++++ b/gitnexus/src/core/ingestion/cfg/visitors/kotlin.ts
+@@ -116,7 +116,7 @@ import type { SyntaxNode } from '../../utils/ast-helpers.js';
+ import { CfgBuilder } from '../cfg-builder.js';
+ import {
+   ControlFlowContext,
+-  drainFinalizerPending,
++  flushFinalizerPending,
+   wireJumpThroughFinalizers,
+ } from '../control-flow-context.js';
+ import type { TraversalResult } from '../traversal-result.js';
+@@ -936,7 +936,7 @@ class KotlinCfgWalk {
+     // Pop the finalizer frame and drain its pending completion legs.
+     if (finallyFrame && finallyRes) {
+       this.cfc.pop();
+-      drainFinalizerPending(this.builder, finallyFrame, finallyRes.exits);
++      flushFinalizerPending(this.builder, finallyFrame, finallyRes.exits);
+     }
+ 
+     const exits: number[] = [];
+diff --git a/gitnexus/src/core/ingestion/cfg/visitors/php.ts b/gitnexus/src/core/ingestion/cfg/visitors/php.ts
+index 3e48785..bb37ede 100644
+--- a/gitnexus/src/core/ingestion/cfg/visitors/php.ts
++++ b/gitnexus/src/core/ingestion/cfg/visitors/php.ts
+@@ -91,7 +91,7 @@ import type { SyntaxNode } from '../../utils/ast-helpers.js';
+ import { CfgBuilder } from '../cfg-builder.js';
+ import {
+   ControlFlowContext,
+-  drainFinalizerPending,
++  flushFinalizerPending,
+   wireJumpThroughFinalizers,
+ } from '../control-flow-context.js';
+ import type { TraversalResult } from '../traversal-result.js';
+@@ -897,7 +897,7 @@ class PhpCfgWalk {
+     // Pop the finalizer frame and drain its pending crossing-jump legs.
+     if (finFrame && finallyRes) {
+       this.cfc.pop();
+-      drainFinalizerPending(this.builder, finFrame, finallyRes.exits);
++      flushFinalizerPending(this.builder, finFrame, finallyRes.exits);
+     }
+ 
+     const exits: number[] = [];
+diff --git a/gitnexus/src/core/ingestion/cfg/visitors/python.ts b/gitnexus/src/core/ingestion/cfg/visitors/python.ts
+index 2410e9c..83b878c 100644
+--- a/gitnexus/src/core/ingestion/cfg/visitors/python.ts
++++ b/gitnexus/src/core/ingestion/cfg/visitors/python.ts
+@@ -98,7 +98,7 @@ import type { SyntaxNode } from '../../utils/ast-helpers.js';
+ import { CfgBuilder } from '../cfg-builder.js';
+ import {
+   ControlFlowContext,
+-  drainFinalizerPending,
++  flushFinalizerPending,
+   wireJumpThroughFinalizers,
+ } from '../control-flow-context.js';
+ import type { TraversalResult } from '../traversal-result.js';
+@@ -513,7 +513,7 @@ class PythonCfgWalk {
+     }
+ 
+     this.cfc.pop();
+-    drainFinalizerPending(this.builder, finFrame, [dispose]);
++    flushFinalizerPending(this.builder, finFrame, [dispose]);
+ 
+     // Normal completion of the body flows into the dispose; the dispose's normal
+     // exit is the with-statement's exit. The dispose re-propagates the exception
+@@ -629,7 +629,7 @@ class PythonCfgWalk {
+     // Close the finalizer frame; wire crossing-jump completion legs.
+     if (finFrame && finallyRes) {
+       this.cfc.pop();
+-      drainFinalizerPending(this.builder, finFrame, finallyRes.exits);
++      flushFinalizerPending(this.builder, finFrame, finallyRes.exits);
+     }
+ 
+     const exits: number[] = [];
+diff --git a/gitnexus/src/core/ingestion/cfg/visitors/ruby.ts b/gitnexus/src/core/ingestion/cfg/visitors/ruby.ts
+index bec57ec..ab45480 100644
+--- a/gitnexus/src/core/ingestion/cfg/visitors/ruby.ts
++++ b/gitnexus/src/core/ingestion/cfg/visitors/ruby.ts
+@@ -107,7 +107,7 @@ import type { SyntaxNode } from '../../utils/ast-helpers.js';
+ import { CfgBuilder } from '../cfg-builder.js';
+ import {
+   ControlFlowContext,
+-  drainFinalizerPending,
++  flushFinalizerPending,
+   wireJumpThroughFinalizers,
+ } from '../control-flow-context.js';
+ import type { TraversalResult } from '../traversal-result.js';
+@@ -901,7 +901,7 @@ class RubyCfgWalk {
+     // Close the finalizer frame; wire crossing-jump completion legs.
+     if (finFrame && ensureRes) {
+       this.cfc.pop();
+-      drainFinalizerPending(this.builder, finFrame, ensureRes.exits);
++      flushFinalizerPending(this.builder, finFrame, ensureRes.exits);
+     }
+ 
+     const exits: number[] = [];
+diff --git a/gitnexus/src/core/ingestion/cfg/visitors/swift.ts b/gitnexus/src/core/ingestion/cfg/visitors/swift.ts
+index 050a48e..e0bf292 100644
+--- a/gitnexus/src/core/ingestion/cfg/visitors/swift.ts
++++ b/gitnexus/src/core/ingestion/cfg/visitors/swift.ts
+@@ -110,7 +110,7 @@
+ import type { SyntaxNode } from '../../utils/ast-helpers.js';
+ import { CfgBuilder } from '../cfg-builder.js';
+ import { ControlFlowContext, wireJumpThroughFinalizers } from '../control-flow-context.js';
+-import { drainFinalizerPending } from '../control-flow-context.js';
++import { flushFinalizerPending } from '../control-flow-context.js';
+ import type { FinalizerFrame } from '../control-flow-context.js';
+ import type { TraversalResult } from '../traversal-result.js';
+ import type { CfgVisitor, FunctionCfg } from '../types.js';
+@@ -944,7 +944,7 @@ class SwiftCfgWalk {
+     if (this.deferFrames.length === 0) return normalExits;
+     const lifo = [...this.deferFrames].reverse();
+     for (let i = 0; i < lifo.length; i++) this.cfc.pop();
+-    for (const frame of lifo) drainFinalizerPending(this.builder, frame, [frame.entry]);
++    for (const frame of lifo) flushFinalizerPending(this.builder, frame, [frame.entry]);
+ 
+     if (normalExits.length > 0) {
+       this.builder.connect(normalExits, lifo[0].entry, 'return');
+diff --git a/gitnexus/src/core/ingestion/cfg/visitors/typescript.ts b/gitnexus/src/core/ingestion/cfg/visitors/typescript.ts
+index 4367659..1dfc05d 100644
+--- a/gitnexus/src/core/ingestion/cfg/visitors/typescript.ts
++++ b/gitnexus/src/core/ingestion/cfg/visitors/typescript.ts
+@@ -61,7 +61,7 @@ import type { SyntaxNode } from '../../utils/ast-helpers.js';
+ import { CfgBuilder } from '../cfg-builder.js';
+ import {
+   ControlFlowContext,
+-  drainFinalizerPending,
++  flushFinalizerPending,
+   wireJumpThroughFinalizers,
+ } from '../control-flow-context.js';
+ import type { TraversalResult } from '../traversal-result.js';
+@@ -677,11 +677,11 @@ class TsCfgWalk {
+ 
+     // The finalizer frame closes once the protected/catch walks are done; any
+     // jumps that crossed it left their completion legs on `pending`, wired
+-    // here from the finally's exits (see drainFinalizerPending for the
++    // here from the finally's exits (see flushFinalizerPending for the
+     // finally-override semantics of an always-jumping finally).
+     if (finFrame && finallyRes) {
+       this.cfc.pop();
+-      drainFinalizerPending(this.builder, finFrame, finallyRes.exits);
++      flushFinalizerPending(this.builder, finFrame, finallyRes.exits);
+     }
+ 
+     const exits: number[] = [];

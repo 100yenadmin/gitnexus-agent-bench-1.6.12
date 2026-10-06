@@ -1,0 +1,133 @@
+{
+ "platform": "Darwin",
+ "summary": {
+  "filesAnalyzed": 2383,
+  "errorCount": 15173,
+  "warningCount": 74,
+  "informationCount": 0,
+  "timeInSec": 206.558
+ },
+ "added": [
+  {
+   "file": "hermes_cli/plugin_packs.py",
+   "line": 508,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "hermes_cli/plugin_packs.py",
+   "line": 536,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "hermes_cli/plugin_packs.py",
+   "line": 540,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "hermes_cli/plugin_packs.py",
+   "line": 574,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "hermes_cli/plugins_cmd.py",
+   "line": 437,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "hermes_cli/plugins_cmd.py",
+   "line": 439,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "hermes_cli/plugins_cmd.py",
+   "line": 648,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "hermes_cli/plugins_cmd.py",
+   "line": 656,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "hermes_cli/plugins_cmd.py",
+   "line": 665,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "hermes_cli/plugins_cmd.py",
+   "line": 694,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "hermes_cli/plugins_cmd.py",
+   "line": 1006,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "hermes_cli/plugins_cmd_capabilities.py",
+   "line": 124,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "hermes_cli/plugins_cmd_catalog.py",
+   "line": 60,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "hermes_cli/plugins_cmd_catalog.py",
+   "line": 661,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "hermes_cli/plugins_cmd_catalog.py",
+   "line": 664,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "hermes_cli/plugins_cmd_install.py",
+   "line": 521,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "hermes_cli/plugins_cmd_install.py",
+   "line": 550,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "hermes_cli/plugins_cmd_listing.py",
+   "line": 123,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "hermes_cli/plugins_cmd_remove.py",
+   "line": 53,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "hermes_cli/plugins_cmd_update.py",
+   "line": 91,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  }
+ ],
+ "removed_keys": []
+}

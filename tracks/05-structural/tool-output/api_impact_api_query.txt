@@ -1,0 +1,40 @@
+
+  GitNexus MCP (1.6.12)
+{"level":30,"time":1791218589445,"name":"gitnexus","repoCount":1,"repos":["gnxu-taint"],"msg":"GitNexus: MCP server starting"}
+{
+  "route": "/api/query",
+  "method": "POST",
+  "handler": "gitnexus/test/integration/api-query.test.ts",
+  "runtimeEvidence": {
+    "confirmed": false
+  },
+  "responseShape": {
+    "success": [],
+    "error": []
+  },
+  "middleware": [],
+  "consumers": [
+    {
+      "name": "docker-server.test.mjs",
+      "file": "docker-server.test.mjs",
+      "accesses": [
+        "setEncoding",
+        "on",
+        "statusCode",
+        "body",
+        "writeHead",
+        "end",
+        "write",
+        "socket"
+      ],
+      "attributionNote": "This file fetches 29 routes — accessed keys may belong to a different route."
+    }
+  ],
+  "executionFlows": [],
+  "impactSummary": {
+    "directConsumers": 1,
+    "affectedFlows": 0,
+    "riskLevel": "LOW",
+    "warning": "Changing response shape will affect 1 component"
+  }
+}

@@ -1,0 +1,91 @@
+diff --git a/escalation.py b/escalation.py
+index 4ed7571..f52f068 100644
+--- a/escalation.py
++++ b/escalation.py
+@@ -276,11 +276,14 @@ def _unwrap_summary_contract(content: str, nonce: str, max_tokens: int) -> str:
+     opening_tag = f'<lcm-summary nonce="{nonce}">'
+     closing_tag = "</lcm-summary>"
+     stripped = content.strip()
++    # The closing tag carries no nonce, so a faithful body may legitimately
++    # quote it (e.g. a transcript that discussed the envelope).  The anchored
++    # endswith check pins the real terminator; only the nonce-bearing opening
++    # tag must be unique.
+     if (
+         not stripped.startswith(opening_tag)
+         or not stripped.endswith(closing_tag)
+         or stripped.count(opening_tag) != 1
+-        or stripped.count(closing_tag) != 1
+     ):
+         return ""
+     body = stripped[len(opening_tag) : -len(closing_tag)].strip()
+diff --git a/tests/test_lcm_core.py b/tests/test_lcm_core.py
+index b475296..1b80d6d 100644
+--- a/tests/test_lcm_core.py
++++ b/tests/test_lcm_core.py
+@@ -414,7 +414,43 @@ class TestProviderPrefixedAuxiliaryCalls:
+         assert "nonce=" not in result
+         assert [message["role"] for message in seen["messages"]] == ["system", "user"]
+ 
+-    @pytest.mark.parametrize("variant", ["wrong_nonce", "outside_text", "missing_footer"])
++    def test_summary_call_accepts_body_quoting_closing_tag(self, monkeypatch):
++        from hermes_lcm.escalation import _build_l1_prompt, _call_llm_for_summary
++
++        body = (
++            "- Decision: the envelope ends with `</lcm-summary>` and summaries quoting it "
++            "must still be accepted.\n"
++            "- Earlier summary text ended with </lcm-summary> before the next turn.\n"
++            "Expand for details about: envelope closing tag handling"
++        )
++
++        def fake_call_llm(**kwargs):
++            system_content = kwargs["messages"][0]["content"]
++            nonce = re.search(r'<lcm-summary nonce="([0-9a-f]{32})">', system_content).group(1)
++            return self._fake_response(
++                f'<lcm-summary nonce="{nonce}">\n{body}\n</lcm-summary>'
++            )
++
++        self._install_fake_auxiliary_client(monkeypatch, fake_call_llm)
++
++        result = _call_llm_for_summary(
++            _build_l1_prompt("ordinary historical transcript " * 30, token_budget=80, depth=0),
++            160,
++        )
++
++        assert result == body
++
++    @pytest.mark.parametrize(
++        "variant",
++        [
++            "wrong_nonce",
++            "outside_text",
++            "missing_footer",
++            "duplicate_opening",
++            "trailing_after_close",
++            "short_body",
++        ],
++    )
+     def test_summary_call_rejects_malformed_integrity_contract(self, monkeypatch, variant):
+         from hermes_lcm.escalation import _build_l1_prompt, _call_llm_for_summary
+ 
+@@ -437,6 +473,21 @@ class TestProviderPrefixedAuxiliaryCalls:
+                     f'preamble\n<lcm-summary nonce="{nonce}">\n'
+                     f'{valid_body}\n</lcm-summary>'
+                 )
++            elif variant == "duplicate_opening":
++                content = (
++                    f'<lcm-summary nonce="{nonce}">\n<lcm-summary nonce="{nonce}">\n'
++                    f'{valid_body}\n</lcm-summary>'
++                )
++            elif variant == "trailing_after_close":
++                content = (
++                    f'<lcm-summary nonce="{nonce}">\n{valid_body}\n</lcm-summary>\n'
++                    "trailing text"
++                )
++            elif variant == "short_body":
++                content = (
++                    f'<lcm-summary nonce="{nonce}">\n'
++                    "Expand for details about: x\n</lcm-summary>"
++                )
+             else:
+                 content = (
+                     f'<lcm-summary nonce="{nonce}">\n'

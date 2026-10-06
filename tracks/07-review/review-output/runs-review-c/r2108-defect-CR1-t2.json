@@ -1,0 +1,18 @@
+{
+ "schema_version": 1,
+ "verdict": "request_changes",
+ "findings": [
+  {
+   "id": "fts-rss-failed-queries-plateau",
+   "severity": "medium",
+   "path": "gitnexus/scripts/bench/fts-evict-reload-rss.mjs",
+   "line": 273,
+   "end_line": 277,
+   "category": "correctness",
+   "scenario": "Run --via-pool against an analyzed repository whose FTS extension is unavailable or whose FTS indexes are missing. The benchmark can report PLATEAU and claim that the FTS arena is reclaimed even though no FTS query succeeded.",
+   "evidence": "runViaPool converts every executeParameterized rejection to [] at line 277 and still records an RSS sample for each cycle. Pool initialization deliberately continues when loadFTSExtension fails, so this is a reachable degraded-search state. verdict uses only RSS slopes and has no successful-query prerequisite. A source-extracted probe with six cycles and an unavailable QUERY_FTS_INDEX reproduced 30 failed queries, zero reported query errors, and a MACHINE verdict of PLATEAU for flat RSS.",
+   "recommendation": "Track successful FTS queries and require successful execution against the expected available indexes in every measured cycle. Treat unavailable FTS, unexpected query failures, or failed initialization/reload as an invalid or INCONCLUSIVE run rather than passing their samples to the no-leak verdict.",
+   "blocking": true
+  }
+ ]
+}

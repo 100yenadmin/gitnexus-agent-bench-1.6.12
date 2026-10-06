@@ -1,0 +1,8 @@
+{
+ "files": [
+  "gitnexus-web/src/services/backend-client.ts",
+  "gitnexus-web/src/App.tsx",
+  "gitnexus-web/src/components/Header.tsx",
+  "gitnexus-web/src/components/DropZone.tsx"
+ ]
+}

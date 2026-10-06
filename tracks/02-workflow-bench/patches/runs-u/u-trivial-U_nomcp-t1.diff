@@ -1,0 +1,62 @@
+diff --git a/gitnexus/src/cli/index.ts b/gitnexus/src/cli/index.ts
+index 22bb3c0..da85c35 100644
+--- a/gitnexus/src/cli/index.ts
++++ b/gitnexus/src/cli/index.ts
+@@ -292,7 +292,7 @@ program
+   .command('status')
+   .description('Show index status for the current repo or a registered index')
+   .option('-r, --repo <name>', 'Registered repository alias or path (works after checkout removal)')
+-  .option('--json', 'Emit machine-readable index and analyzer provenance')
++  .option('-j, --json', 'Emit machine-readable index and analyzer provenance')
+   .addHelpText('after', () => t('help.identityCache.environment'))
+   .action(createLazyAction(() => import('./status.js'), 'statusCommand'));
+ 
+diff --git a/gitnexus/test/unit/status-json-alias.test.ts b/gitnexus/test/unit/status-json-alias.test.ts
+new file mode 100644
+index 0000000..64cb25a
+--- /dev/null
++++ b/gitnexus/test/unit/status-json-alias.test.ts
+@@ -0,0 +1,43 @@
++/**
++ * `gitnexus status -j` is a short alias for `--json`. Spawns the CLI (dist or
++ * tsx-on-source, per test/helpers/cli-entry.ts) against an unindexed git repo,
++ * where both spellings must emit the same machine-readable not-indexed payload.
++ */
++import { describe, it, expect } from 'vitest';
++import { execFileSync } from 'child_process';
++import fs from 'fs';
++import os from 'os';
++import path from 'path';
++import { CLI_SPAWN_PREFIX } from '../helpers/cli-entry.js';
++
++const runStatus = (cwd: string, home: string, flags: string[]): string =>
++  execFileSync(process.execPath, [...CLI_SPAWN_PREFIX, 'status', ...flags], {
++    cwd,
++    encoding: 'utf8',
++    timeout: 30000,
++    env: { ...process.env, HOME: home, GITNEXUS_HOME: home, GITNEXUS_LANG: 'en' },
++  });
++
++describe('gitnexus status -j alias', () => {
++  it('lists -j alongside --json in help', () => {
++    const help = runStatus(process.cwd(), os.tmpdir(), ['--help']);
++    expect(help).toMatch(/-j, --json/);
++  });
++
++  it('-j emits the same JSON as --json', () => {
++    const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'gn-status-j-'));
++    const home = fs.mkdtempSync(path.join(os.tmpdir(), 'gn-status-j-home-'));
++    try {
++      execFileSync('git', ['init'], { cwd: repo, stdio: 'ignore' });
++
++      const short = JSON.parse(runStatus(repo, home, ['-j']).trim());
++      const long = JSON.parse(runStatus(repo, home, ['--json']).trim());
++
++      expect(short).toEqual(long);
++      expect(short).toMatchObject({ schemaVersion: 1, error: 'not-indexed' });
++    } finally {
++      fs.rmSync(repo, { recursive: true, force: true });
++      fs.rmSync(home, { recursive: true, force: true });
++    }
++  }, 60000);
++});

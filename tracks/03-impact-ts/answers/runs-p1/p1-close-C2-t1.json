@@ -1,0 +1,28 @@
+{
+ "locations": [
+  {
+   "path": "gitnexus/src/core/lbug/graph-emit-sink.ts",
+   "line": 516
+  },
+  {
+   "path": "gitnexus/src/core/lbug/graph-emit-sink.ts",
+   "line": 544
+  },
+  {
+   "path": "gitnexus/src/core/lbug/pdg-emit-sink.ts",
+   "line": 222
+  },
+  {
+   "path": "gitnexus/src/core/lbug/pdg-emit-sink.ts",
+   "line": 232
+  },
+  {
+   "path": "gitnexus/src/core/lbug/pdg-emit-sink.ts",
+   "line": 262
+  },
+  {
+   "path": "gitnexus/src/core/lbug/pdg-emit-sink.ts",
+   "line": 268
+  }
+ ]
+}

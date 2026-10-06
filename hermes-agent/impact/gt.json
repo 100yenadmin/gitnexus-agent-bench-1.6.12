@@ -1,0 +1,1688 @@
+[
+ {
+  "id": "h-impact-format_bytes",
+  "name": "format_bytes",
+  "cls": null,
+  "file": "hermes_cli/sizefmt.py",
+  "line": 7,
+  "probe": "positional",
+  "sites": [
+   {
+    "file": "agent/context_references.py",
+    "line": 650,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "agent/curator_backup.py",
+    "line": 492,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/backup.py",
+    "line": 657,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/backup.py",
+    "line": 658,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/backup.py",
+    "line": 1253,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/checkpoints.py",
+    "line": 35,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/checkpoints.py",
+    "line": 36,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/checkpoints.py",
+    "line": 37,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/checkpoints.py",
+    "line": 63,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/checkpoints.py",
+    "line": 117,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/checkpoints.py",
+    "line": 147,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/checkpoints.py",
+    "line": 157,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/checkpoints.py",
+    "line": 173,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/checkpoints.py",
+    "line": 183,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/claw.py",
+    "line": 380,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/doctor_platform.py",
+    "line": 97,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/doctor_state.py",
+    "line": 64,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/doctor_state.py",
+    "line": 67,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/doctor_state.py",
+    "line": 104,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/doctor_state.py",
+    "line": 263,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/doctor_state.py",
+    "line": 267,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/kanban_boards.py",
+    "line": 174,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/update_cmd_maint.py",
+    "line": 760,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "tools/checkpoint_maintenance.py",
+    "line": 461,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "h-impact-_norm",
+  "name": "_norm",
+  "cls": null,
+  "file": "hermes_cli/observability/shared_metrics_contract.py",
+  "line": 598,
+  "probe": "positional",
+  "sites": [
+   {
+    "file": "hermes_cli/observability/shared_metrics_contract.py",
+    "line": 608,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/observability/shared_metrics_contract.py",
+    "line": 613,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/observability/shared_metrics_contract.py",
+    "line": 621,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/observability/shared_metrics_contract.py",
+    "line": 1272,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/observability/shared_metrics_contract.py",
+    "line": 1309,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/observability/shared_metrics_contract.py",
+    "line": 1323,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/observability/shared_metrics_contract.py",
+    "line": 1374,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/observability/shared_metrics_contract.py",
+    "line": 1417,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/observability/shared_metrics_contract.py",
+    "line": 1420,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/observability/shared_metrics_contract.py",
+    "line": 1425,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/observability/shared_metrics_contract.py",
+    "line": 1434,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/observability/shared_metrics_contract.py",
+    "line": 1496,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/observability/shared_metrics_contract.py",
+    "line": 1515,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/observability/shared_metrics_contract.py",
+    "line": 1530,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/observability/shared_metrics_contract.py",
+    "line": 1555,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/observability/shared_metrics_contract.py",
+    "line": 1582,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/observability/shared_metrics_contract.py",
+    "line": 1641,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/observability/shared_metrics_contract.py",
+    "line": 1665,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/observability/shared_metrics_contract.py",
+    "line": 1666,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/observability/shared_metrics_fields.py",
+    "line": 112,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/observability/shared_metrics_fields.py",
+    "line": 133,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/observability/shared_metrics_fields.py",
+    "line": 134,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/observability/shared_metrics_fields.py",
+    "line": 163,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/observability/shared_metrics_fields.py",
+    "line": 166,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/observability/shared_metrics_fields.py",
+    "line": 170,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/observability/shared_metrics_install.py",
+    "line": 148,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/observability/shared_metrics_install.py",
+    "line": 164,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "h-impact-_write",
+  "name": "_write",
+  "cls": null,
+  "file": "pm/lock.py",
+  "line": 66,
+  "probe": "positional",
+  "sites": [
+   {
+    "file": "pm/lock.py",
+    "line": 126,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "pm/lock.py",
+    "line": 188,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "pm/lock.py",
+    "line": 233,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "pm/lock.py",
+    "line": 280,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "pm/operations.py",
+    "line": 111,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "pm/operations.py",
+    "line": 314,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "pm/receipt.py",
+    "line": 310,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "pm/receipt.py",
+    "line": 311,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "pm/runtime.py",
+    "line": 165,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "pm/runtime.py",
+    "line": 166,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "scripts/bundles/desktop_prepare.py",
+    "line": 228,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "scripts/bundles/desktop_prepare.py",
+    "line": 299,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "scripts/bundles/native_build.py",
+    "line": 48,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "h-impact-_fail",
+  "name": "_fail",
+  "cls": null,
+  "file": "hermes_cli/plugins_cmd.py",
+  "line": 113,
+  "probe": "positional",
+  "sites": [
+   {
+    "file": "hermes_cli/plugin_packs.py",
+    "line": 508,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/plugin_packs.py",
+    "line": 536,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/plugin_packs.py",
+    "line": 540,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/plugin_packs.py",
+    "line": 574,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/plugins_cmd.py",
+    "line": 437,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/plugins_cmd.py",
+    "line": 439,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/plugins_cmd.py",
+    "line": 648,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/plugins_cmd.py",
+    "line": 656,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/plugins_cmd.py",
+    "line": 665,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/plugins_cmd.py",
+    "line": 694,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/plugins_cmd.py",
+    "line": 1006,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/plugins_cmd_capabilities.py",
+    "line": 124,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/plugins_cmd_catalog.py",
+    "line": 60,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/plugins_cmd_catalog.py",
+    "line": 661,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/plugins_cmd_catalog.py",
+    "line": 664,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/plugins_cmd_install.py",
+    "line": 521,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/plugins_cmd_install.py",
+    "line": 550,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/plugins_cmd_listing.py",
+    "line": 123,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/plugins_cmd_remove.py",
+    "line": 53,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/plugins_cmd_update.py",
+    "line": 91,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "h-impact-_section",
+  "name": "_section",
+  "cls": null,
+  "file": "hermes_cli/doctor_report.py",
+  "line": 31,
+  "probe": "positional",
+  "sites": [
+   {
+    "file": "hermes_cli/doctor.py",
+    "line": 185,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/doctor_config.py",
+    "line": 450,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/doctor_live.py",
+    "line": 165,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/doctor_platform.py",
+    "line": 192,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/doctor_platform.py",
+    "line": 273,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/doctor_platform.py",
+    "line": 511,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/doctor_platform.py",
+    "line": 592,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux"
+    ]
+   },
+   {
+    "file": "hermes_cli/doctor_state.py",
+    "line": 141,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/doctor_state.py",
+    "line": 642,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "h-impact-CredentialPool.has_credentials",
+  "name": "has_credentials",
+  "cls": "CredentialPool",
+  "file": "agent/credential_pool.py",
+  "line": 1036,
+  "probe": "positional",
+  "sites": [
+   {
+    "file": "agent/agent_init.py",
+    "line": 911,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "agent/auxiliary_client.py",
+    "line": 1028,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "agent/auxiliary_client.py",
+    "line": 2032,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "agent/auxiliary_client.py",
+    "line": 2104,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "agent/auxiliary_client.py",
+    "line": 3755,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "agent/auxiliary_client.py",
+    "line": 3891,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "agent/auxiliary_client.py",
+    "line": 4815,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "agent/chat_completion_helpers.py",
+    "line": 1911,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "agent/chat_completion_helpers.py",
+    "line": 1957,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "cron/scheduler.py",
+    "line": 1885,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/auth.py",
+    "line": 423,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/auth.py",
+    "line": 1540,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/auth_commands.py",
+    "line": 840,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/auth_nous.py",
+    "line": 1146,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/auth_nous.py",
+    "line": 1320,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/cli_agent_setup_mixin.py",
+    "line": 72,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/dump.py",
+    "line": 285,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/model_switch_providers.py",
+    "line": 177,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/model_switch_providers.py",
+    "line": 874,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/models_detect.py",
+    "line": 95,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/nous_account.py",
+    "line": 462,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/nous_auth_keepalive.py",
+    "line": 129,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/proxy/adapters/xai.py",
+    "line": 51,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/runtime_provider.py",
+    "line": 644,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/runtime_provider_custom.py",
+    "line": 383,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "tools/delegate_tool_config.py",
+    "line": 220,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "tools/tool_backend_helpers.py",
+    "line": 160,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "h-impact-ProviderRegistry.export",
+  "name": "export",
+  "cls": "ProviderRegistry",
+  "file": "agent/provider_registry.py",
+  "line": 161,
+  "probe": "positional",
+  "sites": [
+   {
+    "file": "agent/browser_registry.py",
+    "line": 25,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "agent/image_gen_registry.py",
+    "line": 24,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "agent/terminal_env_registry.py",
+    "line": 45,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "agent/transcription_registry.py",
+    "line": 45,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "agent/tts_registry.py",
+    "line": 45,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "agent/video_gen_registry.py",
+    "line": 26,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "agent/web_search_registry.py",
+    "line": 33,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   }
+  ]
+ },
+ {
+  "id": "h-impact-normalize_provider",
+  "name": "normalize_provider",
+  "cls": null,
+  "file": "hermes_cli/providers.py",
+  "line": 164,
+  "probe": "positional",
+  "sites": [
+   {
+    "file": "agent/agent_init.py",
+    "line": 111,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "agent/agent_init.py",
+    "line": 142,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "agent/agent_init.py",
+    "line": 143,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "agent/agent_init.py",
+    "line": 860,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "agent/title_generator.py",
+    "line": 215,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/auth.py",
+    "line": 2061,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/doctor_config.py",
+    "line": 265,
+    "code": "ADJ",
+    "source": "adjudicated",
+    "note": "`normalize` is normalize_provider imported as `normalize` in _known_provider_ids (line 213), returned through a tuple typed `object` (line 226) and called here; pyright cannot see the call (callee typed object), but it breaks at runtime."
+   },
+   {
+    "file": "hermes_cli/doctor_connectivity.py",
+    "line": 109,
+    "code": "ADJ",
+    "source": "adjudicated",
+    "note": "`_normalize_provider` is bound by `from hermes_cli.providers import normalize_provider as _normalize_provider` (line 99) with a fallback def only in the except branch; pyright resolves the name to the fallback declaration and reports nothing, but at runtime the import succeeds and this calls the target."
+   },
+   {
+    "file": "hermes_cli/model_setup_flows.py",
+    "line": 953,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/model_switch.py",
+    "line": 413,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/model_switch.py",
+    "line": 738,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/providers.py",
+    "line": 173,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/providers.py",
+    "line": 197,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/providers.py",
+    "line": 252,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/providers.py",
+    "line": 261,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/providers.py",
+    "line": 281,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/providers.py",
+    "line": 488,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/providers.py",
+    "line": 540,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/route_identity.py",
+    "line": 64,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   },
+   {
+    "file": "hermes_cli/route_identity.py",
+    "line": 83,
+    "code": "reportCallIssue",
+    "source": "pyright",
+    "platforms": [
+     "Darwin",
+     "Linux",
+     "Windows"
+    ]
+   }
+  ]
+ }
+]

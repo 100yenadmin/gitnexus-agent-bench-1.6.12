@@ -1,0 +1,9 @@
+{
+ "inline_flows": 3,
+ "inline_found": 0,
+ "named_flows": 4,
+ "named_found": 3,
+ "named_closure_missed": 1,
+ "named_decoy_fp": 1,
+ "note": "explain on gitnexus/src/server/repo-tools.ts. Inline-callback version (probes/p4/repo-tools.committed.ts): 0 findings for 3 seeded flows. Named-handler version (probes/p4/repo-tools-named.ts, index gnxu-taint-named): found handleBlame->runGit (command injection), handleSnippet->readSnippet (path traversal) and the intra-procedural control handleBlameInline:89; missed the closure-returned handleFilter->compileFilter (new Function); false positive handleCommitSubject->runGit, which is guarded by SHA_RE. Raw: explain-named.txt, explain-named-all.txt."
+}

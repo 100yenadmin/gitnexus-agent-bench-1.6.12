@@ -1,0 +1,45 @@
+{
+ "id": "lcmx-i01",
+ "pr": 768,
+ "base": "e74fd13c8f52df36fba8a380ab861a0dfcc70b44",
+ "fix": "3bad689ec4c2e0665f5e030241bf6097480fbd99",
+ "tests": [
+  "tests/test_issue_750_deep_summary_depth_discovery.py"
+ ],
+ "oracle_files": [
+  "tests/test_issue_750_deep_summary_depth_discovery.py"
+ ],
+ "oracle_cmd": "bash $BENCH_ROOT/mining/_scripts/lcmx_pytest.sh -q tests/test_issue_750_deep_summary_depth_discovery.py",
+ "regression_cmd": "bash $BENCH_ROOT/mining/_scripts/lcmx_pytest.sh tests/ -q -n 8",
+ "setup_cmd": "bash $BENCH_ROOT/mining/_scripts/lcmx_setup.sh",
+ "setup_rc": 0,
+ "base_rc": 1,
+ "base_secs": 4.6,
+ "base_tail": [
+  "FAILED tests/test_issue_750_deep_summary_depth_discovery.py::test_get_session_depths_is_unbounded_and_session_scoped",
+  "FAILED tests/test_issue_750_deep_summary_depth_discovery.py::test_assembly_renders_top_depth_beyond_the_first_1000_rows[768]",
+  "FAILED tests/test_issue_750_deep_summary_depth_discovery.py::test_assembly_renders_top_depth_beyond_the_first_1000_rows[1024]",
+  "FAILED tests/test_issue_750_deep_summary_depth_discovery.py::test_assembly_keeps_session_history_next_to_recent_leaves",
+  "FAILED tests/test_issue_750_deep_summary_depth_discovery.py::test_compress_output_keeps_top_depth[1024]",
+  "FAILED tests/test_issue_750_deep_summary_depth_discovery.py::test_unlimited_depth_condensation_sees_every_depth",
+  "6 failed, 3 passed, 130 warnings in 3.75s"
+ ],
+ "base_import_err": true,
+ "fix_rc1": 0,
+ "fix_secs1": 2.9,
+ "fix_tail1": [
+  "9 passed, 130 warnings in 2.30s"
+ ],
+ "fix_rc2": 0,
+ "fix_secs2": 9.1,
+ "fix_tail2": [
+  "9 passed, 130 warnings in 8.45s"
+ ],
+ "reg_rc": 0,
+ "reg_secs": 350.6,
+ "reg_tail": [
+  "5581 passed, 92 skipped, 16 xfailed, 6716 warnings in 349.56s (0:05:49)"
+ ],
+ "mismatch": [],
+ "final_status": "* (HEAD detached at 3bad689)\n  main\n  remotes/origin/HEAD -> origin/main\n  remotes/origin/main"
+}

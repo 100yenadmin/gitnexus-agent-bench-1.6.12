@@ -1,0 +1,153 @@
+diff --git a/db_bootstrap.py b/db_bootstrap.py
+index 5b31c38..0600987 100644
+--- a/db_bootstrap.py
++++ b/db_bootstrap.py
+@@ -169,7 +169,7 @@ def add_column_if_missing(
+     existing_columns: set[str],
+     column: str,
+     alter_sql: str,
+-) -> None:
++) -> bool:
+     """Idempotently add a column, tolerating a concurrent process that won the race.
+ 
+     In the multi-agent deployment (gateway + CLI sessions + sub-agents) every
+@@ -181,14 +181,20 @@ def add_column_if_missing(
+     propagated out of ``_init_db`` and crashed store construction.  Swallowing
+     exactly that error makes the migration idempotent under concurrency; any other
+     OperationalError still propagates.
++
++    Returns True if the column was added (did not previously exist), False otherwise.
++    Callers can use this to conditionally run data-fixing UPDATEs that should only
++    execute once when the column is first added.
+     """
+     if column in existing_columns:
+-        return
++        return False
+     try:
+         conn.execute(alter_sql)
++        return True
+     except sqlite3.OperationalError as exc:
+         if "duplicate column name" not in str(exc).lower():
+             raise
++        return False
+ 
+ 
+ def ensure_metadata_table(conn: sqlite3.Connection) -> None:
+@@ -3285,7 +3291,8 @@ def run_versioned_migrations(conn: sqlite3.Connection) -> None:
+     ensure_migration_state_table(conn)
+ 
+     refuse_schema_version_too_new(conn)
+-    current_version = get_schema_version(conn)
++    initial_version = get_schema_version(conn)
++    current_version = initial_version
+     if current_version < 2:
+         mark_migration_step_complete(conn, "v2_external_content_fts_triggers")
+         current_version = 2
+@@ -3316,4 +3323,7 @@ def run_versioned_migrations(conn: sqlite3.Connection) -> None:
+     # feature materialized lazily by VectorStore (recorded via the named
+     # ``embeddings_v1`` marker), so a disabled install stays at v5 with no
+     # embedding tables and the numeric counter is free for the temporal train.
+-    set_schema_version(conn, current_version)
++    # Only update schema version if it actually changed, to avoid unnecessary
++    # writes on database opens that are already at current schema.
++    if current_version != initial_version:
++        set_schema_version(conn, current_version)
+diff --git a/store.py b/store.py
+index 3ebfcd0..879808f 100644
+--- a/store.py
++++ b/store.py
+@@ -348,7 +348,7 @@ class MessageStore:
+         columns = {
+             row[1] for row in self._conn.execute("PRAGMA table_info(messages)").fetchall()
+         }
+-        add_column_if_missing(
++        column_was_added = add_column_if_missing(
+             self._conn, columns, "conversation_id",
+             "ALTER TABLE messages ADD COLUMN conversation_id TEXT DEFAULT ''",
+         )
+@@ -366,7 +366,7 @@ class MessageStore:
+         columns = {
+             row[1] for row in self._conn.execute("PRAGMA table_info(messages)").fetchall()
+         }
+-        add_column_if_missing(
++        ingested_at_added = add_column_if_missing(
+             self._conn,
+             columns,
+             "ingested_at",
+@@ -384,9 +384,15 @@ class MessageStore:
+             "observed_at_source",
+             "ALTER TABLE messages ADD COLUMN observed_at_source TEXT",
+         )
+-        self._conn.execute(
+-            "UPDATE messages SET ingested_at = timestamp WHERE ingested_at IS NULL"
+-        )
++        # Only backfill ingested_at when the column is first added. On subsequent
++        # opens of an existing database, the column already exists and has been
++        # populated, so no write is needed. This allows cloning to succeed against
++        # a database that is already at current schema when another writer holds
++        # the write slot (e.g., in WAL mode with a concurrent active session).
++        if ingested_at_added:
++            self._conn.execute(
++                "UPDATE messages SET ingested_at = timestamp WHERE ingested_at IS NULL"
++            )
+ 
+     # -- Write operations ---------------------------------------------------
+ 
+diff --git a/tests/test_lcm_core.py b/tests/test_lcm_core.py
+index 2a62069..fa09be8 100644
+--- a/tests/test_lcm_core.py
++++ b/tests/test_lcm_core.py
+@@ -8759,6 +8759,53 @@ class TestLCMEngineCloning:
+             if callable(shutdown):
+                 shutdown()
+ 
++    def test_deepcopy_succeeds_on_current_schema_database_with_active_wal_writer(self, tmp_path):
++        """Verify deepcopy doesn't write to a current-schema database when another writer holds the lock.
++
++        Issue #363: LCMEngine cloning would fail under an active SQLite writer
++        because startup code ran UPDATEs even when the database was already at
++        current schema. With the fix, startup skips unnecessary writes when
++        columns already exist and have been populated, allowing the clone to
++        succeed even when another connection holds the write slot in WAL mode.
++        """
++        from hermes_lcm.engine import LCMEngine
++        import sqlite3
++        import threading
++
++        db_path = str(tmp_path / "lcm-wal-clone.db")
++        config = LCMConfig(database_path=db_path)
++
++        # Create and initialize the prototype, ensuring the schema is current
++        prototype = LCMEngine(config=config, hermes_home=str(tmp_path / "hermes"))
++        prototype.on_session_start(
++            "setup-session",
++            platform="test",
++            conversation_id="test:setup",
++        )
++        prototype.shutdown()
++
++        # Now simulate another connection holding a writer lock in WAL mode
++        writer_conn = sqlite3.connect(db_path, timeout=0.1, check_same_thread=False)
++        writer_conn.execute("PRAGMA journal_mode=WAL")
++
++        # Acquire a write lock on the second connection
++        writer_conn.execute("BEGIN IMMEDIATE")
++
++        try:
++            # The clone should succeed even with the write lock held, because
++            # the startup code won't attempt to write when the schema is current
++            prototype = LCMEngine(config=config, hermes_home=str(tmp_path / "hermes"))
++            clone = copy.deepcopy(prototype)
++
++            assert clone is not prototype
++            assert isinstance(clone, LCMEngine)
++            assert clone.name == "lcm"
++            clone.shutdown()
++            prototype.shutdown()
++        finally:
++            writer_conn.rollback()
++            writer_conn.close()
++
+ 
+ def test_like_fallback_relevance_prefers_multi_term_score_over_single_exact(tmp_path):
+     import hermes_lcm.store as store_module

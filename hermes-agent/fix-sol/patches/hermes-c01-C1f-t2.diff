@@ -1,0 +1,148 @@
+diff --git a/agent/anthropic_adapter.py b/agent/anthropic_adapter.py
+index bad91015..d7b19984 100644
+--- a/agent/anthropic_adapter.py
++++ b/agent/anthropic_adapter.py
+@@ -265,6 +265,16 @@ def _claude_code_candidates() -> List[str]:
+     return list(seen)
+ 
+ 
++def find_claude_code_cli(command: str) -> Optional[str]:
++    """Find a bare Claude Code command, preferring PATH over known install prefixes."""
++    if command not in _CLAUDE_CODE_NAMES:
++        return None
++    hit = shutil.which(command)
++    if hit:
++        return hit
++    return next((path for path in _claude_code_candidates() if os.access(path, os.X_OK)), None)
++
++
+ def _detect_claude_code_version() -> str:
+     """Installed Claude Code version (``claude --version``), else the static fallback."""
+     for cmd in _claude_code_candidates():
+diff --git a/agent/anthropic_credentials.py b/agent/anthropic_credentials.py
+index 1084f789..ac5712cb 100644
+--- a/agent/anthropic_credentials.py
++++ b/agent/anthropic_credentials.py
+@@ -711,8 +711,9 @@ def resolve_anthropic_token(*, model: Optional[str] = None) -> Optional[str]:
+ 
+ def run_oauth_setup_token() -> Optional[str]:
+     """Run 'claude setup-token' interactively; the resulting token or None. FileNotFoundError if no 'claude' CLI."""
+-    import shutil
+-    claude_path = shutil.which("claude")
++    from agent.anthropic_adapter import find_claude_code_cli
++
++    claude_path = find_claude_code_cli("claude")
+     if not claude_path:
+         raise FileNotFoundError("The 'claude' CLI is not installed. Install it with: npm install -g @anthropic-ai/claude-code")
+     # Interactive: stdio inherited so the user can complete the OAuth prompt.  noqa: subprocess-stdin
+diff --git a/hermes_cli/auth.py b/hermes_cli/auth.py
+index adf870a2..2a361aa0 100644
+--- a/hermes_cli/auth.py
++++ b/hermes_cli/auth.py
+@@ -2154,7 +2154,12 @@ def _external_process_spec(
+                or str(getattr(profile, "process_command", "") or ""))
+     raw_args = os.getenv(args_env_var, "").strip() if args_env_var else ""
+     args = shlex.split(raw_args) if raw_args else list(getattr(profile, "process_args", ()) or [])
+-    return command, args, base_url, shutil.which(command) if command else None, command_env_vars
++    resolved_command = shutil.which(command) if command else None
++    if not resolved_command and command in ("claude", "claude-code"):
++        from agent.anthropic_adapter import find_claude_code_cli
++
++        resolved_command = find_claude_code_cli(command)
++    return command, args, base_url, resolved_command, command_env_vars
+ 
+ 
+ def get_external_process_provider_status(provider_id: str) -> Dict[str, Any]:
+diff --git a/tests/agent/test_claude_code_version_path.py b/tests/agent/test_claude_code_version_path.py
+index 9784ab5f..4a448f82 100644
+--- a/tests/agent/test_claude_code_version_path.py
++++ b/tests/agent/test_claude_code_version_path.py
+@@ -57,3 +57,37 @@ def test_path_hit_is_probed_first(monkeypatch, tmp_path):
+     _cli_versions(monkeypatch, {on_path: "2.1.400", stale: "2.1.100"})
+ 
+     assert _detect_claude_code_version() == "2.1.400"
++
++
++@pytest.mark.platforms("posix")
++@pytest.mark.parametrize("command", ["claude", "claude-code"])
++def test_cli_discovery_and_setup_token_share_the_resolver(monkeypatch, tmp_path, command):
++    from agent import anthropic_credentials as credentials
++
++    monkeypatch.setenv("HOME", str(tmp_path))
++    monkeypatch.setenv("PATH", str(tmp_path / "empty-path"))
++    monkeypatch.setattr(adapter, "_CLAUDE_CODE_PREFIXES", ("~/.local/bin",))
++    installed = _install(tmp_path / ".local/bin", command)
++    assert adapter.find_claude_code_cli(command) == installed
++
++    on_path = _install(tmp_path / "path", command)
++    monkeypatch.setenv("PATH", str(tmp_path / "path"))
++    assert adapter.find_claude_code_cli(command) == on_path
++    assert adapter.find_claude_code_cli("other-cli") is None
++    assert adapter.find_claude_code_cli(installed) is None
++
++    # Resolve at call time through the adapter's public monkeypatch seam.
++    lookups = []
++    def finder(name):
++        lookups.append(name)
++        return installed
++
++    monkeypatch.setattr(adapter, "find_claude_code_cli", finder)
++    monkeypatch.setattr(credentials, "read_claude_code_credentials", lambda: None)
++    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN", raising=False)
++    monkeypatch.delenv("ANTHROPIC_TOKEN", raising=False)
++    calls = []
++    monkeypatch.setattr(credentials.subprocess, "run", lambda cmd: calls.append(cmd))
++    assert credentials.run_oauth_setup_token() is None
++    assert lookups == ["claude"]
++    assert calls == [[installed, "setup-token"]]
+diff --git a/tests/hermes_cli/test_external_process_provider_seam.py b/tests/hermes_cli/test_external_process_provider_seam.py
+index f0e927c9..966d2332 100644
+--- a/tests/hermes_cli/test_external_process_provider_seam.py
++++ b/tests/hermes_cli/test_external_process_provider_seam.py
+@@ -86,3 +86,46 @@ def test_copilot_acp_launch_details_are_unchanged(fake_cli, monkeypatch):
+     monkeypatch.setenv("COPILOT_CLI_PATH", str(fake_cli / ("custom-acme.exe" if os.name == "nt" else "custom-acme")))
+     assert resolve_external_process_provider_credentials("copilot-acp")["command"] == str(fake_cli / ("custom-acme.exe" if os.name == "nt" else "custom-acme"))
+     assert resolve_runtime_provider(requested="copilot-acp", target_model="x")["base_url"] == "acp://copilot"
++
++
++@pytest.mark.platforms("posix")
++@pytest.mark.parametrize("command", ["claude", "claude-code", "other-cli"])
++def test_external_process_cli_discovery_with_bare_path(tmp_path, monkeypatch, command):
++    from hermes_cli.auth import (
++        AuthError, get_external_process_provider_status,
++        resolve_external_process_provider_credentials,
++    )
++    from hermes_cli.runtime_provider import resolve_runtime_provider
++    import agent.anthropic_adapter as adapter
++
++    provider_id = "claude-cli-acp-test"
++    register_provider(_AcmeACPProfile(
++        name=provider_id, auth_type="external_process", process_command=command,
++        process_args=("--acp",), base_url=f"process://{provider_id}",
++    ))
++    monkeypatch.setenv("HOME", str(tmp_path))
++    monkeypatch.setenv("PATH", str(tmp_path / "empty-path"))
++    monkeypatch.setattr(adapter, "_CLAUDE_CODE_PREFIXES", ("~/.local/bin",))
++    installed = tmp_path / ".local/bin" / command
++    installed.parent.mkdir(parents=True)
++    installed.write_text("#!/bin/sh\nexit 0\n")
++    installed.chmod(0o755)
++
++    if command == "other-cli":
++        with pytest.raises(AuthError, match="Could not find"):
++            resolve_external_process_provider_credentials(provider_id)
++        assert get_external_process_provider_status(provider_id)["configured"] is False
++    else:
++        assert resolve_external_process_provider_credentials(provider_id)["command"] == str(installed)
++        status = get_external_process_provider_status(provider_id)
++        assert status["resolved_command"] == str(installed)
++        assert status["configured"] is True
++        assert resolve_runtime_provider(requested=provider_id, target_model="test")["command"] == str(installed)
++
++    on_path = tmp_path / "bin" / command
++    on_path.parent.mkdir()
++    on_path.write_text("#!/bin/sh\nexit 0\n")
++    on_path.chmod(0o755)
++    monkeypatch.setenv("PATH", str(on_path.parent))
++    assert resolve_external_process_provider_credentials(provider_id)["command"] == str(on_path)
++    assert get_external_process_provider_status(provider_id)["resolved_command"] == str(on_path)

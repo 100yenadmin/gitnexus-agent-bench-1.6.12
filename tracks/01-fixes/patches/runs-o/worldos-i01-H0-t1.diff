@@ -1,0 +1,182 @@
+diff --git a/servers/engine/combat_ai.py b/servers/engine/combat_ai.py
+index de6e1bc..3735b5a 100644
+--- a/servers/engine/combat_ai.py
++++ b/servers/engine/combat_ai.py
+@@ -417,21 +417,49 @@ def _nearest_foe(view: CombatView) -> Optional[CombatantView]:
+ 
+ def _step_toward(view: CombatView, target: CombatantView, reach_ft: int) -> Optional[tuple[int, int]]:
+     """Pick the reachable cell (within this turn's movement budget) that gets the actor as
+-    close as possible to `target` — ideally into reach. Returns a cell or None (can't improve
+-    / off-grid). Pure: combat_grid.reachable + Chebyshev distance, no state."""
++    close as possible to `target` — ideally into reach. Routes around walls/difficult terrain when
++    they exist. Returns a cell or None (can't improve / off-grid). Pure: combat_grid.reachable +
++    Chebyshev distance, no state."""
+     if not view.grid_enabled or view.actor_cell is None or target.cell is None:
+         return None
+     budget = combat_grid.movement_budget_cells(view.speed, view.cell_size, view.dashed)
+     if budget <= 0:
+         return None
+     occupied = _occupied_cells(view) - {view.actor_cell}
+-    reach = combat_grid.reachable(view.actor_cell, budget, occupied, view.grid_width, view.grid_height)
++    blocking = _blocking_set(view)
++    difficult = _difficult_set(view)
++    # When walls/difficult terrain exist, use terrain-aware routing to prefer clearer paths.
++    # On open floor, use the standard open-floor reachable for byte-for-byte compatibility.
++    if blocking or difficult:
++        reach = combat_grid.reachable(
++            view.actor_cell, budget, occupied, view.grid_width, view.grid_height,
++            impassable=blocking, difficult=difficult,
++        )
++    else:
++        reach = combat_grid.reachable(view.actor_cell, budget, occupied, view.grid_width, view.grid_height)
+     if not reach:
+         return None
+-    best = min(
+-        reach,
+-        key=lambda cell: (combat_grid.distance_ft(cell, target.cell, view.cell_size), cell),
+-    )
++    # When terrain exists, prefer cells with lower routed cost (avoiding difficult terrain).
++    if blocking or difficult:
++        def _routed_cost(cell: tuple[int, int]) -> int:
++            route = combat_grid.shortest_path(
++                view.actor_cell, cell, occupied, view.grid_width, view.grid_height,
++                impassable=blocking, difficult=difficult,
++            )
++            return combat_grid.path_cost_cells(view.actor_cell, cell, route, difficult=difficult)
++        best = min(
++            reach,
++            key=lambda cell: (
++                combat_grid.distance_ft(cell, target.cell, view.cell_size),
++                _routed_cost(cell),
++                cell,
++            ),
++        )
++    else:
++        best = min(
++            reach,
++            key=lambda cell: (combat_grid.distance_ft(cell, target.cell, view.cell_size), cell),
++        )
+     cur = combat_grid.distance_ft(view.actor_cell, target.cell, view.cell_size)
+     new = combat_grid.distance_ft(best, target.cell, view.cell_size)
+     return best if new < cur else None
+@@ -1155,9 +1183,18 @@ def pick_action(
+             if threat is not None and view.grid_enabled and view.actor_cell is not None:
+                 budget = combat_grid.movement_budget_cells(view.speed, view.cell_size, view.dashed)
+                 occupied = _occupied_cells(view) - {view.actor_cell}
+-                reach = combat_grid.reachable(
+-                    view.actor_cell, budget, occupied, view.grid_width, view.grid_height
+-                )
++                blocking = _blocking_set(view)
++                difficult = _difficult_set(view)
++                # Route around walls/difficult terrain when they exist.
++                if blocking or difficult:
++                    reach = combat_grid.reachable(
++                        view.actor_cell, budget, occupied, view.grid_width, view.grid_height,
++                        impassable=blocking, difficult=difficult,
++                    )
++                else:
++                    reach = combat_grid.reachable(
++                        view.actor_cell, budget, occupied, view.grid_width, view.grid_height
++                    )
+                 if reach and threat.cell is not None:
+                     flee_cell = max(
+                         reach,
+diff --git a/servers/engine/tests/test_combat_core.py b/servers/engine/tests/test_combat_core.py
+index e5405ee..c5e1b41 100644
+--- a/servers/engine/tests/test_combat_core.py
++++ b/servers/engine/tests/test_combat_core.py
+@@ -49,6 +49,8 @@ def _mk_view(actor_attacks, foes, grid=False, actor_cell=None, **kw) -> CombatVi
+         bonus_action_available=bool(kw.get("bonus_action_available", True)),
+         is_raging=bool(kw.get("is_raging", False)),
+         bonus_spell_used=bool(kw.get("bonus_spell_used", False)),  # #1106 bonus-action-spell rule
++        blocking=tuple(kw.get("blocking", ())),
++        difficult=tuple(kw.get("difficult", ())),
+     )
+ 
+ 
+@@ -164,6 +166,85 @@ def test_pick_action_dodges_when_nothing_reachable_no_grid_path():
+     assert intent.kind == "dodge"
+ 
+ 
++def test_pick_action_routes_around_walls():
++    # Grid with a wall: monster at (2, 5), foe at (8, 5), wall at x=5 for y=1..11.
++    # The monster should not pick a move cell across the wall (straight line).
++    # Instead, it should route around it.
++    import combat_grid
++    atks = [AttackOption(name="Bite", to_hit=4, damage_expr="1d8", reach_ft=5)]
++    # Wall spans x=5, y in [1, 4] (vertical wall blocking the direct path)
++    wall = [(5, y) for y in range(1, 5)]
++    view = _mk_view(
++        atks,
++        [_foe("t", cell=(8, 5))],
++        grid=True,
++        actor_cell=(2, 5),
++        blocking=wall,
++        w=12,
++        h=12,
++    )
++    intent = combat_ai.pick_action(actor=object(), combat_state=view)
++    assert intent.kind == "move"
++    assert intent.to_cell is not None
++    # The move cell should not be on the wall
++    for x, y in wall:
++        assert intent.to_cell != (x, y), f"move picked a wall cell {intent.to_cell}"
++    # The move should get closer to the foe
++    assert combat_grid.distance_ft(intent.to_cell, (8, 5), 5) < combat_grid.distance_ft((2, 5), (8, 5), 5)
++
++
++def test_pick_action_prefers_clear_path_over_difficult_terrain():
++    # Grid with difficult terrain: monster should prefer a clear path over difficult terrain
++    # when both reach the same distance.
++    import combat_grid
++    atks = [AttackOption(name="Bite", to_hit=4, damage_expr="1d8", reach_ft=5)]
++    # Difficult terrain at (2, 2), (2, 3), (2, 4) — a narrow strip
++    difficult = [(2, 2), (2, 3), (2, 4)]
++    view = _mk_view(
++        atks,
++        [_foe("t", cell=(2, 8))],
++        grid=True,
++        actor_cell=(2, 0),
++        difficult=difficult,
++        w=5,
++        h=9,
++    )
++    intent = combat_ai.pick_action(actor=object(), combat_state=view)
++    assert intent.kind == "move"
++    assert intent.to_cell is not None
++    # The move should avoid difficult terrain when possible (prefer same distance clear path)
++    # When moving straight up (2,0)->(2,8), the direct path (2,1), (2,2 if clear else bypass)
++    # The easiest path avoids difficult terrain, so we just check it's still closing.
++    assert combat_grid.distance_ft(intent.to_cell, (2, 8), 5) < combat_grid.distance_ft((2, 0), (2, 8), 5)
++
++
++def test_pick_action_greedy_v1_issue_1269_walled_grid():
++    """Repro from issue #1269: on a 12x12 grid, monster at (2,5), foe at (8,5),
++    wall at x=5 for y=1..11. Greedy-v1 must NOT pick a move cell beyond the wall."""
++    import combat_grid
++    atks = [AttackOption(name="Claw", to_hit=5, damage_expr="1d6+3", reach_ft=5)]
++    # Wall at x=5 for y in [1, 11] — vertical barrier
++    wall = [(5, y) for y in range(1, 12)]
++    view = _mk_view(
++        atks,
++        [_foe("foe", cell=(8, 5))],
++        grid=True,
++        actor_cell=(2, 5),
++        blocking=wall,
++        w=12,
++        h=12,
++    )
++    intent = combat_ai.pick_action(actor=object(), combat_state=view)
++    # The monster should move toward the foe, but NOT across the wall.
++    # It should route around it (either north through y=0 or south through y=11).
++    assert intent.kind == "move"
++    assert intent.to_cell is not None
++    # Verify the chosen cell is not on the wall
++    assert intent.to_cell not in wall, f"Move picked a wall cell {intent.to_cell}"
++    # Verify it's getting closer (not at x=5 yet, since that's blocked)
++    assert combat_grid.distance_ft(intent.to_cell, (8, 5), 5) < combat_grid.distance_ft((2, 5), (8, 5), 5)
++
++
+ def test_pick_action_is_deterministic():
+     atks = [AttackOption(name="Claw", to_hit=5, damage_expr="2d6+3")]
+     foes = [_foe("a", hp=10, ac=12), _foe("b", hp=10, ac=12)]

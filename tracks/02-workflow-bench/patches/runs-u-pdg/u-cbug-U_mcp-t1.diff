@@ -1,0 +1,152 @@
+diff --git a/gitnexus/src/core/ingestion/languages/c/import-target.ts b/gitnexus/src/core/ingestion/languages/c/import-target.ts
+index 5590bb2..63b0082 100644
+--- a/gitnexus/src/core/ingestion/languages/c/import-target.ts
++++ b/gitnexus/src/core/ingestion/languages/c/import-target.ts
+@@ -47,6 +47,13 @@ const suffixIndex = perFileSet((allFilePaths: ReadonlySet<string>) => {
+ /**
+  * Resolve a C #include path to a file in the workspace.
+  *
++ * A system include keeps its angle brackets in `targetRaw` (`<stdio.h>`, the
++ * same spelling the Objective-C resolver reads) and resolves to nothing:
++ * `#include <…>` searches the system/`-I` paths, never the including file's
++ * directory, and nothing here knows those paths — so the suffix fallback below
++ * could only land on an unrelated in-repo header that happens to share the
++ * name (#2953). Quoted includes arrive without delimiters and take the chain.
++ *
+  * Strategy:
+  * 1. Check for a same-directory sibling relative to the including file
+  *    (matches C compiler `#include "…"` relative-lookup semantics).
+@@ -63,6 +70,7 @@ export function resolveCImportTarget(
+   allFilePaths: ReadonlySet<string>,
+ ): string | null {
+   if (!targetRaw) return null;
++  if (isSystemIncludeSpelling(targetRaw)) return null;
+ 
+   const normalizedTarget = targetRaw.replace(/\\/g, '/');
+ 
+@@ -116,3 +124,9 @@ export function resolveCImportTarget(
+ 
+   return bestMatch;
+ }
++
++/** `<stdio.h>` — an angle-bracket (system) include spelling. */
++function isSystemIncludeSpelling(targetRaw: string): boolean {
++  const trimmed = targetRaw.trim();
++  return trimmed.startsWith('<') && trimmed.endsWith('>');
++}
+diff --git a/gitnexus/test/unit/scope-resolution/external-import-conformance.test.ts b/gitnexus/test/unit/scope-resolution/external-import-conformance.test.ts
+index c1932e0..c7fb0d7 100644
+--- a/gitnexus/test/unit/scope-resolution/external-import-conformance.test.ts
++++ b/gitnexus/test/unit/scope-resolution/external-import-conformance.test.ts
+@@ -48,6 +48,10 @@ import {
+   clearKotlinPackageFacts,
+   setKotlinPackageFact,
+ } from '../../../src/core/ingestion/languages/kotlin/package-facts.js';
++import { getCParser } from '../../../src/core/ingestion/languages/c/query.js';
++import { splitCInclude } from '../../../src/core/ingestion/languages/c/import-decomposer.js';
++import { interpretCImport } from '../../../src/core/ingestion/languages/c/interpret.js';
++import type { SyntaxNode } from '../../../src/core/ingestion/utils/ast-helpers.js';
+ 
+ /** The `composer.json` PSR-4 map `loadPhpComposerConfig` would have produced. */
+ const PHP_COMPOSER: ComposerConfig = { psr4: new Map([['App', 'app']]) };
+@@ -345,9 +349,11 @@ const CASES: ReadonlyMap<SupportedLanguages, ConformanceCase> = new Map([
+       files: ['src/stdio.h', 'include/util.h', 'src/main.c'],
+       fromFile: 'src/main.c',
+       resolutionConfig: undefined,
+-      external: 'stdio.h',
++      // The two spellings differ ONLY by delimiter: `#include <stdio.h>` is the
++      // C library, `#include "stdio.h"` is the sibling header beside main.c.
++      external: '<stdio.h>',
+       decoy: 'src/stdio.h',
+-      reachesDecoy: 'util.h',
++      reachesDecoy: 'stdio.h',
+     },
+   ],
+   [
+@@ -418,7 +424,6 @@ const CASES: ReadonlyMap<SupportedLanguages, ConformanceCase> = new Map([
+ const KNOWN_GAPS: ReadonlyMap<SupportedLanguages, string> = new Map<SupportedLanguages, string>([
+   [SupportedLanguages.Dart, '`package:http/http.dart` -> `lib/http.dart`'],
+   [SupportedLanguages.Swift, '`Foundation` -> `Sources/Foundation/Thing.swift`'],
+-  [SupportedLanguages.C, '`stdio.h` -> `src/stdio.h`'],
+   [SupportedLanguages.CPlusPlus, '`cstdio.h` -> `src/cstdio.h`'],
+ ]);
+ 
+@@ -437,6 +442,13 @@ const KNOWN_GAPS: ReadonlyMap<SupportedLanguages, string> = new Map<SupportedLan
+  *     in-repo. Cheaper, and it holds — but it is a filter on a guess rather
+  *     than a resolution rule, so it answers "probably not external" instead of
+  *     "here is what the language says this means".
++ *   - C holds it on the include's delimiter: `<stdio.h>` keeps its angle
++ *     brackets and the resolver refuses it outright, while `"stdio.h"` still
++ *     takes the sibling → exact → suffix chain. The paired positive reaches the
++ *     SAME decoy through the quoted spelling, so the refusal is the delimiter's
++ *     doing, not an empty corpus. (On the extraction path `interpretCImport`
++ *     already drops system includes; the resolver rule covers every other
++ *     caller, and the C block at the bottom pins both.)
+  *   - Rust holds it for a spelling reason: `::` is not `/` or `.`, so
+  *     `serde::de` never decomposes into a path suffix that could match
+  *     `src/de.rs`. The decoy-reachability arm proves the file IS reachable via
+@@ -529,3 +541,64 @@ describe('external imports never resolve into the repository (#2953)', () => {
+     ).toEqual([]);
+   });
+ });
++
++describe('C: system includes never resolve into the repository, quoted includes still do', () => {
++  const resolver = SCOPE_RESOLVERS.get(SupportedLanguages.C)!;
++  const files = new Set([
++    'src/main.c',
++    'src/stdio.h',
++    'vendor/sys/types.h',
++    'include/util.h',
++    'lib/core/config.h',
++  ]);
++  // What `scanHeaderFiles` hands over: headers live outside `allFilePaths`.
++  const headers: ReadonlySet<string> = new Set(['vendor/sys/types.h', 'include/util.h']);
++  const resolve = (targetRaw: string, config: unknown = undefined) =>
++    filesOf(resolver.resolveImportTarget(targetRaw, 'src/main.c', files, config));
++
++  it.each([
++    ['<stdio.h>', undefined],
++    ['<stdio.h>', headers],
++    ['<sys/types.h>', undefined],
++    ['<sys/types.h>', headers],
++    ['<util.h>', headers],
++    [' <stdio.h> ', undefined],
++  ])('%s resolves to nothing even with a same-named in-repo header', (targetRaw, config) => {
++    expect(resolve(targetRaw, config)).toEqual([]);
++  });
++
++  it.each([
++    // same-directory sibling — the `#include "…"` first lookup
++    ['stdio.h', undefined, 'src/stdio.h'],
++    // exact repo path
++    ['lib/core/config.h', undefined, 'lib/core/config.h'],
++    // suffix fallback, including against the scanned-header augmentation
++    ['core/config.h', undefined, 'lib/core/config.h'],
++    ['sys/types.h', headers, 'vendor/sys/types.h'],
++    ['util.h', headers, 'include/util.h'],
++    // relative path out of the including file's directory
++    ['../include/util.h', headers, 'include/util.h'],
++  ])('quoted %s still resolves', (targetRaw, config, expected) => {
++    expect(resolve(targetRaw, config)).toEqual([expected]);
++  });
++
++  // The pipeline path end to end: parsed `#include` → ParsedImport → resolver.
++  // Both directives name `stdio.h` and the decoy `src/stdio.h` sits beside
++  // main.c, so only the delimiter can tell them apart.
++  function resolveDirective(source: string): readonly string[] {
++    const tree = getCParser().parse(source);
++    const include = tree.rootNode.namedChildren.find((n) => n?.type === 'preproc_include');
++    const split = splitCInclude(include as SyntaxNode);
++    const parsed = split === null ? null : interpretCImport(split);
++    if (parsed === null) return [];
++    return resolve(parsed.targetRaw ?? '');
++  }
++
++  it('`#include <stdio.h>` never reaches the in-repo src/stdio.h', () => {
++    expect(resolveDirective('#include <stdio.h>\n')).toEqual([]);
++  });
++
++  it('`#include "stdio.h"` does reach it', () => {
++    expect(resolveDirective('#include "stdio.h"\n')).toEqual(['src/stdio.h']);
++  });
++});

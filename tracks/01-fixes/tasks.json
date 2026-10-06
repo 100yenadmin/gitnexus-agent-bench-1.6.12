@@ -1,0 +1,320 @@
+[
+ {
+  "id": "lcmx-t02",
+  "repo": "electricsheephq/lcm-x",
+  "repo_url": "https://github.com/electricsheephq/lcm-x",
+  "pr_url": "https://github.com/electricsheephq/lcm-x/pull/180",
+  "pr_number": 180,
+  "base_sha": "cb825ebb7fa3b64df2fa12960b216d30d9d4526c",
+  "fix_sha": "b23fb123cc2875c1229b0c69c6456b476da6fcea",
+  "statement": "lcm_grep crashes when the model sends a null or non-string query.\n\nWhen LCM is enabled, a model sometimes calls `lcm_grep` with `\"query\": null`, which happens often right after a compaction, or with a number such as `0`. The tool call then fails with:\n\n    AttributeError: 'NoneType' object has no attribute 'strip'\n\n(or `'int' object has no attribute 'strip'`). The payload does not tell the model what went wrong. The semantic and hybrid modes fall back to full text and show the same AttributeError text inside a \"full-text fallback failed\" message. A null query to `lcm_recall` is turned into the literal search string \"None\".\n\nExpected:\n- `lcm_grep` in every mode (full_text, semantic, hybrid) and `lcm_recall` coerce the query argument safely.\n- A missing, null or blank query returns the documented `{\"error\": \"No query provided\"}` payload instead of raising.\n- A numeric query such as `0` or `0.0` is searched as its text form, not rejected.\n\nAdd or update tests as appropriate.",
+  "prompt_suffix": "To run tests, use the repository's hermetic pytest wrapper from the repository root: `bash $HARNESS/mining/lcmx_pytest.sh <pytest args>` (for example `bash $HARNESS/mining/lcmx_pytest.sh -q tests/test_x.py`); it points HOME and HERMES_HOME at a temporary directory.",
+  "hidden_test_files": [
+   "tests/test_search_tool_arg_coercion.py"
+  ],
+  "oracle_cmd": "bash $HARNESS/mining/lcmx_pytest.sh -q tests/test_search_tool_arg_coercion.py",
+  "regression_cmd": "bash $HARNESS/mining/lcmx_pytest.sh tests/ -q -n 8 -k 'not foreground_budget and not dispatch_next_split_after_deadline'",
+  "regression_flaky_rerun_cmd": "bash $HARNESS/mining/lcmx_pytest.sh {IDS} -q",
+  "env": {
+   "HERMES_HOME": "{TMP}/hermes-home"
+  },
+  "oracle_timeout_s": 1500,
+  "regression_timeout_s": 2400,
+  "user_instruction_file_on_claude_arms": true,
+  "notes": "1 source file (tools.py, 18 lines). Upstream hermes-lcm PR #442 recreated in lcm-x. Base failures are the reported AttributeError symptoms (behavioural), not missing symbols.",
+  "base_fail_evidence": "base+hidden tests: 8 failed, 9 passed, 102 warnings in 2.40s (exit 1; failure types: AssertionError, AttributeError, KeyError)",
+  "fix_pass_evidence": "fix run1: 17 passed, 102 warnings in 0.14s; run2: 17 passed, 102 warnings in 0.10s",
+  "class": "trivial"
+ },
+ {
+  "id": "lcmx-t03",
+  "repo": "electricsheephq/lcm-x",
+  "repo_url": "https://github.com/electricsheephq/lcm-x",
+  "pr_url": "https://github.com/electricsheephq/lcm-x/pull/171",
+  "pr_number": 171,
+  "base_sha": "c3e8f6bd5802b79f8a182a7feeaf9bcb0b406c94",
+  "fix_sha": "39219f8b5f039bb29b40b4a57a4bcae3f18d78f1",
+  "statement": "`/lcm embed backfill` sends blank leaf summaries to the embedding provider.\n\nWe found this in production on rc1. A summary-only Voyage backfill put a blank leaf summary into a mixed provider batch. Voyage rejected the whole batch with HTTP 400, so the valid summaries next to the blank row were marked failed too.\n\nLeaf summaries whose text is NULL, empty, or only whitespace are currently counted as pending. That includes Unicode whitespace such as \"\\v\\f\", which SQLite's TRIM does not strip. They are then selected and sent to the provider:\n\n- the dry-run preview (`embed backfill`) overcounts `pending:` and `selected:`;\n- `embed backfill --apply` sends the blank text to the provider;\n- `embed backfill --apply --retry-uncertain` resends a blank row that was earlier marked `uncertain`.\n\nExpected:\n- Discovery skips blank summaries everywhere, using Python's `str.strip()` definition of whitespace.\n- The preview counts, the apply run and the retry-uncertain path never select or send them, and only real summaries are embedded.\n- An existing `uncertain` in-flight marker for a skipped blank row is kept as it is, not cleared.\n\nAdd or update tests as appropriate.",
+  "prompt_suffix": "To run tests, use the repository's hermetic pytest wrapper from the repository root: `bash $HARNESS/mining/lcmx_pytest.sh <pytest args>` (for example `bash $HARNESS/mining/lcmx_pytest.sh -q tests/test_x.py`); it points HOME and HERMES_HOME at a temporary directory.",
+  "hidden_test_files": [
+   "tests/test_embedding_backfill.py"
+  ],
+  "oracle_cmd": "bash $HARNESS/mining/lcmx_pytest.sh -q tests/test_embedding_backfill.py",
+  "regression_cmd": "bash $HARNESS/mining/lcmx_pytest.sh tests/ -q -n 8 -k 'not foreground_budget and not dispatch_next_split_after_deadline'",
+  "regression_flaky_rerun_cmd": "bash $HARNESS/mining/lcmx_pytest.sh {IDS} -q",
+  "env": {
+   "HERMES_HOME": "{TMP}/hermes-home"
+  },
+  "oracle_timeout_s": 1500,
+  "regression_timeout_s": 2400,
+  "user_instruction_file_on_claude_arms": true,
+  "notes": "1 source file (command.py, 14 lines). Oracle drives `/lcm embed backfill` via handle_lcm_command with a fake provider.",
+  "base_fail_evidence": "base+hidden tests: 2 failed, 42 passed, 102 warnings in 2.44s (exit 1; failure types: AssertionError)",
+  "fix_pass_evidence": "fix run1: 44 passed, 102 warnings in 4.09s; run2: 44 passed, 102 warnings in 1.98s",
+  "class": "trivial"
+ },
+ {
+  "id": "lcmx-t04",
+  "repo": "electricsheephq/lcm-x",
+  "repo_url": "https://github.com/electricsheephq/lcm-x",
+  "pr_url": "https://github.com/electricsheephq/lcm-x/pull/245",
+  "pr_number": 245,
+  "base_sha": "488f013c79000c867ca384ec053528968dc4ebd0",
+  "fix_sha": "7fcf5543dbef365f7f5ac30763567f5c581f9eb9",
+  "statement": "Summaries that quote the `</lcm-summary>` closing tag are silently thrown away.\n\nThe summarizer must wrap its output in an envelope. The envelope opens with `<lcm-summary nonce=\"...\">`, whose nonce is unique to each call, and ends with `</lcm-summary>`. The body must also end with an \"Expand for details about:\" footer. The closing tag has no nonce, so a transcript that discussed the envelope, or that carries an earlier summary, contains `</lcm-summary>` verbatim. A faithful summary may quote it in the body.\n\nWhen the body contains the closing tag, the summary call returns an empty string with no error and no log. Every later compaction of that session gets an empty summary, so the session can never be summarized again.\n\nRepro: make the summary model return\n`<lcm-summary nonce=\"<this call's nonce>\">\\n- Decision: ... `</lcm-summary>` ...\\nExpand for details about: x\\n</lcm-summary>`.\nThe result is \"\" instead of the body.\n\nExpected: the summary is accepted and its body is extracted intact. The real checks stay in force:\n- exactly one nonce-bearing opening tag;\n- the start and end anchors;\n- the minimum body size;\n- the footer.\n\nAdd or update tests as appropriate.",
+  "prompt_suffix": "To run tests, use the repository's hermetic pytest wrapper from the repository root: `bash $HARNESS/mining/lcmx_pytest.sh <pytest args>` (for example `bash $HARNESS/mining/lcmx_pytest.sh -q tests/test_x.py`); it points HOME and HERMES_HOME at a temporary directory.",
+  "hidden_test_files": [
+   "tests/test_lcm_core.py"
+  ],
+  "oracle_cmd": "bash $HARNESS/mining/lcmx_pytest.sh -q tests/test_lcm_core.py",
+  "regression_cmd": "bash $HARNESS/mining/lcmx_pytest.sh tests/ -q -n 8 -k 'not foreground_budget and not dispatch_next_split_after_deadline'",
+  "regression_flaky_rerun_cmd": "bash $HARNESS/mining/lcmx_pytest.sh {IDS} -q",
+  "env": {
+   "HERMES_HOME": "{TMP}/hermes-home"
+  },
+  "oracle_timeout_s": 1500,
+  "regression_timeout_s": 2400,
+  "user_instruction_file_on_claude_arms": true,
+  "notes": "1 source file (escalation.py, 9 lines). Oracle is the whole tests/test_lcm_core.py (328 tests, ~13s); 1 new test is red at base.",
+  "base_fail_evidence": "base+hidden tests: 1 failed, 327 passed, 112 warnings in 12.90s (exit 1; failure types: AssertionError)",
+  "fix_pass_evidence": "fix run1: 328 passed, 112 warnings in 20.14s; run2: 328 passed, 112 warnings in 18.51s",
+  "class": "trivial"
+ },
+ {
+  "id": "worldos-t01",
+  "repo": "electricsheephq/WorldOS",
+  "repo_url": "https://github.com/electricsheephq/WorldOS",
+  "pr_url": "https://github.com/electricsheephq/WorldOS/pull/1448",
+  "pr_number": 1448,
+  "base_sha": "6b1413f55a491f91dbc7f7d124d7b818e1de71b4",
+  "fix_sha": "82dd852c58f7c370ce3479dae02d6fcae012aa6e",
+  "statement": "Player movement advisories never reach the combat-turn result (#1447 follow-up).\n\nWhen the player moves during a grid fight, the turn goes through the player-turn arbiter (`resolve_player_turn` with an `Intent(kind=\"move\", to_cell=...)`). The engine's move verbs already report problems in the dict they return:\n- `movement_illegal` when the move exceeds the mover's speed budget. The move is advisory-only: it still happens. The note carries details such as `budget_cells`.\n- `move_blocked` when the target cell is impassable. The mover stays put.\n\nThe resolved entry's `result` only ever contains `{\"to_cell\": ..., \"to_zone\": ...}`, so neither note reaches the `/move` HTTP response. The player advisory UI added in #1447 stays dormant.\n\nRepro: in a 20x20 grid fight with a speed-30 hero (a 6-cell budget at cell size 5), move 7 cells. `resolved[\"result\"]` has no `movement_illegal`. Or put an obstacle on (3,0), move there, and see no `move_blocked`.\n\nExpected:\n- When the move verb returns `movement_illegal` or `move_blocked`, copy it into `resolved[\"result\"]`.\n- A legal, in-budget move's `result` stays exactly `{\"to_cell\": ..., \"to_zone\": ...}` with no extra keys.\n\nAdd or update tests as appropriate.",
+  "prompt_suffix": "To run tests, use `uv run -q --directory servers/engine --group dev pytest -q <paths>` from the repository root (test paths are relative to servers/engine).",
+  "hidden_test_files": [
+   "servers/engine/tests/test_player_turn_arbiter.py"
+  ],
+  "oracle_cmd": "uv run -q --directory servers/engine --group dev pytest -q -p no:cacheprovider tests/test_player_turn_arbiter.py",
+  "regression_cmd": "uv run -q --directory servers/engine --group dev pytest -q -p no:cacheprovider",
+  "regression_flaky_rerun_cmd": "uv run -q --directory servers/engine --group dev pytest -q -p no:cacheprovider {IDS}",
+  "env": {},
+  "oracle_timeout_s": 1500,
+  "regression_timeout_s": 2400,
+  "user_instruction_file_on_claude_arms": true,
+  "notes": "1 source file (servers/engine/combat_loop.py, 15 lines). Oracle runs from servers/engine via uv.",
+  "base_fail_evidence": "base+hidden tests: 2 failed, 11 passed in 4.91s (exit 1; failure types: AssertionError)",
+  "fix_pass_evidence": "fix run1: 13 passed in 2.17s; run2: 13 passed in 3.62s",
+  "class": "trivial"
+ },
+ {
+  "id": "worldos-i01",
+  "repo": "electricsheephq/WorldOS",
+  "repo_url": "https://github.com/electricsheephq/WorldOS",
+  "pr_url": "https://github.com/electricsheephq/WorldOS/pull/1275",
+  "pr_number": 1275,
+  "base_sha": "65f134197ec377b472cf2610af64c00869dfeafb",
+  "fix_sha": "b8ac8bae7342a4bcf88a64fa099dec1aca33240d",
+  "statement": "Greedy-v1 monsters ignore walls and difficult terrain when they move (#1269).\n\nThe tactical-v2 combat AI routes around walls. The default `greedy-v1` policy, which is also the fallback, does not, even though its combat view already carries the fight's `blocking` (walls/props) and `difficult` cells.\n\nOn a walled grid fight:\n- An out-of-reach greedy-v1 melee monster picks a move cell straight across a wall, one with no legal route this turn. The engine then refuses the move, or the step looks illegal.\n- With a solid wall between it and its foe, it still targets a cell behind the wall.\n- With morale on (`RETREAT_FRACTION > 0`) and low HP, its flee cell can be past a wall.\n- It walks through difficult terrain even when a clear path of the same cost exists.\n\nRepro: on a 12x12 grid, the monster is at (2,5), its foe at (8,5), and a wall at x=5 for y=1..11. `pick_action(..., policy=\"greedy-v1\")` moves to a cell beyond the wall.\n\nExpected:\n- Greedy-v1's approach and retreat moves pick only cells reachable by routing around blocking cells, and prefer cheaper ground.\n- Open-floor fights pick exactly the same cells as before.\n\nAdd or update tests as appropriate.",
+  "prompt_suffix": "To run tests, use `uv run -q --directory servers/engine --group dev pytest -q <paths>` from the repository root (test paths are relative to servers/engine).",
+  "hidden_test_files": [
+   "servers/engine/tests/test_combat_greedy_terrain.py"
+  ],
+  "oracle_cmd": "uv run -q --directory servers/engine --group dev pytest -q -p no:cacheprovider tests/test_combat_greedy_terrain.py",
+  "regression_cmd": "uv run -q --directory servers/engine --group dev pytest -q -p no:cacheprovider",
+  "regression_flaky_rerun_cmd": "uv run -q --directory servers/engine --group dev pytest -q -p no:cacheprovider {IDS}",
+  "env": {},
+  "oracle_timeout_s": 1500,
+  "regression_timeout_s": 2400,
+  "user_instruction_file_on_claude_arms": true,
+  "notes": "Fix is localized to servers/engine/combat_ai.py (51 lines) but needs combat_grid's terrain-aware reachable/route-cost API and _build_view's blocking/difficult sets.",
+  "base_fail_evidence": "base+hidden tests: 4 failed, 2 passed in 0.05s (exit 1; failure types: AssertionError)",
+  "fix_pass_evidence": "fix run1: 6 passed in 0.04s; run2: 6 passed in 0.04s",
+  "class": "investigation"
+ },
+ {
+  "id": "worldos-i02",
+  "repo": "electricsheephq/WorldOS",
+  "repo_url": "https://github.com/electricsheephq/WorldOS",
+  "pr_url": "https://github.com/electricsheephq/WorldOS/pull/1512",
+  "pr_number": 1512,
+  "base_sha": "6f623c9e0110f4d6b18fb4e70ad09a51f2431a83",
+  "fix_sha": "4c09f20bd2e3228ebd451cae5fc73f91f13083b1",
+  "statement": "Stuck cell: a character standing on a newly impassable cell is treated as trapped (#1511).\n\nPR #1507 made more camp/crypt cells impassable: crates, bedrolls, the fire and walls. Some characters' `stage_cell` now sits on one of those cells, either from an older save or from a fight's end-of-combat write-back.\n\nSymptoms:\n- `rest_blocked_cells(c, loc, exclude_id=mover)` promises that a mover never blocks itself. That only holds for occupancy: when the mover's own cell is impassable terrain, it is still in the blocked set.\n- `end_combat` copies a survivor's final combat-grid cell into their rest `stage_cell` without checking it. The cell can be a wall or prop in the room's rest scene grid even though the fight's own grid allowed it.\n\nExpected:\n- A mover's own cell is never in its blocked set, whether it is blocked by terrain or by occupancy.\n- A character standing on a crate cell can `walk_to` an adjacent open cell.\n- `shortest_path`/`reachable` explicitly exempt the start cell from occupied/impassable checks, and never return the start as a destination.\n- The end-of-combat write-back moves a survivor whose final cell is rest-blocked to the nearest walkable rest cell.\n\nAdd or update tests as appropriate.",
+  "prompt_suffix": "To run tests, use `uv run -q --directory servers/engine --group dev pytest -q <paths>` from the repository root (test paths are relative to servers/engine).",
+  "hidden_test_files": [
+   "servers/engine/tests/test_grid_walkability_p1.py",
+   "servers/engine/tests/test_living_stage.py",
+   "servers/engine/tests/test_walk_to.py"
+  ],
+  "oracle_cmd": "uv run -q --directory servers/engine --group dev pytest -q -p no:cacheprovider tests/test_grid_walkability_p1.py tests/test_living_stage.py tests/test_walk_to.py",
+  "regression_cmd": "uv run -q --directory servers/engine --group dev pytest -q -p no:cacheprovider",
+  "regression_flaky_rerun_cmd": "uv run -q --directory servers/engine --group dev pytest -q -p no:cacheprovider {IDS}",
+  "env": {},
+  "oracle_timeout_s": 1500,
+  "regression_timeout_s": 2400,
+  "user_instruction_file_on_claude_arms": true,
+  "notes": "Fix spans servers/engine/combat_grid.py + server.py (rest_blocked_cells, end_combat write-back). Only 2 of 42 oracle tests are red at base (the rest pin hardening).",
+  "base_fail_evidence": "base+hidden tests: 2 failed, 40 passed in 1.46s (exit 1; failure types: AssertionError)",
+  "fix_pass_evidence": "fix run1: 42 passed in 1.44s; run2: 42 passed in 1.37s",
+  "class": "investigation"
+ },
+ {
+  "id": "lcmx-i01",
+  "repo": "electricsheephq/lcm-x",
+  "repo_url": "https://github.com/electricsheephq/lcm-x",
+  "pr_url": "https://github.com/electricsheephq/lcm-x/pull/768",
+  "pr_number": 768,
+  "base_sha": "e74fd13c8f52df36fba8a380ab861a0dfcc70b44",
+  "fix_sha": "3bad689ec4c2e0665f5e030241bf6097480fbd99",
+  "statement": "Long sessions lose their deepest condensed summaries from the assembled context (#750).\n\nThe defaults are `condensation_fanin=4` and `incremental_max_depth=3`. With them, depth 3 is the top level and holds the condensed history of the whole session. As the session grows, context assembly stops rendering summary depths:\n- from about 760 depth-0 leaves, the depth-3 nodes are no longer rendered;\n- from about 800 leaves, depth 2 drops out as well;\n- from 1000 leaves, only depth 0 is visible.\n\nWhen `incremental_max_depth=-1` (unlimited), condensation also stops building higher levels once 1000 leaves exist. No node is deleted, and `lcm_grep`/`lcm_expand` still find every node. The nodes are only missing from what the model sees in `compress()` output.\n\nRepro: build a DAG with 1,024 leaves condensed up to depth 3. Call `engine._assemble_context(system, tail)`; no depth-3 node appears.\n\nExpected:\n- Assembly and condensation see every depth the session has, at any size.\n- Add `SummaryDAG.get_session_depths(session_id) -> list[int]`. It returns the distinct depths of that session's nodes in ascending order, with no row cap and scoped to the session; it returns `[]` for an unknown session.\n- Other readers of the session's nodes keep their current behaviour.\n\nAdd or update tests as appropriate.",
+  "prompt_suffix": "To run tests, use the repository's hermetic pytest wrapper from the repository root: `bash $HARNESS/mining/lcmx_pytest.sh <pytest args>` (for example `bash $HARNESS/mining/lcmx_pytest.sh -q tests/test_x.py`); it points HOME and HERMES_HOME at a temporary directory.",
+  "hidden_test_files": [
+   "tests/test_issue_750_deep_summary_depth_discovery.py"
+  ],
+  "oracle_cmd": "bash $HARNESS/mining/lcmx_pytest.sh -q tests/test_issue_750_deep_summary_depth_discovery.py",
+  "regression_cmd": "bash $HARNESS/mining/lcmx_pytest.sh tests/ -q -n 8 -k 'not foreground_budget and not dispatch_next_split_after_deadline'",
+  "regression_flaky_rerun_cmd": "bash $HARNESS/mining/lcmx_pytest.sh {IDS} -q",
+  "env": {
+   "HERMES_HOME": "{TMP}/hermes-home"
+  },
+  "oracle_timeout_s": 1500,
+  "regression_timeout_s": 2400,
+  "user_instruction_file_on_claude_arms": true,
+  "notes": "Fix spans dag.py (new SummaryDAG.get_session_depths) + engine.py (_assemble_context/_maybe_condense call sites); the symptom is in engine assembly, the cause is the 1000-row default LIMIT in dag.get_session_nodes. Statement specifies the new method's interface because 1 hidden test calls it directly.",
+  "base_fail_evidence": "base+hidden tests: 6 failed, 3 passed, 130 warnings in 3.75s (exit 1; failure types: AssertionError, AttributeError)",
+  "fix_pass_evidence": "fix run1: 9 passed, 130 warnings in 2.30s; run2: 9 passed, 130 warnings in 8.45s",
+  "class": "investigation"
+ },
+ {
+  "id": "lcmx-i03",
+  "repo": "electricsheephq/lcm-x",
+  "repo_url": "https://github.com/electricsheephq/lcm-x",
+  "pr_url": "https://github.com/electricsheephq/lcm-x/pull/364",
+  "pr_number": 364,
+  "base_sha": "fbe24ccef2c0584ee949a1d9f282f3a5b9026c87",
+  "fix_sha": "9e43907fd66de8de9fb4a5961a26c6079520e7fc",
+  "statement": "Cloning the engine on a current-schema database fails under an active SQLite writer, and Hermes falls back to its built-in compressor (#363).\n\nHermes deep-copies the registered `LCMEngine` for each agent runtime. With `context.engine: lcm` configured, the clone should work against a database that is already at the current schema version without needing SQLite writer ownership.\n\nActual: constructing the clone runs startup work that writes to the database even when there is nothing to migrate or repair. If another valid WAL writer holds the write slot, `copy.deepcopy(prototype)` raises `sqlite3.OperationalError: database is locked`. Hermes catches the error and falls back to `ContextCompressor`, so LCM is silently not active.\n\nReproduction:\n1. Create an `LCMEngine` on a temp database and wait for the first-open integrity scans to finish.\n2. On a second connection in WAL mode, hold `BEGIN IMMEDIATE` with a very short busy timeout.\n3. Call `copy.deepcopy(prototype)`. It fails with \"database is locked\".\n\nExpected:\n- Current-schema startup issues no writes when the stored version is already current and no legacy rows need repair, so the clone succeeds.\n- Real migrations and real legacy-row repairs still write, and still fail closed on contention.\n\nAdd or update tests as appropriate.",
+  "prompt_suffix": "To run tests, use the repository's hermetic pytest wrapper from the repository root: `bash $HARNESS/mining/lcmx_pytest.sh <pytest args>` (for example `bash $HARNESS/mining/lcmx_pytest.sh -q tests/test_x.py`); it points HOME and HERMES_HOME at a temporary directory.",
+  "hidden_test_files": [
+   "tests/test_lcm_core.py"
+  ],
+  "oracle_cmd": "bash $HARNESS/mining/lcmx_pytest.sh -q tests/test_lcm_core.py",
+  "regression_cmd": "bash $HARNESS/mining/lcmx_pytest.sh tests/ -q -n 8 -k 'not foreground_budget and not dispatch_next_split_after_deadline'",
+  "regression_flaky_rerun_cmd": "bash $HARNESS/mining/lcmx_pytest.sh {IDS} -q",
+  "env": {
+   "HERMES_HOME": "{TMP}/hermes-home"
+  },
+  "oracle_timeout_s": 1500,
+  "regression_timeout_s": 2400,
+  "user_instruction_file_on_claude_arms": true,
+  "notes": "Fix is two guarded writes in db_bootstrap.py (schema-version stamp) and store.py (legacy ingested_at backfill probe); the failure surfaces in copy.deepcopy(LCMEngine) -> MessageStore init -> versioned migrations. Oracle is the whole tests/test_lcm_core.py (346 tests; ~15s idle, ~70s under heavy machine load); exactly 1 test is red at base (database is locked).",
+  "base_fail_evidence": "base+hidden tests: 1 failed, 345 passed, 115 warnings in 74.17s (0:01:14) (exit 1; failure types: assert)",
+  "fix_pass_evidence": "fix run1: 346 passed, 115 warnings in 67.53s (0:01:07); run2: 346 passed, 115 warnings in 73.55s (0:01:13)",
+  "class": "investigation"
+ },
+ {
+  "id": "worldos-c01",
+  "repo": "electricsheephq/WorldOS",
+  "repo_url": "https://github.com/electricsheephq/WorldOS",
+  "pr_url": "https://github.com/electricsheephq/WorldOS/pull/1246",
+  "pr_number": 1246,
+  "base_sha": "b1b6f36a9b356243c2e82f33d0ce63c381bddd0f",
+  "fix_sha": "fb5e179a37b20fdd23d271e271d7943c5a8bb7d9",
+  "statement": "Combat action economy is enforced per tool, not per turn (#778).\n\nTwo symptoms:\n- Too permissive: a combatant can cast then cast again, cast then attack, attack then cast, or skip then attack, all in one turn.\n- Too restrictive: a bonus-action spell such as Healing Word consumes the action, so a following `use_action(cid, id, \"action\")` or an action-cost spell such as Fireball is refused.\n\nExpected: the action is one shared resource per turn across `cast_spell`, `attack` and `use_action`, decided by the spell's casting time. Both curated \"1 bonus action\" and SRD \"bonus-action\" spellings count.\n- A bonus-action cast spends only the bonus action.\n- An action cast after the action is used raises `ValueError` containing \"already used its action\".\n- An attack after a cast raises \"already cast a spell\"; an attack after a skip raises \"skipped this turn\".\n- Minute or hour casts in active combat raise \"casting time\".\n- Action Surge allows one more action.\n- A generic `use_action(\"action\")` followed by attacks, and Extra Attack, keep working.\n\nAdd `Combat.action_purpose: Literal[\"\", \"cast\", \"skip\"] = \"\"`. `next_turn` resets it, and old snapshots load it as \"\".\n\nAdd or update tests as appropriate.",
+  "prompt_suffix": "To run tests, use `uv run -q --directory servers/engine --group dev pytest -q <paths>` from the repository root (test paths are relative to servers/engine).",
+  "hidden_test_files": [
+   "servers/engine/tests/test_action_economy.py"
+  ],
+  "oracle_cmd": "uv run -q --directory servers/engine --group dev pytest -q -p no:cacheprovider tests/test_action_economy.py",
+  "regression_cmd": "uv run -q --directory servers/engine --group dev pytest -q -p no:cacheprovider",
+  "regression_flaky_rerun_cmd": "uv run -q --directory servers/engine --group dev pytest -q -p no:cacheprovider {IDS}",
+  "env": {},
+  "oracle_timeout_s": 1500,
+  "regression_timeout_s": 2400,
+  "user_instruction_file_on_claude_arms": true,
+  "notes": "Fix spans servers/engine/models.py, server.py, spells.py (+ qa/combat_smoke.py). Statement specifies the new Combat.action_purpose field and the ValueError message fragments the hidden tests match.",
+  "base_fail_evidence": "base+hidden tests: 10 failed, 8 passed in 1.54s (exit 1; failure types: AssertionError, AttributeError)",
+  "fix_pass_evidence": "fix run1: 18 passed in 0.98s; run2: 18 passed in 0.91s",
+  "class": "cross-module"
+ },
+ {
+  "id": "worldos-c02",
+  "repo": "electricsheephq/WorldOS",
+  "repo_url": "https://github.com/electricsheephq/WorldOS",
+  "pr_url": "https://github.com/electricsheephq/WorldOS/pull/1273",
+  "pr_number": 1273,
+  "base_sha": "9c6a55468f745c37123c4921cb869a23f09b720d",
+  "fix_sha": "b0412127c2060a20001b962631ad8b23d07e1f6a",
+  "statement": "The action-economy gate blocks the attack-roll leg of a cast spell: Guiding Bolt spends its slot and deals 0 (#1270).\n\nRepro: Maren casts Guiding Bolt. `cast_spell` spends the 1st-level slot and returns `automated: false, attack_roll: true`, so the DM must resolve the hit with `attack()`. The next `attack()` on that target is refused with \"already cast a spell this turn and cannot also attack\". The bolt deals no damage, and its `pending_on_hit_riders` entry stays on the caster even after the target dies. Under SRD 5.2 that roll is part of the same casting action.\n\nExpected:\n- Add `Combat.pending_spell_attack`: an optional model that defaults to `None` (old snapshots load as `None`), with fields `source_id`, `target_ids`, `spell` and `round`. Set it only for attack-roll spells that are not auto-resolved.\n- One same-turn `attack()` by that caster on a listed target bypasses the gate, then the record clears.\n- Independent attacks, other targets, double casts and auto-resolved spells stay refused.\n- `next_turn` clears the record.\n- A target's death or `remove_combatant` clears its riders and the record.\n- `qa/assert_behavioral.py` prints `[WARN] unresolved_spell_attack` for an unresolved `automated:false` attack-roll cast before `next_turn`; it never fails the run.\n\nAdd or update tests as appropriate.",
+  "prompt_suffix": "To run tests, use `uv run -q --directory servers/engine --group dev pytest -q <paths>` from the repository root (test paths are relative to servers/engine).",
+  "hidden_test_files": [
+   "qa/test_assert_behavioral.py",
+   "servers/engine/tests/test_action_economy.py"
+  ],
+  "oracle_cmd": "uv run -q --directory servers/engine --group dev pytest -q -p no:cacheprovider ../../qa/test_assert_behavioral.py tests/test_action_economy.py",
+  "regression_cmd": "uv run -q --directory servers/engine --group dev pytest -q -p no:cacheprovider tests ../../qa/test_assert_behavioral.py ../../qa/test_root_cause_analyzer.py",
+  "regression_flaky_rerun_cmd": "uv run -q --directory servers/engine --group dev pytest -q -p no:cacheprovider {IDS}",
+  "env": {},
+  "oracle_timeout_s": 1500,
+  "regression_timeout_s": 2400,
+  "user_instruction_file_on_claude_arms": true,
+  "notes": "Fix spans servers/engine/models.py, server.py, qa/assert_behavioral.py and qa/BEHAVIORAL_GATE_TAXONOMY.json. The regression command adds qa/test_assert_behavioral.py and qa/test_root_cause_analyzer.py (which enforces that every gate check is in the taxonomy JSON - a likely miss for agents). 5 of 7 base failures are AttributeError on the new Combat.pending_spell_attack, which the statement specifies.",
+  "base_fail_evidence": "base+hidden tests: 7 failed, 104 passed in 8.12s (exit 1; failure types: AssertionError, AttributeError)",
+  "fix_pass_evidence": "fix run1: 111 passed in 6.81s; run2: 111 passed in 8.45s",
+  "class": "cross-module"
+ },
+ {
+  "id": "lcmx-c01",
+  "repo": "electricsheephq/lcm-x",
+  "repo_url": "https://github.com/electricsheephq/lcm-x",
+  "pr_url": "https://github.com/electricsheephq/lcm-x/pull/560",
+  "pr_number": 560,
+  "base_sha": "68cce8bbe32e3da05d20220909b55d1668bb92c3",
+  "fix_sha": "8f0246decf250b6960fe2a65df980633f593357e",
+  "statement": "A leaf chunk can split a parallel tool-call group, and the session's compaction then stays broken (#559).\n\nThe leaf summarizer picks the oldest rows greedily up to the token budget. It can stop right after an assistant row that has `tool_calls`, or between that row's sibling tool results. The result left raw after the summary is then an orphan. The host's sequence repair drops it, the row can never be covered, and every later compaction in the session fails with `publication_invariant_conflict` (\"source coverage is not contiguous\"). Rows stay stored; compaction freezes. The leaf rescue's last-row fallback has the same problem.\n\nExpected: a leaf chunk never ends inside a tool-call group. Add a helper `tool_group_safe_end(messages, end) -> int` in `fresh_tail.py` and use it wherever a leaf chunk is cut:\n- if `messages[:end]` stops inside a group, return the index of the group's assistant row;\n- if that would empty the prefix (the group starts at 0), extend `end` through the group's declared results;\n- if a result has no `tool_call_id`, or has an id the assistant did not declare, return `end` unchanged;\n- if the end is outside any group, return it unchanged.\n\nAdd or update tests as appropriate.",
+  "prompt_suffix": "To run tests, use the repository's hermetic pytest wrapper from the repository root: `bash $HARNESS/mining/lcmx_pytest.sh <pytest args>` (for example `bash $HARNESS/mining/lcmx_pytest.sh -q tests/test_x.py`); it points HOME and HERMES_HOME at a temporary directory.",
+  "hidden_test_files": [
+   "tests/test_issue_559_tool_group_boundary.py"
+  ],
+  "oracle_cmd": "bash $HARNESS/mining/lcmx_pytest.sh -q tests/test_issue_559_tool_group_boundary.py",
+  "regression_cmd": "bash $HARNESS/mining/lcmx_pytest.sh tests/ -q -n 8 -k 'not foreground_budget and not dispatch_next_split_after_deadline'",
+  "regression_flaky_rerun_cmd": "bash $HARNESS/mining/lcmx_pytest.sh {IDS} -q",
+  "env": {
+   "HERMES_HOME": "{TMP}/hermes-home"
+  },
+  "oracle_timeout_s": 1500,
+  "regression_timeout_s": 2400,
+  "user_instruction_file_on_claude_arms": true,
+  "notes": "Fix spans fresh_tail.py (new tool_group_safe_end), compaction.py (_select_oldest_leaf_chunk) and engine.py (leaf-rescue fallback); small (+25/-3) but three modules. 9 of 14 base failures are ImportError of the new helper, whose name/location/semantics the statement specifies; 5 are behavioural. 6 oracle cases skip without a real Hermes runtime (hermes_cli/agent.agent_runtime_helpers not importable) in both base and fix.",
+  "base_fail_evidence": "base+hidden tests: 14 failed, 2 passed, 6 skipped, 113 warnings in 6.20s (exit 1; failure types: AssertionError, ImportError)",
+  "fix_pass_evidence": "fix run1: 16 passed, 6 skipped, 113 warnings in 2.40s; run2: 16 passed, 6 skipped, 113 warnings in 17.56s",
+  "class": "cross-module"
+ },
+ {
+  "id": "lcmx-c03",
+  "repo": "electricsheephq/lcm-x",
+  "repo_url": "https://github.com/electricsheephq/lcm-x",
+  "pr_url": "https://github.com/electricsheephq/lcm-x/pull/837",
+  "pr_number": 837,
+  "base_sha": "88629e6eeca305644c5c2dcdf56429a1ab72fa9a",
+  "fix_sha": "f0e38c61fad0be936e07892e5f47c0fed380e8ea",
+  "statement": "Host-uid shadow hygiene: stale bindings survive message deletes, and lineage keys collide across Hermes homes (#836).\n\nShadow-mode host message identity (v0.26.0) records `host_uid_bindings` rows that map store ids to host `message_uid`s under a persisted lineage key.\n\n1. Bindings outlive their messages. Deleting a session's messages with `MessageStore.delete_session_messages` or by `/lcm doctor clean apply` removes the rows but leaves their bindings. Stores rebuilt by the legacy bootstrap use a plain `INTEGER PRIMARY KEY`, so SQLite can reuse a deleted id, and the new row then inherits a stale binding.\n\n2. The persisted lineage key is just the root session id. When one LCM database is shared by several Hermes homes, two profiles' roots with the same session id share a key and mix their bindings.\n\nExpected:\n- Both delete paths remove the bindings of the deleted store ids in the same transaction. Other sessions' bindings stay. A store without the side table deletes as before and does not create the table.\n- `engine._host_uid_lineage_key()` returns `(\"<home_tag>:<root>\", None)`, where `home_tag` is the first 16 hex chars of the sha256 of the resolved `state.db` path, so a symlinked home gives the same tag.\n\nAdd or update tests as appropriate.",
+  "prompt_suffix": "To run tests, use the repository's hermetic pytest wrapper from the repository root: `bash $HARNESS/mining/lcmx_pytest.sh <pytest args>` (for example `bash $HARNESS/mining/lcmx_pytest.sh -q tests/test_x.py`); it points HOME and HERMES_HOME at a temporary directory.",
+  "hidden_test_files": [
+   "tests/test_host_uid_hygiene.py",
+   "tests/test_host_uid_shadow.py"
+  ],
+  "oracle_cmd": "bash $HARNESS/mining/lcmx_pytest.sh -q tests/test_host_uid_hygiene.py tests/test_host_uid_shadow.py",
+  "regression_cmd": "bash $HARNESS/mining/lcmx_pytest.sh tests/ -q -n 8 -k 'not foreground_budget and not dispatch_next_split_after_deadline'",
+  "regression_flaky_rerun_cmd": "bash $HARNESS/mining/lcmx_pytest.sh {IDS} -q",
+  "env": {
+   "HERMES_HOME": "{TMP}/hermes-home"
+  },
+  "oracle_timeout_s": 1500,
+  "regression_timeout_s": 2400,
+  "user_instruction_file_on_claude_arms": true,
+  "notes": "Fix spans host_uid.py (namespaced lineage key), store.py (delete_session_messages purge) and command.py (/lcm doctor clean apply purge); also updates tests/test_host_uid_shadow.py for the tagged key (part of the oracle). Statement specifies the exact key format because hidden tests assert it.",
+  "base_fail_evidence": "base+hidden tests: 15 failed, 40 passed, 139 warnings in 27.90s (exit 1; failure types: AssertionError, IndexError)",
+  "fix_pass_evidence": "fix run1: 55 passed, 139 warnings in 16.65s; run2: 55 passed, 139 warnings in 27.63s",
+  "class": "cross-module"
+ }
+]

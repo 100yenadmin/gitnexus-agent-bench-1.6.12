@@ -1,0 +1,6 @@
+done format_bytes ['_fmt_bytes', '_format_size', '_human_bytes']
+done _norm []
+done _fail []
+done normalize_provider ['_norm_prov', '_normalize_provider', 'normalize', 'normalize_model_provider', 'normalize_registry_provider']
+done CredentialPool.has_credentials []
+done _write []

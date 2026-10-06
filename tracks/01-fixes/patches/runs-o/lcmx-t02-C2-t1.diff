@@ -1,0 +1,78 @@
+diff --git a/tests/test_lcm_recall.py b/tests/test_lcm_recall.py
+index 9079ec4..7f96072 100644
+--- a/tests/test_lcm_recall.py
++++ b/tests/test_lcm_recall.py
+@@ -2912,3 +2912,46 @@ def test_reversible_rejection_stays_reachable_after_a_partial_refund():
+     assert [e["hit"]["store_id"] for e in regained] == [3], (
+         "a revisitable candidate must never become unreachable"
+     )
++
++
++@pytest.mark.parametrize("mode", ["full_text", "semantic", "hybrid", "recall"])
++@pytest.mark.parametrize("query_args", [{}, {"query": None}, {"query": ""}, {"query": " \t\n"}])
++def test_search_empty_query_returns_documented_error(recall_engine, mode, query_args):
++    args = {"mode": mode, **query_args}
++    tool = lcm_tools.lcm_recall if mode == "recall" else lcm_tools.lcm_grep
++
++    assert json.loads(tool(args, engine=recall_engine)) == {"error": "No query provided"}
++    assert args == {"mode": mode, **query_args}
++
++
++@pytest.mark.parametrize("mode", ["full_text", "semantic", "hybrid", "recall"])
++@pytest.mark.parametrize("query", [0, 0.0, 42])
++@pytest.mark.parametrize("provider_state", ["enabled", "disabled", "unavailable"])
++def test_search_numeric_query_uses_text_form(
++    recall_engine, monkeypatch, mode, query, provider_state,
++):
++    text = "numeric values 0 0.0 42"
++    recall_engine._store.append(CURRENT, {"role": "user", "content": text})
++    node_id = _add_summary(recall_engine, text, session_id=CURRENT, created_at=time.time())
++    _seed_summary_vectors(recall_engine, [(node_id, [1.0, 0.0])])
++    provider = MockProvider()
++    if provider_state == "disabled":
++        recall_engine._config.embeddings_enabled = False
++
++    def resolve(_config):
++        if provider_state == "unavailable":
++            raise RuntimeError("synthetic provider failure")
++        return provider
++
++    monkeypatch.setattr(lcm_tools, "resolve_provider", resolve)
++    args = {"mode": mode, "query": query}
++    tool = lcm_tools.lcm_recall if mode == "recall" else lcm_tools.lcm_grep
++    payload = json.loads(tool(args, engine=recall_engine))
++
++    assert "error" not in payload
++    assert payload["query"] == str(query)
++    assert payload["hits" if mode == "recall" else "results"]
++    if provider_state == "enabled" and mode != "full_text":
++        assert provider.queries
++        assert all(value == str(query) for value in provider.queries)
++    assert args == {"mode": mode, "query": query}
+diff --git a/tools.py b/tools.py
+index 766445e..f421593 100644
+--- a/tools.py
++++ b/tools.py
+@@ -3455,6 +3455,12 @@ def _lcm_grep_hybrid(
+ def lcm_grep(args: Dict[str, Any], **kwargs) -> str:
+     """Search LCM history using full-text, semantic, or RRF hybrid retrieval."""
+     request_started = time.monotonic()
++    raw_query = args.get("query")
++    query = "" if raw_query is None else str(raw_query).strip()
++    if not query:
++        return json.dumps({"error": "No query provided"})
++    # Normalize once so every arm, including full-text fallbacks, sees text.
++    args = {**args, "query": query}
+     mode = str(args.get("mode") or "full_text").strip().lower()
+     if mode == "full_text":
+         return _lcm_grep_full_text(args, **kwargs)
+@@ -4587,7 +4593,8 @@ def lcm_recall(args: Dict[str, Any], **kwargs) -> str:
+     if engine is None:
+         return json.dumps({"error": "LCM engine not initialized"})
+ 
+-    query = str(args.get("query", "")).strip()
++    raw_query = args.get("query")
++    query = "" if raw_query is None else str(raw_query).strip()
+     if not query:
+         return json.dumps({"error": "No query provided"})
+ 

@@ -1,0 +1,18 @@
+{
+ "schema_version": 1,
+ "verdict": "comment",
+ "findings": [
+  {
+   "id": "impact-pdg-measure-stale-dist-preferred",
+   "severity": "low",
+   "path": "gitnexus/bench/impact-pdg/measure.mjs",
+   "line": 128,
+   "end_line": 130,
+   "category": "correctness",
+   "scenario": "A developer edits analyzer/PDG code under gitnexus/src and runs `node --import tsx bench/impact-pdg/measure.mjs --check` (or --mutation) locally without rebuilding. Because any pre-existing gitnexus/dist/cli/index.js is now preferred unconditionally, the child `analyze` runs the old compiled analyzer while the parent process imports LocalBackend from src, so the bench silently scores stale code (or the src backend reads a DB written by an older dist schema), producing misleading pass/fail against baselines.json.",
+   "evidence": "cliChildArgs() returns `fs.existsSync(DIST_CLI) ? [DIST_CLI, ...rest] : [TSX_CLI, CLI_ENTRY, ...rest]` with no freshness check; before this diff the analyze entry ran from src/cli/index.ts via tsx. Only the CI workflow (.github/workflows/impact-pdg-mutation-report.yml, setup with build: 'true') guarantees a fresh dist; local runs have no such guarantee and nothing warns.",
+   "recommendation": "Log which CLI path was selected and warn (or fall back to the tsx/src path) when dist/cli/index.js is older than the newest file under src/, or add an explicit env override (e.g. IMPACT_PDG_CLI=src|dist) so local runs cannot silently measure a stale build.",
+   "blocking": false
+  }
+ ]
+}

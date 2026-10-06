@@ -1,0 +1,18 @@
+{
+ "schema_version": 1,
+ "verdict": "comment",
+ "findings": [
+  {
+   "id": "cpp-qualified-ns-test-invalid-type-import",
+   "severity": "low",
+   "path": "gitnexus/test/unit/cpp-qualified-ns-index.test.ts",
+   "line": 16,
+   "end_line": 16,
+   "category": "tests",
+   "scenario": "Type-checking the new test with the repository's tsconfig.test.json fails because ScopeResolutionIndexes is imported from a package that does not export it.",
+   "evidence": "A focused TypeScript semantic check using tsconfig.test.json reports TS2305 at line 16: Module 'gitnexus-shared' has no exported member 'ScopeResolutionIndexes'. The type is defined in gitnexus/src/core/ingestion/model/scope-resolution-indexes.ts; the production resolver imports it from that module. Vitest transpilation and the source-only CI typecheck do not detect this test import error.",
+   "recommendation": "Remove ScopeResolutionIndexes from the gitnexus-shared import and import it as a type from ../../src/core/ingestion/model/scope-resolution-indexes.js.",
+   "blocking": false
+  }
+ ]
+}

@@ -1,0 +1,244 @@
+{
+ "locations": [
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/rust-harvest.ts",
+   "line": 494
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/rust-harvest.ts",
+   "line": 495
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/rust-harvest.ts",
+   "line": 500
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/rust-harvest.ts",
+   "line": 709
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/rust-harvest.ts",
+   "line": 875
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/rust-harvest.ts",
+   "line": 937
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/rust-harvest.ts",
+   "line": 975
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/typescript-harvest.ts",
+   "line": 453
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/typescript-harvest.ts",
+   "line": 454
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/typescript-harvest.ts",
+   "line": 479
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/typescript-harvest.ts",
+   "line": 748
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/typescript-harvest.ts",
+   "line": 842
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/c-cpp-harvest.ts",
+   "line": 474
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/c-cpp-harvest.ts",
+   "line": 537
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/php-harvest.ts",
+   "line": 385
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/php-harvest.ts",
+   "line": 386
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/php-harvest.ts",
+   "line": 390
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/php-harvest.ts",
+   "line": 672
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/csharp-harvest.ts",
+   "line": 480
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/csharp-harvest.ts",
+   "line": 557
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/python-harvest.ts",
+   "line": 498
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/python-harvest.ts",
+   "line": 499
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/python-harvest.ts",
+   "line": 504
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/python-harvest.ts",
+   "line": 691
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/python-harvest.ts",
+   "line": 748
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/python-harvest.ts",
+   "line": 823
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/java-harvest.ts",
+   "line": 437
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/java-harvest.ts",
+   "line": 511
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/swift-harvest.ts",
+   "line": 456
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/swift-harvest.ts",
+   "line": 457
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/swift-harvest.ts",
+   "line": 462
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/swift-harvest.ts",
+   "line": 641
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/swift-harvest.ts",
+   "line": 677
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/swift-harvest.ts",
+   "line": 749
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/kotlin-harvest.ts",
+   "line": 400
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/kotlin-harvest.ts",
+   "line": 401
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/kotlin-harvest.ts",
+   "line": 406
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/kotlin-harvest.ts",
+   "line": 662
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/kotlin-harvest.ts",
+   "line": 701
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/kotlin-harvest.ts",
+   "line": 806
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/ruby-harvest.ts",
+   "line": 405
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/ruby-harvest.ts",
+   "line": 406
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/ruby-harvest.ts",
+   "line": 413
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/ruby-harvest.ts",
+   "line": 542
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/ruby-harvest.ts",
+   "line": 578
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/ruby-harvest.ts",
+   "line": 620
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/go-harvest.ts",
+   "line": 350
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/go-harvest.ts",
+   "line": 351
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/go-harvest.ts",
+   "line": 357
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/go-harvest.ts",
+   "line": 560
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/go-harvest.ts",
+   "line": 585
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/go-harvest.ts",
+   "line": 650
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/scope-tree-harvest.ts",
+   "line": 154
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/scope-tree-harvest.ts",
+   "line": 155
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/scope-tree-harvest.ts",
+   "line": 159
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/dart-harvest.ts",
+   "line": 417
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/dart-harvest.ts",
+   "line": 418
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/dart-harvest.ts",
+   "line": 423
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/dart-harvest.ts",
+   "line": 691
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/dart-harvest.ts",
+   "line": 932
+  }
+ ]
+}

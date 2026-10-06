@@ -1,0 +1,251 @@
+diff --git a/agent/conversation_loop.py b/agent/conversation_loop.py
+index d8860083..29c46a57 100644
+--- a/agent/conversation_loop.py
++++ b/agent/conversation_loop.py
+@@ -1739,6 +1739,7 @@ def run_conversation(
+         )
+     result = export_current_turn_boundary(agent, result, user_message)
+     _close_durable_failed_turn(agent, result)
++    result.setdefault("response_reused", False)
+     return result
+ 
+ 
+diff --git a/agent/turn_finalizer.py b/agent/turn_finalizer.py
+index f71dd6c1..c81d4fe4 100644
+--- a/agent/turn_finalizer.py
++++ b/agent/turn_finalizer.py
+@@ -534,6 +534,12 @@ def finalize_turn(
+         _pending_verification_response_previewed=_pending_verification_response_previewed,
+         logger=logger,
+     )
++    # Capture only explicit reuse paths, never infer reuse from equal model replies.
++    # Later footers, explainers and output hooks can change the delivered candidate.
++    reused_response = final_response if (
++        _turn_exit_reason == "fallback_prior_turn_content"
++        or (preserved_verification_fallback and _pending_verification_response_previewed)
++    ) else None
+ 
+     # A non-interrupted turn that fell out of the loop after a tool result, with no
+     # follow-up assistant text, is the Desktop/TUI "silent stop" (#55316, #54756): the
+@@ -692,6 +698,7 @@ def finalize_turn(
+         "response_transformed": _response_transformed,
+         "pre_transform_response": _pre_transform_response,
+         "response_previewed": getattr(agent, "_response_was_previewed", False),
++        "response_reused": bool(reused_response) and final_response == reused_response,
+         "model": agent.model,
+         # requested_model / served_model: proxy-reported deployment or Hermes' own fallback route.
+         **result_model_fields(agent),
+diff --git a/apps/shared/src/gateway-contract.generated.ts b/apps/shared/src/gateway-contract.generated.ts
+index 4d82994b..3f68c2df 100644
+--- a/apps/shared/src/gateway-contract.generated.ts
++++ b/apps/shared/src/gateway-contract.generated.ts
+@@ -4562,6 +4562,7 @@ export interface MessageCompletePayload {
+   reasoning?: string | null
+   warning?: string | null
+   response_previewed?: boolean | null
++  response_reused?: boolean | null
+   response_transformed?: boolean | null
+   billing?: BillingBlock | null
+   failure_reason?: string | null
+diff --git a/apps/shared/src/gateway-contract.openrpc.json b/apps/shared/src/gateway-contract.openrpc.json
+index 9f32d891..8cf27e31 100644
+--- a/apps/shared/src/gateway-contract.openrpc.json
++++ b/apps/shared/src/gateway-contract.openrpc.json
+@@ -18446,6 +18446,18 @@
+             "default": null,
+             "title": "Response Previewed"
+           },
++          "response_reused": {
++            "anyOf": [
++              {
++                "type": "boolean"
++              },
++              {
++                "type": "null"
++              }
++            ],
++            "default": null,
++            "title": "Response Reused"
++          },
+           "response_transformed": {
+             "anyOf": [
+               {
+diff --git a/tests/agent/test_response_reused.py b/tests/agent/test_response_reused.py
+new file mode 100644
+index 00000000..b52f84fa
+--- /dev/null
++++ b/tests/agent/test_response_reused.py
+@@ -0,0 +1,105 @@
++"""Final response reuse is provenance, not equality with earlier model text."""
++from types import SimpleNamespace
++from unittest.mock import patch
++
++import pytest
++
++from run_agent import AIAgent
++
++
++def _response(text, tool=False):
++    calls = [SimpleNamespace(
++        id="todo1", type="function",
++        function=SimpleNamespace(name="todo_list", arguments='{"todos": []}'),
++    )] if tool else None
++    return SimpleNamespace(
++        choices=[SimpleNamespace(
++            message=SimpleNamespace(content=text, tool_calls=calls),
++            finish_reason="tool_calls" if tool else "stop",
++        )], model="test/model", usage=None,
++    )
++
++
++@pytest.fixture
++def agent():
++    with (
++        patch("model_tools.get_tool_definitions", return_value=[]),
++        patch("model_tools.check_toolset_requirements", return_value={}),
++        patch("agent.process_bootstrap.OpenAI"),
++    ):
++        instance = AIAgent(
++            api_key="test-key", base_url="https://example.invalid/v1",
++            provider="openai-compat", model="test/model", quiet_mode=True,
++            skip_context_files=True, skip_memory=True,
++        )
++    instance._cached_system_prompt = "stable test prompt"
++    instance._session_db = None
++    instance.save_trajectories = False
++    instance.compression_enabled = False
++    instance._cleanup_task_resources = lambda *_a, **_kw: None
++    instance.valid_tool_names = {"todo_list"}
++    return instance
++
++
++@pytest.mark.parametrize("followup,append_footer,reused", [
++    ("", False, True),
++    ("Here is the answer.", False, False),
++    ("", True, False),
++])
++def test_housekeeping_reuse_requires_unchanged_fallback(agent, monkeypatch, followup, append_footer, reused):
++    answers = iter([_response("Here is the answer.", tool=True), _response(followup)])
++    agent._interruptible_api_call = lambda _kwargs: next(answers)
++    delivered = []
++    agent.interim_assistant_callback = lambda text, **_kw: delivered.append(text)
++    if append_footer:
++        monkeypatch.setattr(
++            "agent.turn_finalizer._append_file_mutation_footer",
++            lambda _agent, text, _logger: text + "\n\nAdditional note.",
++        )
++    with patch("hermes_cli.plugins.invoke_hook", return_value=[]):
++        result = agent.run_conversation("answer and update todos")
++
++    assert delivered == ["Here is the answer."]
++    assert result["response_reused"] is reused
++    assert result["final_response"] == "Here is the answer." + (
++        "\n\nAdditional note." if append_footer else ""
++    )
++    if not followup:
++        assert result["turn_exit_reason"] == "fallback_prior_turn_content"
++
++
++@pytest.mark.parametrize("previewed,append_footer,reused", [
++    (True, False, True), (False, False, False), (True, True, False),
++])
++def test_budget_candidate_reuse_requires_preview_and_unchanged_text(
++    agent, monkeypatch, previewed, append_footer, reused,
++):
++    agent.max_iterations = 1
++    agent.iteration_budget.max_total = 1
++    delivered = []
++
++    def model_call(_kwargs):
++        if previewed:
++            delivered.append("Here is the answer.")
++            agent._record_streamed_assistant_text("Here is the answer.")
++        return _response("Here is the answer.")
++
++    agent._interruptible_api_call = model_call
++    monkeypatch.setenv("HERMES_VERIFY_ON_STOP", "1")
++    if append_footer:
++        monkeypatch.setattr(
++            "agent.turn_finalizer._append_file_mutation_footer",
++            lambda _agent, text, _logger: text + "\n\nAdditional note.",
++        )
++    with (
++        patch("agent.verification_stop.build_verify_on_stop_nudge", return_value="verify it"),
++        patch("hermes_cli.plugins.invoke_hook", return_value=[]),
++    ):
++        result = agent.run_conversation("edit changed.py")
++
++    assert delivered == (["Here is the answer."] if previewed else [])
++    assert result["turn_exit_reason"] == "max_iterations_reached(1/1)"
++    assert result["response_reused"] is reused
++    assert result["final_response"] == "Here is the answer." + (
++        "\n\nAdditional note." if append_footer else ""
++    )
+diff --git a/tests/tui_gateway/test_turn_payload_response_reused.py b/tests/tui_gateway/test_turn_payload_response_reused.py
+new file mode 100644
+index 00000000..f7d60704
+--- /dev/null
++++ b/tests/tui_gateway/test_turn_payload_response_reused.py
+@@ -0,0 +1,37 @@
++"""Completion events forward reuse provenance only for a nonempty final."""
++import contextlib
++from types import SimpleNamespace
++
++import pytest
++
++import tui_gateway.server as srv
++
++
++@pytest.mark.parametrize("text,flag,expected", [
++    ("Here is the answer.", True, True),
++    ("Here is the answer.", False, False),
++    ("Here is the answer.", None, False),
++    ("", True, False),
++])
++def test_complete_turn_payload_preserves_reuse_on_wire(monkeypatch, text, flag, expected):
++    monkeypatch.setattr(srv, "_get_usage", lambda _agent: {})
++    monkeypatch.setattr(srv, "render_message", lambda _text, _cols: None)
++    monkeypatch.setattr(srv, "_clear_inflight_turn", lambda _session: None)
++    agent = SimpleNamespace(_session_title_hint="Scratch")
++    result = {"final_response": text}
++    if flag is not None:
++        result["response_reused"] = flag
++    st = SimpleNamespace(
++        result=result, agent=agent, terminal_callback=None,
++        receipt_committed=True, receipt_attempted=False, marker_key="", error_retained=False,
++        error_detail="", prompt_text="ping",
++    )
++    session = {"pending_title": None, "session_key": "k",
++               "history_lock": contextlib.nullcontext(), "agent": agent}
++    payload, _, _ = srv._complete_turn_payload(session, st, None, 80)
++    frame = srv._event_frame("message.complete", "sid", payload)
++    for value in (payload, frame["params"]["payload"]):
++        if expected:
++            assert value["response_reused"] is True
++        else:
++            assert "response_reused" not in value
+diff --git a/tui_gateway/contracts/events.py b/tui_gateway/contracts/events.py
+index 78690c6a..a5f19a46 100644
+--- a/tui_gateway/contracts/events.py
++++ b/tui_gateway/contracts/events.py
+@@ -192,6 +192,7 @@ class MessageCompletePayload(Payload):
+     reasoning: str | None = None
+     warning: str | None = None
+     response_previewed: bool | None = None
++    response_reused: bool | None = None
+     response_transformed: bool | None = None
+     billing: BillingBlock | None = None
+     failure_reason: str | None = None
+diff --git a/tui_gateway/prompt_turn.py b/tui_gateway/prompt_turn.py
+index 6152dd0c..68f570b9 100644
+--- a/tui_gateway/prompt_turn.py
++++ b/tui_gateway/prompt_turn.py
+@@ -936,6 +936,8 @@ def _complete_turn_payload(session: dict, st: _TurnRun, status_note: str | None,
+     if _is_bot_mode_session(session):
+         raw = _bot_mode_delivery_text(raw, successful=status == "complete")
+     payload = {"text": raw, "usage": _get_usage(agent), "status": status}
++    if result.get("response_reused") and raw:
++        payload["response_reused"] = True
+     if receipt := _persisted_turn_receipt(st, raw, status):
+         payload["persisted_turn"] = receipt
+     if last_reasoning:

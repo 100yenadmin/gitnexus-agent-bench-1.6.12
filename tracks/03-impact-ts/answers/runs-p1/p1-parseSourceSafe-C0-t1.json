@@ -1,0 +1,160 @@
+{
+ "locations": [
+  {
+   "path": "gitnexus/src/core/embeddings/ast-utils.ts",
+   "line": 44
+  },
+  {
+   "path": "gitnexus/src/core/group/extractors/graphql-extractor.ts",
+   "line": 625
+  },
+  {
+   "path": "gitnexus/src/core/group/extractors/graphql-extractor.ts",
+   "line": 708
+  },
+  {
+   "path": "gitnexus/src/core/group/extractors/grpc-extractor.ts",
+   "line": 480
+  },
+  {
+   "path": "gitnexus/src/core/group/extractors/http-route-extractor.ts",
+   "line": 426
+  },
+  {
+   "path": "gitnexus/src/core/group/extractors/http-route-extractor.ts",
+   "line": 457
+  },
+  {
+   "path": "gitnexus/src/core/group/extractors/include-extractor.ts",
+   "line": 550
+  },
+  {
+   "path": "gitnexus/src/core/group/extractors/python-workspace-extractor.ts",
+   "line": 158
+  },
+  {
+   "path": "gitnexus/src/core/group/extractors/thrift-extractor.ts",
+   "line": 315
+  },
+  {
+   "path": "gitnexus/src/core/group/extractors/tree-sitter-scanner.ts",
+   "line": 159
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/import-resolvers/node-workspace-packages.ts",
+   "line": 833
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/languages/c/captures.ts",
+   "line": 43
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/languages/cpp/captures.ts",
+   "line": 167
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/languages/cpp/range-bindings.ts",
+   "line": 42
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/languages/csharp/captures.ts",
+   "line": 120
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/languages/dart/captures.ts",
+   "line": 151
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/languages/go/captures.ts",
+   "line": 114
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/languages/go/range-binding.ts",
+   "line": 30
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/languages/java/captures.ts",
+   "line": 138
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/languages/java/spring-config-bindings.ts",
+   "line": 230
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/languages/javascript/captures.ts",
+   "line": 981
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/languages/kotlin/captures.ts",
+   "line": 101
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/languages/kotlin/spring-config-bindings.ts",
+   "line": 424
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/languages/kotlin/spring-config-bindings.ts",
+   "line": 433
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/languages/objective-c.ts",
+   "line": 258
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/languages/php/captures.ts",
+   "line": 110
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/languages/python/captures.ts",
+   "line": 72
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/languages/ruby/captures.ts",
+   "line": 221
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/languages/rust/captures.ts",
+   "line": 38
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/languages/rust/range-binding.ts",
+   "line": 51
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/languages/swift/captures.ts",
+   "line": 141
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/languages/typescript/captures.ts",
+   "line": 383
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/languages/zig/captures.ts",
+   "line": 1161
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/languages/zig/range-binding.ts",
+   "line": 85
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/languages/zig/workspace-static-gating.ts",
+   "line": 34
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/pipeline-phases/parse-impl.ts",
+   "line": 369
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/route-extractors/django.ts",
+   "line": 411
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/route-extractors/django.ts",
+   "line": 446
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/workers/parse-worker.ts",
+   "line": 1617
+  }
+ ]
+}

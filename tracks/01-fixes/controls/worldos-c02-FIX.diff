@@ -1,0 +1,464 @@
+diff --git a/qa/BEHAVIORAL_GATE_TAXONOMY.json b/qa/BEHAVIORAL_GATE_TAXONOMY.json
+index c382a8d9..e55832af 100644
+--- a/qa/BEHAVIORAL_GATE_TAXONOMY.json
++++ b/qa/BEHAVIORAL_GATE_TAXONOMY.json
+@@ -272,6 +272,12 @@
+       "retest": "bash qa/run_combat_sprint.sh sprint-retest",
+       "hint": "A Guiding Bolt advantage rider LANDED on a target (attack -> on_hit_effect_applied: ['Guiding Bolt']) but the next attack against that same target did NOT carry advantage_source='Guiding Bolt' — the SRD 'next attack roll against it has Advantage' rider was dropped. The engine auto-grants + consumes it via combat.attack_modifiers + attack() (#194/#1033), so a miss means the engine attack() path was bypassed (the follow-up was narrated, not resolved through the tool) or the marker expired early. Check that the follow-up strike is resolved via attack() against the marked target within the caster's next-turn window. WARN only."
+     },
++    "unresolved_spell_attack": {
++      "category": "DM_ADHERENCE",
++      "likely_code_locations": ["servers/engine/server.py", "skills/dungeon-master/SKILL.md", "qa/rubric_angry_dm.md"],
++      "retest": "bash qa/run_combat_sprint.sh sprint-retest",
++      "hint": "A DM-resolved attack-roll spell (Guiding Bolt, Fire Bolt cast via cast_spell -> the result carries automated:false + attack_roll:true) leaves its to-hit for the DM to make via attack(). The caster never made a same-turn attack() before the next next_turn, so the spell spent its slot and dealt ZERO (#1270). The engine now lets that resolution attack() through the cast+attack economy gate (Combat.pending_spell_attack), so a miss means the DM narrated the bolt instead of resolving it through attack(). Reinforce 'resolve an attack-roll spell's to-hit via attack(attacker=caster, target=the spell's target) the SAME turn' in the DM/angry-DM guidance. WARN only."
++    },
+     "multiattack_budget_honored": {
+       "category": "DM_ADHERENCE",
+       "likely_code_locations": ["qa/rubric_angry_dm.md", "qa/play_prompt_combat_sprint.txt", "servers/engine/server.py"],
+diff --git a/qa/assert_behavioral.py b/qa/assert_behavioral.py
+index 70aee15e..fb820d90 100644
+--- a/qa/assert_behavioral.py
++++ b/qa/assert_behavioral.py
+@@ -1461,6 +1461,49 @@ def main() -> int:
+     if double_conc:
+         chk("concentration_dropped_cleanly", False, "; ".join(double_conc), fatal=False)
+ 
++    # UNRESOLVED_SPELL_ATTACK (#1270; WARN — graduate to FATAL after clean sweeps, mirroring
++    # caster_has_spellbook). A DM-resolved attack-roll spell (Guiding Bolt, Fire Bolt cast via
++    # cast_spell -> the result carries automated:false + attack_roll:true) leaves its to-hit for
++    # the DM to make via attack(). If the SAME caster never made a same-turn attack() before the
++    # next next_turn, the spell ate its slot and dealt ZERO — the exact sprint defect. Read the
++    # ordered result stream so we can see the automated flag and pair the caster to the follow-up.
++    # Conservative + NULL-GUARDED: only fires on an affirmatively-observed cast_spell result with
++    # automated:false + attack_roll:true and NO matching attack() before the caster's turn ended.
++    try:
++        pairs = _tool_events(events)
++    except Exception:  # defensive: never let the pairing break the gate
++        pairs = []
++    unresolved_spell_atk: list[str] = []
++    # Track, per pending cast, the caster whose attack() would resolve it. A next_turn closes the
++    # window (the leg is same-turn only, #1270); an attack() by that caster resolves it.
++    pending_spell_casters: list[tuple[str, str]] = []  # (caster_id, spell_name)
++    for short, inp, obj, is_err, _text in pairs:
++        if short == "cast_spell" and not is_err and isinstance(obj, dict):
++            if obj.get("automated") is False and obj.get("attack_roll") is True:
++                caster = str(inp.get("character_id") or inp.get("caster_id") or "")
++                pending_spell_casters.append((caster, str(obj.get("spell") or inp.get("spell_name") or "spell")))
++        elif short == "attack" and not is_err:
++            atk_by = str(inp.get("attacker_id") or inp.get("character_id") or "")
++            # Resolve the OLDEST pending leg for this caster (a same-turn attack pairs to it).
++            for i, (caster, _sp) in enumerate(pending_spell_casters):
++                if caster and caster == atk_by:
++                    pending_spell_casters.pop(i)
++                    break
++        elif short == "next_turn":
++            # The turn ended: any still-pending spell-attack leg went unresolved this turn.
++            for caster, sp in pending_spell_casters:
++                unresolved_spell_atk.append(
++                    f"{sp} cast by {caster or '?'} returned automated:false (DM must resolve the "
++                    f"attack roll via attack()) but no same-turn attack() resolved it before "
++                    f"next_turn — the spell ate its slot and dealt no damage")
++            pending_spell_casters = []
++    # Any legs still pending at end-of-run (no trailing next_turn) are also unresolved.
++    for caster, sp in pending_spell_casters:
++        unresolved_spell_atk.append(
++            f"{sp} cast by {caster or '?'} returned automated:false but no attack() resolved it")
++    if unresolved_spell_atk:
++        chk("unresolved_spell_attack", False, "; ".join(unresolved_spell_atk), fatal=False)
++
+     fails = [c for c in checks if c[2] and not c[1]]
+     warns = [c for c in checks if not c[2] and not c[1]]
+     print("=== behavioral assertions ===")
+diff --git a/qa/test_assert_behavioral.py b/qa/test_assert_behavioral.py
+index 6c48239b..636bd339 100644
+--- a/qa/test_assert_behavioral.py
++++ b/qa/test_assert_behavioral.py
+@@ -1519,3 +1519,56 @@ def test_guiding_bolt_advantage_ignores_attack_on_other_target(tmp_path):
+     rc, out = _run_gate(tmp_path, events, {"leveling_mode": "milestone"})
+     assert rc == 0, out
+     assert "[PASS] guiding_bolt_advantage_consumed" in out, out
++
++
++# ── #1270: unresolved_spell_attack (WARN) ────────────────────────────────────────
++
++def _cast_gb(uid: str, caster: str = "cleric", automated: bool = False):
++    """A cast_spell tool_use+result for Guiding Bolt (automated:false, attack_roll:true =
++    the DM must resolve the to-hit via attack())."""
++    return [
++        _assistant_tool_use(uid, "mcp__engine__cast_spell",
++                            {"character_id": caster, "spell_name": "Guiding Bolt", "target_id": "foe"}),
++        _user_tool_result(uid, json.dumps({
++            "spell": "Guiding Bolt", "automated": automated, "attack_roll": True,
++        })),
++    ]
++
++
++def test_unresolved_spell_attack_warns_when_no_followup_attack(tmp_path):
++    """The sprint defect: cast Guiding Bolt (automated:false) then next_turn with NO
++    resolving attack() — the slot was spent for zero damage. WARN (not fatal)."""
++    events = _cast_gb("c1") + [
++        _assistant_tool_use("n1", "mcp__engine__next_turn", {}),
++        _user_tool_result("n1", json.dumps({"current_turn": "foe"})),
++    ]
++    rc, out = _run_gate(tmp_path, events, {"leveling_mode": "milestone"})
++    assert rc == 0, out  # WARN-level: never reds the run
++    assert "[WARN] unresolved_spell_attack" in out, out
++
++
++def test_unresolved_spell_attack_clean_when_attack_resolves(tmp_path):
++    """cast Guiding Bolt then the SAME caster's attack() resolves it before next_turn —
++    the leg is resolved, so the check does not fire."""
++    events = _cast_gb("c1") + [
++        _assistant_tool_use("a1", "mcp__engine__attack",
++                            {"attacker_id": "cleric", "target_id": "foe"}),
++        _user_tool_result("a1", json.dumps({"attacker": "Maren", "target": "Goblin", "hit": True})),
++        _assistant_tool_use("n1", "mcp__engine__next_turn", {}),
++        _user_tool_result("n1", json.dumps({"current_turn": "foe"})),
++    ]
++    rc, out = _run_gate(tmp_path, events, {"leveling_mode": "milestone"})
++    assert rc == 0, out
++    assert "unresolved_spell_attack" not in out, out
++
++
++def test_unresolved_spell_attack_not_fired_for_automated_spell(tmp_path):
++    """An engine-automated attack spell (automated:true) needs no DM attack() — the check
++    must NOT fire even without a follow-up attack()."""
++    events = _cast_gb("c1", automated=True) + [
++        _assistant_tool_use("n1", "mcp__engine__next_turn", {}),
++        _user_tool_result("n1", json.dumps({"current_turn": "foe"})),
++    ]
++    rc, out = _run_gate(tmp_path, events, {"leveling_mode": "milestone"})
++    assert rc == 0, out
++    assert "unresolved_spell_attack" not in out, out
+diff --git a/servers/engine/models.py b/servers/engine/models.py
+index 21734e2f..c915fede 100644
+--- a/servers/engine/models.py
++++ b/servers/engine/models.py
+@@ -1416,6 +1416,32 @@ class Zone(_StrictModel):
+     adjacent: list[str] = Field(default_factory=list)  # names of directly-reachable zones
+ 
+ 
++class PendingSpellAttack(_StrictModel):
++    """The unresolved attack-roll leg of a spell just cast (#1270).
++
++    An attack-roll spell the engine can't auto-resolve (Guiding Bolt, Fire Bolt —
++    `cast_spell` returns `automated:false`) spends the caster's action at cast time
++    but leaves the to-hit roll for the DM to resolve via `attack()`. Per SRD 5.2 that
++    resolution `attack()` is part of the SAME casting action, not a second action — so
++    the #778/#1246 cast+attack economy gate must let it through ONCE.
++
++    `cast_spell` records this on `Combat` when it stamps `action_purpose="cast"` for
++    such a spell; the SAME-TURN `attack()` by `source_id` against a target in
++    `target_ids` bypasses the gate exactly once and CLEARS this record (the gate then
++    re-arms — an independent second strike is still refused). Keyed to the spell
++    resolution (caster + target set), NOT a blanket cast+attack allowance. Cleared on
++    `next_turn` (a stale leg can't cross turns) and when a target dies / is removed.
++
++    ADDITIVE: `Combat.pending_spell_attack` defaults to `None`, so a turn that never
++    casts a DM-resolved attack-roll spell behaves exactly as today and old snapshots
++    round-trip unchanged."""
++
++    source_id: str  # the caster (matched against attack()'s attacker)
++    target_ids: list[str] = Field(default_factory=list)  # who the spell was aimed at
++    spell: str = ""  # canonical spell name (for the bypass note / diagnostics)
++    round: int = 0  # the combat round the cast happened on (defensive staleness guard)
++
++
+ class Combat(_StrictModel):
+     active: bool = False
+     round: int = 0
+@@ -1435,6 +1461,14 @@ class Combat(_StrictModel):
+     # this "" so Extra-Attack multi-strikes stay unaffected; attack() reads this only to reject
+     # a strike AFTER a cast/skip already spent the action.
+     action_purpose: Literal["", "cast", "skip"] = ""
++    # #1270: the unresolved attack-roll leg of a spell cast THIS turn whose to-hit the DM
++    # must resolve via attack() (cast_spell returned automated:false). action_purpose is
++    # "cast" (the action was spent), but that resolution attack() is part of the SAME casting
++    # action (SRD 5.2), so it must bypass the cast+attack gate ONCE. Set by cast_spell when it
++    # stamps action_purpose="cast" for such a spell; consumed+cleared by the matching same-turn
++    # attack(); cleared by next_turn and on a target's death/removal. None == today's behaviour
++    # (no DM-resolved spell attack pending); old snapshots deserialize to None and round-trip.
++    pending_spell_attack: Optional[PendingSpellAttack] = None
+     # Attack-action economy for the CURRENT turn (additive; resets every next_turn):
+     #  * action_attacks_made — how many attack() calls have resolved under the
+     #    current combatant's Attack action(s) this turn. One Attack action grants
+diff --git a/servers/engine/server.py b/servers/engine/server.py
+index f217812b..43f7ca5c 100644
+--- a/servers/engine/server.py
++++ b/servers/engine/server.py
+@@ -94,6 +94,7 @@ from models import (
+     PendingAttackBonus,
+     PendingDamageBonus,
+     PendingOnHitRider,
++    PendingSpellAttack,
+     Quest,
+     RepeatSave,
+     SceneDebt,
+@@ -3592,6 +3593,9 @@ def set_hp(
+         combat.apply_hp_set_transition(ch, was_down)
+         c.characters[character_id] = ch
+         kx = _award_kill_xp(c, ch)
++        # #1270 (low): a set-to-0 that kills also scrubs pending riders / spell-attack leg.
++        if ch.dead:
++            _clear_riders_targeting(c, character_id)
+         out = c.characters[character_id].model_dump(mode="json")
+         if kx:
+             out["kill_xp"] = kx
+@@ -4977,6 +4981,10 @@ def next_turn(campaign_id: str) -> dict:
+         # #778: clear WHAT spent the action so the new turn starts with a free action of any
+         # purpose (a cast/skip stamp from last turn must not block this turn's attack/cast).
+         c.combat.action_purpose = ""
++        # #1270: an unresolved spell-attack leg is a SAME-TURN concession (SRD 5.2: the attack
++        # roll is part of the casting action). It never carries across a turn boundary — clear
++        # it so it can't grant a stale bypass next turn (None == today's behaviour).
++        c.combat.pending_spell_attack = None
+         # Reset the per-turn attack-action economy too: a new turn starts with one
+         # Attack action's worth of strikes and no Action Surge spent yet.
+         c.combat.action_attacks_made = 0
+@@ -5284,6 +5292,11 @@ def remove_combatant(campaign_id: str, character_id: str) -> dict:
+         if idx is None:
+             raise ValueError(f"{character_id!r} is not in the combat order")
+         order.pop(idx)
++        # #1270 (low): a combatant leaving the fight can't be the recipient of a pending on-hit
++        # rider or spell-attack leg — scrub any that name it before the fight-end check below
++        # (a full Combat() reset there also clears pending_spell_attack, but the riders live on
++        # the CASTER characters, so they must be swept regardless of whether combat ends).
++        _clear_riders_targeting(c, character_id)
+         remaining_kinds = {
+             c.characters[cb.character_id].kind for cb in order if cb.character_id in c.characters
+         }
+@@ -5641,8 +5654,25 @@ def attack(
+                 # it would wrongly permit this). Reject unless an Action Surge action remains
+                 # (surge_actions>0), the escape hatch. action_purpose=="" (the Attack-action /
+                 # legacy path) is unaffected — this only fires on cast/skip.
++                # #1270: the resolution leg of a DM-resolved attack-roll spell (cast_spell
++                # returned automated:false and recorded pending_spell_attack) is part of the
++                # SAME casting action (SRD 5.2), not a second action — let it through ONCE.
++                # Keyed to that spell resolution: this must be the SAME caster striking a target
++                # the spell was aimed at. Consume the pending record so the gate re-arms — an
++                # independent second attack (or a strike at a different, un-cast target) is still
++                # refused below. (An Extra-Attack/legacy path — action_purpose "" — never reaches
++                # here, and a "skip" purpose has no pending spell leg, so both are unaffected.)
++                _psa = c.combat.pending_spell_attack
++                _spell_leg = (
++                    _psa is not None
++                    and _psa.source_id == attacker_id
++                    and target_id in _psa.target_ids
++                )
++                if _spell_leg:
++                    c.combat.pending_spell_attack = None
+                 if (
+-                    c.combat.action_purpose in ("cast", "skip")
++                    not _spell_leg
++                    and c.combat.action_purpose in ("cast", "skip")
+                     and c.combat.action_attacks_made == 0
+                     and c.combat.surge_actions <= 0
+                 ):
+@@ -6174,6 +6204,10 @@ def attack(
+             kx = _award_kill_xp(c, target)
+             if kx:
+                 result["kill_xp"] = kx
++            # #1270 (low): a slain target can't be the recipient of a pending on-hit rider or
++            # spell-attack leg — scrub any that name it so no inert-but-corrupt state lingers.
++            if target.dead:
++                _clear_riders_targeting(c, target_id)
+         elif man_bonus is not None:
+             # The strike MISSED, so the maneuver die adds no damage — but it was already spent
+             # at use_resource time (and consumed above), so report it as spent-not-applied
+@@ -6461,6 +6495,9 @@ def apply_damage(
+         kx = _award_kill_xp(c, target)
+         if kx:
+             out["kill_xp"] = kx
++        # #1270 (low): scrub pending on-hit riders / spell-attack leg naming a slain target.
++        if target.dead:
++            _clear_riders_targeting(c, target_id)
+         dtype = f" {damage_type}" if damage_type else ""
+         _log_combat_event(
+             c,
+@@ -6525,6 +6562,35 @@ def set_temp_hp(campaign_id: str, target_id: str = "", amount: int = 0,
+         return {"temp_hp": ch.temp_hp, "hp": f"{ch.current_hp}/{ch.max_hp}"}
+ 
+ 
++def _clear_riders_targeting(c, target_id: str) -> None:
++    """#1270 (low): scrub any pending combat state that names `target_id` as its TARGET
++    when that combatant leaves the fight (death or remove_combatant). Two kinds:
++
++      * `pending_on_hit_riders` — an attack-roll spell's not-yet-landed rider (Guiding
++        Bolt), carried on the CASTER keyed by target_id. If the target dies before the
++        caster ever resolves the spell attack, the record is inert-but-corrupt: it never
++        materializes (the target is gone) yet lingers forever and could mis-apply if the
++        id were ever reused. Drop every caster's riders aimed at this target.
++      * `pending_spell_attack` — the same-turn DM-resolved spell-attack leg (#1270). If
++        the (only) target it was aimed at is gone, the leg can never be resolved, so clear
++        it (drop the target from the aim set; clear the record when nothing remains).
++
++    Idempotent (list/None filter) and null-guarded, so every death path may call it
++    unconditionally. Additive: a fight with no pending riders/leg is a no-op."""
++    if not target_id:
++        return
++    for holder in c.characters.values():
++        if any(r.target_id == target_id for r in holder.pending_on_hit_riders):
++            holder.pending_on_hit_riders = [
++                r for r in holder.pending_on_hit_riders if r.target_id != target_id
++            ]
++    psa = c.combat.pending_spell_attack
++    if psa is not None and target_id in psa.target_ids:
++        psa.target_ids = [t for t in psa.target_ids if t != target_id]
++        if not psa.target_ids:
++            c.combat.pending_spell_attack = None
++
++
+ def _release_held_targets(c, caster_id: str, spell_name: str) -> list[dict]:
+     """Free every TARGET still locked by the just-ended concentration `spell_name` of
+     caster `caster_id` (F3-6): a repeat-save marker (Hold Person -> paralyzed) OR a
+@@ -8223,6 +8289,25 @@ def cast_spell(
+                     c.combat.surge_actions -= 1
+                 c.combat.action_used = True
+                 c.combat.action_purpose = "cast"
++                # #1270: an attack-roll spell the engine can't auto-resolve (Guiding Bolt,
++                # Fire Bolt — `automated:false` below, `curated is None`) leaves the to-hit
++                # roll for the DM to make via attack(). That resolution attack() is part of
++                # THIS casting action (SRD 5.2), so record it as a pending spell-attack leg:
++                # the same-turn attack() by this caster against a target it was aimed at
++                # bypasses the cast+attack gate ONCE, then clears this (an independent second
++                # strike is still refused). Keyed to the spell resolution, not a blanket
++                # allowance. Auto-resolved spells (curated) never set this — Magic Missile /
++                # Fireball stay a fully-spent action, so cast→attack stays refused for them.
++                if is_attack_roll_spell and curated is None:
++                    _spell_targets = list(target_ids) if target_ids else []
++                    if target_id and target_id not in _spell_targets:
++                        _spell_targets.insert(0, target_id)
++                    c.combat.pending_spell_attack = PendingSpellAttack(
++                        source_id=character_id,
++                        target_ids=_spell_targets,
++                        spell=canonical,
++                        round=c.combat.round,
++                    )
+         save_campaign(c)
+         updated = c.characters[character_id]
+         result = {
+diff --git a/servers/engine/tests/test_action_economy.py b/servers/engine/tests/test_action_economy.py
+index a038766f..6f9f0c16 100644
+--- a/servers/engine/tests/test_action_economy.py
++++ b/servers/engine/tests/test_action_economy.py
+@@ -244,3 +244,120 @@ def test_old_snapshot_without_action_purpose_defaults_empty():
+     # Round-trips: the field serializes back and reloads to the same value.
+     reloaded = Combat.model_validate(loaded.model_dump(mode="json"))
+     assert reloaded.action_purpose == ""
++    # #1270: the pre-#1270 shape (no `pending_spell_attack`) loads to None and round-trips.
++    assert loaded.pending_spell_attack is None
++    assert reloaded.pending_spell_attack is None
++
++
++# ============ #1270: the attack-roll RESOLUTION leg of a cast spell ==========
++# A DM-resolved attack-roll spell (Guiding Bolt: cast_spell returns automated:false)
++# spends the action, but its to-hit attack() is part of the SAME casting action
++# (SRD 5.2) — it must bypass the cast+attack gate ONCE, then the gate re-arms.
++
++@pytest.fixture
++def bolt_caster(tmp_path, monkeypatch):
++    """A Cleric who always acts first, knows Guiding Bolt (an attack-roll spell the
++    engine can't auto-resolve -> automated:false), with L1 slots and TWO goblins so a
++    'different target' independent-attack case can be exercised."""
++    monkeypatch.setenv("WORLDOS_STATE_DIR", str(tmp_path))
++    cid = server.create_campaign("AE1270")["id"]
++    cleric = server.create_character(
++        cid, "Maren", kind="player", class_name="Cleric", apply_srd_defaults=True
++    )["id"]
++    server.update_character(cid, cleric, patch={"initiative_bonus": 100})
++    server.learn_spells(cid, cleric, ["Guiding Bolt"])
++    server.prepare_spells(cid, cleric, ["Guiding Bolt"])
++    server.update_character(
++        cid, cleric, patch={"spell_slots": {"1": {"maximum": 4, "used": 0}}}
++    )
++    gob = server.create_character(cid, "Goblin", kind="monster", max_hp=30, armor_class=5)["id"]
++    gob2 = server.create_character(cid, "Goblin2", kind="monster", max_hp=30, armor_class=5)["id"]
++    server.start_combat(cid, [cleric, gob, gob2])
++    assert server.get_state(cid)["current_turn"] == cleric
++    return cid, cleric, gob, gob2
++
++
++def _psa(cid):
++    """The Combat.pending_spell_attack record (or None), read from the raw campaign."""
++    return server._require(cid).combat.pending_spell_attack
++
++
++def test_guiding_bolt_then_attack_resolves_and_rearms(bolt_caster):
++    """The sprint's exact sequence: cast Guiding Bolt (automated:false) -> the same-turn
++    attack() that resolves it lands damage, the on-hit rider is consumed, and the gate
++    re-arms (a second independent strike is refused)."""
++    cid, cleric, gob, _gob2 = bolt_caster
++    cast = _cast(cid, cleric, "Guiding Bolt", target_id=gob)
++    assert cast["automated"] is False and cast["attack_roll"] is True
++    # The pending spell-attack leg was recorded (keyed to this caster + target).
++    psa = _psa(cid)
++    assert psa is not None and psa.source_id == cleric and gob in psa.target_ids
++    # The resolving attack() bypasses the cast+attack gate and deals damage (auto-hit nat-20
++    # not needed — a big bonus vs AC 5 hits): the bolt no longer "deals 0".
++    atk = server.attack(cid, cleric, gob, attack_bonus=20, damage_dice="4d6")
++    assert atk["hit"] is True and atk["damage"]["total"] > 0
++    assert atk["attacks_made_this_turn"] == 1
++    # The pending leg is consumed (gate re-armed) and the on-hit rider materialized on the target.
++    assert _psa(cid) is None, "the spell-attack leg is a one-shot bypass — consumed"
++    riders = server.get_character(cid, cleric)["pending_on_hit_riders"]
++    assert riders == [], "the on-hit rider was consumed by the resolving attack"
++    # A SECOND strike this turn is now refused — the bypass did not grant an extra action.
++    with pytest.raises(ValueError, match="cannot attack|already attacked"):
++        server.attack(cid, cleric, gob, attack_bonus=20, damage_dice="1d10")
++
++
++def test_guiding_bolt_then_independent_attack_still_refused(bolt_caster):
++    """The bypass is keyed to the spell resolution (the cast's target). An attack on a
++    DIFFERENT, un-cast target is a clearly-independent second action and STAYS refused."""
++    cid, cleric, gob, gob2 = bolt_caster
++    _cast(cid, cleric, "Guiding Bolt", target_id=gob)  # aimed at gob
++    with pytest.raises(ValueError, match="already cast a spell"):
++        server.attack(cid, cleric, gob2, attack_bonus=20, damage_dice="1d10")  # different target
++    # The pending leg for the ORIGINAL target is untouched by the refused strike.
++    psa = _psa(cid)
++    assert psa is not None and gob in psa.target_ids
++
++
++def test_guiding_bolt_double_cast_still_refused(bolt_caster):
++    """The recorded leg does NOT free a second cast — a 2nd action-cost cast is still
++    refused by the #778 gate (the action was already spent)."""
++    cid, cleric, gob, _gob2 = bolt_caster
++    _cast(cid, cleric, "Guiding Bolt", target_id=gob)
++    with pytest.raises(ValueError, match="already used its action"):
++        _cast(cid, cleric, "Guiding Bolt", target_id=gob)
++
++
++def test_guiding_bolt_leg_cleared_on_next_turn(bolt_caster):
++    """A spell-attack leg is a SAME-TURN concession; it must not survive a turn boundary."""
++    cid, cleric, gob, _gob2 = bolt_caster
++    _cast(cid, cleric, "Guiding Bolt", target_id=gob)
++    assert _psa(cid) is not None
++    server.next_turn(cid)  # -> a goblin's turn; the leg is stale and must be cleared
++    assert _psa(cid) is None
++
++
++def test_pending_riders_and_leg_cleared_on_target_death(bolt_caster):
++    """Rider cleanup (low): a slain target's pending on-hit rider (on the caster) and the
++    spell-attack leg are scrubbed on death — no inert-but-corrupt state lingers."""
++    cid, cleric, gob, _gob2 = bolt_caster
++    _cast(cid, cleric, "Guiding Bolt", target_id=gob)
++    # The bolt's rider is pending on the caster, and the leg names the target.
++    assert server.get_character(cid, cleric)["pending_on_hit_riders"], "rider recorded pre-death"
++    assert gob in _psa(cid).target_ids
++    # Kill the target outright (set_hp to 0 -> monster death).
++    server.set_hp(cid, gob, 0)
++    assert server.get_character(cid, gob)["dead"] is True
++    assert server.get_character(cid, cleric)["pending_on_hit_riders"] == [], \
++        "the dead target's pending rider was scrubbed from the caster"
++    assert _psa(cid) is None, "the spell-attack leg naming the dead target was cleared"
++
++
++def test_pending_riders_cleared_on_remove_combatant(bolt_caster):
++    """remove_combatant (a fled/removed target) also scrubs the caster's pending rider
++    and the spell-attack leg naming it."""
++    cid, cleric, gob, gob2 = bolt_caster
++    _cast(cid, cleric, "Guiding Bolt", target_id=gob)
++    assert server.get_character(cid, cleric)["pending_on_hit_riders"]
++    server.remove_combatant(cid, gob)  # fight continues (gob2 still hostile)
++    assert server.get_character(cid, cleric)["pending_on_hit_riders"] == []
++    assert _psa(cid) is None

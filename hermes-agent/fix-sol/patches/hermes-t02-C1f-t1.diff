@@ -1,0 +1,78 @@
+diff --git a/hermes_cli/plugins_cmd.py b/hermes_cli/plugins_cmd.py
+index 56260193..cbdb6841 100644
+--- a/hermes_cli/plugins_cmd.py
++++ b/hermes_cli/plugins_cmd.py
+@@ -738,15 +738,15 @@ def _is_portable_plugin_dir(dir_path) -> bool:
+ _BUNDLED_DEFAULT_ON_KINDS = frozenset({"backend", "platform", "model-provider"})
+ 
+ 
+-def _bundled_default_on(dir_path) -> bool:
+-    """True when a bundled plugin is active without a ``plugins.enabled`` entry (portable
+-    ``plugin.json`` packages have no kind, so never)."""
++def _plugin_default_on(dir_path, source: str) -> bool:
++    """Model providers from any source and bundled auto-load kinds need no allow-list entry.
++    Portable ``plugin.json`` packages have no kind, so never qualify."""
+     manifest_file = _native_manifest_file(Path(dir_path))
+     if manifest_file is None:
+         return False
+     try:
+         kind = str(_load_yaml_manifest(manifest_file).get("kind", "standalone")).strip().lower()
+-        return kind in _BUNDLED_DEFAULT_ON_KINDS
++        return kind == "model-provider" or (source == "bundled" and kind in _BUNDLED_DEFAULT_ON_KINDS)
+     except Exception:
+         return False
+ 
+@@ -810,14 +810,14 @@ def _plugin_status(name: str, enabled: set, disabled: set, key: str = "", *, sou
+                    dir_path=None, active: "frozenset | set" = frozenset()) -> str:
+     """User-facing activation state for a plugin name or key. Mirrors ``gate_manifest``: an explicit
+     disable wins, then the allow-list, then the activations that need no list entry — bundled
+-    backends/platforms/model providers (*source* + *dir_path*) and category-selected providers
++    backends/platforms and all model providers (*source* + *dir_path*), and category-selected providers
+     (*active*, see :func:`_category_active_names`)."""
+     names = {name, key}
+     if names & disabled:
+         return "disabled"
+     if names & enabled or names & active:
+         return "enabled"
+-    if source == "bundled" and dir_path is not None and _bundled_default_on(dir_path):
++    if dir_path is not None and _plugin_default_on(dir_path, source):
+         return "enabled"
+     return "not enabled"
+ 
+diff --git a/tests/hermes_cli/test_plugins_cmd_activation_keys.py b/tests/hermes_cli/test_plugins_cmd_activation_keys.py
+index efadcf2d..69a15cfe 100644
+--- a/tests/hermes_cli/test_plugins_cmd_activation_keys.py
++++ b/tests/hermes_cli/test_plugins_cmd_activation_keys.py
+@@ -104,3 +104,32 @@ def test_status_reports_bundled_defaults_and_the_live_memory_provider(home):
+     # An explicit disable still wins over both defaults.
+     assert plugins_cmd._plugin_status("fakemem", enabled, {"fakemem"}, key="fakemem", source="user",
+                                       active=active) == "disabled"
++
++
++@pytest.mark.parametrize("kind", ["model-provider", None, "backend", "platform"])
++@pytest.mark.parametrize("git_install", [False, True])
++def test_user_plugin_status_matches_loader_defaults(home, kind, git_install):
++    extra = f"kind: {kind}\n" if kind else ""
++    directory = _write_plugin(home / "plugins", "providers/fakeprov", "fake-provider", extra)
++    if git_install:
++        (directory / ".git").mkdir()
++    enabled, disabled = _lists()
++    name, _v, _d, source, dir_path, key = next(
++        entry for entry in plugins_cmd._discover_all_plugins() if entry[0] == "fake-provider")
++    manifest = next(m for m in collect_directory_manifests() if m.name == name)
++
++    status = plugins_cmd._plugin_status(name, enabled, disabled, key=key, source=source, dir_path=dir_path)
++    gate = gate_manifest(manifest, disabled, enabled)
++    assert status == ("enabled" if kind == "model-provider" else "not enabled")
++    assert (status == "enabled") == gate.enabled
++    for alias in (name, key):
++        assert plugins_cmd._plugin_status(name, {name, key}, {alias}, key=key, source=source,
++                                          dir_path=dir_path) == "disabled"
++
++
++@pytest.mark.parametrize("kind", ["model-provider", "backend", "platform", None])
++def test_bundled_plugin_status_preserves_defaults(tmp_path, kind):
++    extra = f"kind: {kind}\n" if kind else ""
++    directory = _write_plugin(tmp_path, "fakebundled", "fakebundled", extra)
++    assert plugins_cmd._plugin_status("fakebundled", set(), set(), source="bundled", dir_path=directory) == (
++        "enabled" if kind else "not enabled")

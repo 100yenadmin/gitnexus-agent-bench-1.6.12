@@ -1,0 +1,14 @@
+negative-base getPhaseOutput FAIL {'renamed_symbol_found': False, 'all_references_kept': False, 'namesakes_untouched': False, 'nothing_else_renamed': False}
+positive-ts-rename close PASS {}
+positive-ts-rename resolve PASS {}
+positive-ts-rename declare PASS {}
+positive-ts-rename drainFinalizerPending PASS {}
+positive-ts-rename getPhaseOutput PASS {}
+positive-ts-rename facts PASS {}
+positive-agent-full-rename getPhaseOutput PASS {}
+naive-replace close: 210 files changed
+negative-naive-replace close FAIL {'no_new_type_errors': False, 'namesakes_untouched': False, 'nothing_else_renamed': False}
+naive-replace resolve: 651 files changed
+negative-naive-replace resolve FAIL {'no_new_type_errors': False, 'namesakes_untouched': False, 'nothing_else_renamed': False}
+naive-replace declare: 126 files changed
+negative-naive-replace declare FAIL {'no_new_type_errors': False, 'namesakes_untouched': False, 'nothing_else_renamed': False}

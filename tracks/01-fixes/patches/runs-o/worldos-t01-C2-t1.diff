@@ -1,0 +1,66 @@
+diff --git a/servers/engine/combat_loop.py b/servers/engine/combat_loop.py
+index f053808..b031640 100644
+--- a/servers/engine/combat_loop.py
++++ b/servers/engine/combat_loop.py
+@@ -622,11 +622,15 @@ def _apply_intent(server, campaign_id: str, actor_id: str, intent: Intent) -> di
+                             "save_made": save_made,
+                         }
+         elif intent.kind == "move":
++            res = {}
+             if intent.to_cell is not None:
+-                server.move_to_coords(campaign_id, actor_id, intent.to_cell[0], intent.to_cell[1])
++                res = server.move_to_coords(campaign_id, actor_id, intent.to_cell[0], intent.to_cell[1])
+             elif intent.to_zone:
+-                server.move_to_zone(campaign_id, combatant_id=actor_id, zone=intent.to_zone)
++                res = server.move_to_zone(campaign_id, combatant_id=actor_id, zone=intent.to_zone)
+             entry["result"] = {"to_cell": intent.to_cell, "to_zone": intent.to_zone}
++            for key in ("movement_illegal", "move_blocked"):
++                if key in res:
++                    entry["result"][key] = res[key]
+         elif intent.kind == "disengage":
+             server.use_action(campaign_id, actor_id, kind="disengage")
+             if intent.to_cell is not None:
+diff --git a/servers/engine/tests/test_player_turn_arbiter.py b/servers/engine/tests/test_player_turn_arbiter.py
+index 475cf86..eccfc8b 100644
+--- a/servers/engine/tests/test_player_turn_arbiter.py
++++ b/servers/engine/tests/test_player_turn_arbiter.py
+@@ -105,6 +105,39 @@ def test_move_to_cell_charges_movement_budget(grid_fight):
+     assert cb.moved_cells_this_turn == 4  # Chebyshev 0,0 -> 4,0 == 4 cells charged
+ 
+ 
++@pytest.mark.parametrize("target_x, blocked", [(3, False), (7, False), (3, True)])
++def test_move_result_preserves_advisories(grid_fight, target_x, blocked):
++    cid, hero, _ = grid_fight
++    if blocked:
++        c = server._require(cid)
++        c.combat.grid_impassable = [[target_x, 0]]
++        server.save_campaign(c)
++
++    out = combat_loop.resolve_player_turn(cid, hero, Intent(kind="move", to_cell=(target_x, 0)))
++
++    assert out["ok"] is True, out
++    assert out["turn_open"] is True
++    result = out["resolved"]["result"]
++    expected = {"to_cell": (target_x, 0), "to_zone": ""}
++    if blocked:
++        note = result["move_blocked"]
++        assert note["target"] == [target_x, 0]
++        assert "impassable" in note["reason"]
++        expected["move_blocked"] = note
++        assert _cell(cid, hero) == (0, 0)
++        assert server._require(cid).combat.order[0].moved_cells_this_turn == 0
++    else:
++        assert _cell(cid, hero) == (target_x, 0)
++        if target_x > 6:
++            note = result["movement_illegal"]
++            assert note["budget_cells"] == 6
++            assert note["cost_cells"] == target_x
++            assert note["used_cells"] == 0
++            assert "Moved anyway" in note["reason"]
++            expected["movement_illegal"] = note
++    assert result == expected
++
++
+ def test_attack_on_turn_rolls_via_engine(grid_fight):
+     cid, hero, gob = grid_fight
+     # Place the goblin adjacent so a melee strike is in reach, then attack it on the PC's turn.

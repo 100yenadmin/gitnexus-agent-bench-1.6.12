@@ -1,0 +1,112 @@
+{
+ "locations": [
+  {
+   "path": "hermes_cli/observability/shared_metrics_contract.py",
+   "line": 608
+  },
+  {
+   "path": "hermes_cli/observability/shared_metrics_contract.py",
+   "line": 613
+  },
+  {
+   "path": "hermes_cli/observability/shared_metrics_contract.py",
+   "line": 621
+  },
+  {
+   "path": "hermes_cli/observability/shared_metrics_contract.py",
+   "line": 1272
+  },
+  {
+   "path": "hermes_cli/observability/shared_metrics_contract.py",
+   "line": 1309
+  },
+  {
+   "path": "hermes_cli/observability/shared_metrics_contract.py",
+   "line": 1323
+  },
+  {
+   "path": "hermes_cli/observability/shared_metrics_contract.py",
+   "line": 1374
+  },
+  {
+   "path": "hermes_cli/observability/shared_metrics_contract.py",
+   "line": 1417
+  },
+  {
+   "path": "hermes_cli/observability/shared_metrics_contract.py",
+   "line": 1420
+  },
+  {
+   "path": "hermes_cli/observability/shared_metrics_contract.py",
+   "line": 1425
+  },
+  {
+   "path": "hermes_cli/observability/shared_metrics_contract.py",
+   "line": 1434
+  },
+  {
+   "path": "hermes_cli/observability/shared_metrics_contract.py",
+   "line": 1496
+  },
+  {
+   "path": "hermes_cli/observability/shared_metrics_contract.py",
+   "line": 1515
+  },
+  {
+   "path": "hermes_cli/observability/shared_metrics_contract.py",
+   "line": 1530
+  },
+  {
+   "path": "hermes_cli/observability/shared_metrics_contract.py",
+   "line": 1555
+  },
+  {
+   "path": "hermes_cli/observability/shared_metrics_contract.py",
+   "line": 1582
+  },
+  {
+   "path": "hermes_cli/observability/shared_metrics_contract.py",
+   "line": 1641
+  },
+  {
+   "path": "hermes_cli/observability/shared_metrics_contract.py",
+   "line": 1665
+  },
+  {
+   "path": "hermes_cli/observability/shared_metrics_contract.py",
+   "line": 1666
+  },
+  {
+   "path": "hermes_cli/observability/shared_metrics_fields.py",
+   "line": 112
+  },
+  {
+   "path": "hermes_cli/observability/shared_metrics_fields.py",
+   "line": 133
+  },
+  {
+   "path": "hermes_cli/observability/shared_metrics_fields.py",
+   "line": 134
+  },
+  {
+   "path": "hermes_cli/observability/shared_metrics_fields.py",
+   "line": 163
+  },
+  {
+   "path": "hermes_cli/observability/shared_metrics_fields.py",
+   "line": 166
+  },
+  {
+   "path": "hermes_cli/observability/shared_metrics_fields.py",
+   "line": 170
+  },
+  {
+   "path": "hermes_cli/observability/shared_metrics_install.py",
+   "line": 148
+  },
+  {
+   "path": "hermes_cli/observability/shared_metrics_install.py",
+   "line": 164
+  }
+ ]
+}

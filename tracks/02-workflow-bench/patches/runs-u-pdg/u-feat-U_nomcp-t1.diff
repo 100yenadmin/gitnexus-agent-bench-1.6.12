@@ -1,0 +1,355 @@
+diff --git a/gitnexus/src/mcp/local/local-backend.ts b/gitnexus/src/mcp/local/local-backend.ts
+index b348686..66706d2 100644
+--- a/gitnexus/src/mcp/local/local-backend.ts
++++ b/gitnexus/src/mcp/local/local-backend.ts
+@@ -1382,7 +1382,7 @@ export interface RepoListing {
+ 
+ /** Continuation metadata for the paginated `list_repos` MCP tool (#2119). */
+ export interface ListReposPagination {
+-  /** Total repositories across all pages. */
++  /** Total repositories across all pages (after any `name_contains` filter). */
+   total: number;
+   /** Effective page size used (equals the requested limit; out-of-range is rejected, not clamped). */
+   limit: number;
+@@ -1442,6 +1442,45 @@ export function parseListReposPagination(
+   return { limit, offset };
+ }
+ 
++/**
++ * Validate the optional `name_contains` filter of the `list_repos` tool and
++ * return the lower-cased needle, or `undefined` when no filter applies.
++ *
++ * @internal Exported for unit testing; not part of the public API surface.
++ *
++ * Same validation boundary as {@link parseListReposPagination}: only an omitted
++ * value (`undefined`) means "no filter"; any non-string is rejected. An empty
++ * string matches every name, so it is treated as no filter.
++ */
++export function parseListReposNameFilter(
++  params: { name_contains?: unknown } | null | undefined,
++): string | undefined {
++  const value = params?.name_contains;
++  if (value === undefined) return undefined;
++  if (typeof value !== 'string') {
++    throw new Error(
++      `list_repos: "name_contains" must be a string (received ${JSON.stringify(value)})`,
++    );
++  }
++  return value === '' ? undefined : value.toLowerCase();
++}
++
++/**
++ * Keep only repositories whose name contains `needle` (case-insensitive).
++ * `needle` must already be lower-cased by {@link parseListReposNameFilter}.
++ * Applied BEFORE pagination so `total`/`hasMore`/`nextOffset` describe the
++ * filtered set.
++ *
++ * @internal Exported for unit testing; not part of the public API surface.
++ */
++export function filterReposByName<T extends { name: string }>(
++  repos: T[],
++  needle: string | undefined,
++): T[] {
++  if (needle === undefined) return repos;
++  return repos.filter((repo) => repo.name.toLowerCase().includes(needle));
++}
++
+ /**
+  * #2655: a tool result can carry a `staleness` field only if it is a plain
+  * object that isn't an error envelope and doesn't already carry one. Raw-array
+@@ -2567,7 +2606,9 @@ export class LocalBackend {
+    * Codepoint comparison (not `localeCompare`) keeps page boundaries stable
+    * across machines/locales, matching the existing `refreshRepos` ordering.
+    */
+-  async listReposPage(params?: { limit?: unknown; offset?: unknown } | null): Promise<{
++  async listReposPage(
++    params?: { limit?: unknown; offset?: unknown; name_contains?: unknown } | null,
++  ): Promise<{
+     repositories: RepoListing[];
+     pagination: ListReposPagination;
+   }> {
+@@ -2575,10 +2616,11 @@ export class LocalBackend {
+       defaultLimit: LIST_REPOS_DEFAULT_LIMIT,
+       maxLimit: LIST_REPOS_MAX_LIMIT,
+     });
++    const nameNeedle = parseListReposNameFilter(params);
+ 
+     // One consistent snapshot per call (listRepos refreshes the registry once),
+-    // sorted into a stable total order before slicing.
+-    const all = await this.listRepos();
++    // filtered by name, then sorted into a stable total order before slicing.
++    const all = filterReposByName(await this.listRepos(), nameNeedle);
+     all.sort(
+       (a, b) =>
+         compareCodeUnits(a.name.toLowerCase(), b.name.toLowerCase()) ||
+diff --git a/gitnexus/src/mcp/repository-policy.ts b/gitnexus/src/mcp/repository-policy.ts
+index 332e1b1..137ac55 100644
+--- a/gitnexus/src/mcp/repository-policy.ts
++++ b/gitnexus/src/mcp/repository-policy.ts
+@@ -1,6 +1,10 @@
+ import path from 'node:path';
+ import type { LocalBackend, RepoListing } from './local/local-backend.js';
+-import { parseListReposPagination } from './local/local-backend.js';
++import {
++  filterReposByName,
++  parseListReposNameFilter,
++  parseListReposPagination,
++} from './local/local-backend.js';
+ import { scrubGroupDescription } from './read-only-policy.js';
+ import { LIST_REPOS_DEFAULT_LIMIT, LIST_REPOS_MAX_LIMIT } from './tools.js';
+ import type { GITNEXUS_TOOLS } from './tools.js';
+@@ -229,7 +233,8 @@ export class McpRepositoryPolicy {
+       defaultLimit: LIST_REPOS_DEFAULT_LIMIT,
+       maxLimit: LIST_REPOS_MAX_LIMIT,
+     });
+-    const repositories = await this.listAllowedRepos(backend);
++    const nameNeedle = parseListReposNameFilter(params);
++    const repositories = filterReposByName(await this.listAllowedRepos(backend), nameNeedle);
+     repositories.sort((a, b) => {
+       const an = a.name.toLowerCase();
+       const bn = b.name.toLowerCase();
+diff --git a/gitnexus/src/mcp/tools.ts b/gitnexus/src/mcp/tools.ts
+index 146936f..1533872 100644
+--- a/gitnexus/src/mcp/tools.ts
++++ b/gitnexus/src/mcp/tools.ts
+@@ -97,6 +97,8 @@ Returns a page of repositories — each with name, path, indexed date, last comm
+ 
+ PAGINATION: Results are paginated so a large registry is not truncated by MCP/LLM token limits. "limit" sets the page size (default ${LIST_REPOS_DEFAULT_LIMIT}, max ${LIST_REPOS_MAX_LIMIT}; values above the max are rejected, not capped). "offset" selects the start. To enumerate EVERY repository: when pagination.hasMore is true, call list_repos again with offset set to pagination.nextOffset, and repeat until hasMore is false. Repositories are returned in a stable order, so paging never skips or duplicates an entry while the registry is unchanged.
+ 
++FILTERING: "name_contains" keeps only repositories whose name contains the given text (case-insensitive substring). The filter is applied before pagination, so pagination.total, hasMore and nextOffset describe the FILTERED set — keep passing the same name_contains when paging.
++
+ WHEN TO USE: First step when multiple repos are indexed, or to discover available repos.
+ AFTER THIS: READ gitnexus://repo/{name}/context for the repo you want to work with.
+ 
+@@ -122,6 +124,11 @@ specify the "repo" parameter explicitly.`,
+           default: 0,
+           minimum: 0,
+         },
++        name_contains: {
++          type: 'string',
++          description:
++            'Optional case-insensitive substring filter on the repository name. Pagination (total/hasMore/nextOffset) reflects the filtered set; pass the same value on every page.',
++        },
+       },
+       required: [],
+     },
+diff --git a/gitnexus/test/unit/list-repos-name-filter.test.ts b/gitnexus/test/unit/list-repos-name-filter.test.ts
+new file mode 100644
+index 0000000..289dac4
+--- /dev/null
++++ b/gitnexus/test/unit/list-repos-name-filter.test.ts
+@@ -0,0 +1,214 @@
++/**
++ * `list_repos` `name_contains` filter: case-insensitive substring match on the
++ * repository name, applied BEFORE pagination so `total`/`hasMore`/`nextOffset`
++ * describe the filtered set. Covers the shared helpers, the LocalBackend tool
++ * surface, the repository-policy surface, and the advertised schema.
++ */
++import { describe, expect, it, vi } from 'vitest';
++import {
++  LocalBackend,
++  filterReposByName,
++  parseListReposNameFilter,
++  type RepoListing,
++} from '../../src/mcp/local/local-backend.js';
++import { createMcpRepositoryPolicy } from '../../src/mcp/repository-policy.js';
++import { GITNEXUS_TOOLS } from '../../src/mcp/tools.js';
++
++function repo(name: string, path = `/repos/${name.toLowerCase()}`): RepoListing {
++  return { name, path, indexedAt: '2026-01-01T00:00:00.000Z', lastCommit: 'abc' };
++}
++
++const FIXTURE: RepoListing[] = [
++  repo('frontend-web'),
++  repo('Backend-API'),
++  repo('WebSocket-Gateway'),
++  repo('docs'),
++  repo('web-sdk'),
++  repo('payments'),
++];
++
++/**
++ * A LocalBackend whose registry is the given list. `listReposPage` only reads
++ * `this.listRepos()`, so a prototype-backed instance avoids registry/DB setup.
++ */
++function backendWith(repos: RepoListing[]): LocalBackend {
++  const backend = Object.create(LocalBackend.prototype) as LocalBackend;
++  (backend as any).listRepos = vi.fn(async () => repos.map((r) => ({ ...r })));
++  return backend;
++}
++
++describe('parseListReposNameFilter', () => {
++  it('returns undefined when the filter is omitted', () => {
++    expect(parseListReposNameFilter(undefined)).toBeUndefined();
++    expect(parseListReposNameFilter(null)).toBeUndefined();
++    expect(parseListReposNameFilter({})).toBeUndefined();
++  });
++
++  it('treats an empty string as no filter', () => {
++    expect(parseListReposNameFilter({ name_contains: '' })).toBeUndefined();
++  });
++
++  it('lower-cases the needle', () => {
++    expect(parseListReposNameFilter({ name_contains: 'WeB' })).toBe('web');
++  });
++
++  it.each([42, null, true, ['web'], { q: 'web' }])('rejects non-string value %j', (value) => {
++    expect(() => parseListReposNameFilter({ name_contains: value })).toThrow(
++      /list_repos: "name_contains" must be a string/,
++    );
++  });
++});
++
++describe('filterReposByName', () => {
++  it('returns the input unchanged when no needle is given', () => {
++    expect(filterReposByName(FIXTURE, undefined)).toBe(FIXTURE);
++  });
++
++  it('matches substrings case-insensitively anywhere in the name', () => {
++    const names = filterReposByName(FIXTURE, 'web').map((r) => r.name);
++    expect(names).toEqual(['frontend-web', 'WebSocket-Gateway', 'web-sdk']);
++  });
++
++  it('returns an empty list when nothing matches', () => {
++    expect(filterReposByName(FIXTURE, 'nope')).toEqual([]);
++  });
++});
++
++describe('LocalBackend list_repos name_contains', () => {
++  it('filters, then sorts, and reports pagination over the filtered set', async () => {
++    const page = await backendWith(FIXTURE).callTool('list_repos', { name_contains: 'WEB' });
++    expect(page.repositories.map((r: RepoListing) => r.name)).toEqual([
++      'frontend-web',
++      'web-sdk',
++      'WebSocket-Gateway',
++    ]);
++    expect(page.pagination).toEqual({
++      total: 3,
++      limit: 50,
++      offset: 0,
++      returned: 3,
++      hasMore: false,
++    });
++  });
++
++  it('pages through the filtered set using total/hasMore/nextOffset', async () => {
++    const backend = backendWith(FIXTURE);
++    const first = await backend.callTool('list_repos', { name_contains: 'web', limit: 2 });
++    expect(first.repositories.map((r: RepoListing) => r.name)).toEqual(['frontend-web', 'web-sdk']);
++    expect(first.pagination).toEqual({
++      total: 3,
++      limit: 2,
++      offset: 0,
++      returned: 2,
++      hasMore: true,
++      nextOffset: 2,
++    });
++
++    const second = await backend.callTool('list_repos', {
++      name_contains: 'web',
++      limit: 2,
++      offset: first.pagination.nextOffset,
++    });
++    expect(second.repositories.map((r: RepoListing) => r.name)).toEqual(['WebSocket-Gateway']);
++    expect(second.pagination).toEqual({
++      total: 3,
++      limit: 2,
++      offset: 2,
++      returned: 1,
++      hasMore: false,
++    });
++  });
++
++  it('reports total 0 and no continuation when nothing matches', async () => {
++    const page = await backendWith(FIXTURE).callTool('list_repos', { name_contains: 'zzz' });
++    expect(page.repositories).toEqual([]);
++    expect(page.pagination).toEqual({
++      total: 0,
++      limit: 50,
++      offset: 0,
++      returned: 0,
++      hasMore: false,
++    });
++  });
++
++  it('keeps the unfiltered behaviour when name_contains is omitted or empty', async () => {
++    for (const params of [{}, { name_contains: '' }]) {
++      const page = await backendWith(FIXTURE).callTool('list_repos', params);
++      expect(page.pagination.total).toBe(FIXTURE.length);
++      expect(page.repositories).toHaveLength(FIXTURE.length);
++    }
++  });
++
++  it('includes every sibling clone that shares a matching name', async () => {
++    const page = await backendWith([
++      repo('Shared', '/a/shared'),
++      repo('shared', '/b/shared'),
++      repo('other'),
++    ]).callTool('list_repos', { name_contains: 'SHARED' });
++    expect(page.repositories.map((r: RepoListing) => r.path)).toEqual(['/a/shared', '/b/shared']);
++    expect(page.pagination.total).toBe(2);
++  });
++
++  it('rejects a non-string name_contains', async () => {
++    await expect(backendWith(FIXTURE).callTool('list_repos', { name_contains: 7 })).rejects.toThrow(
++      /"name_contains" must be a string/,
++    );
++  });
++});
++
++describe('repository policy list_repos name_contains', () => {
++  function policyBackend(repos: RepoListing[]): LocalBackend {
++    return {
++      init: vi.fn().mockResolvedValue(true),
++      listRepos: vi.fn().mockResolvedValue(repos.map((r) => ({ ...r }))),
++      countRepos: vi.fn().mockResolvedValue(repos.length),
++      cachedRepoCount: vi.fn().mockReturnValue(repos.length),
++      callTool: vi.fn(),
++    } as unknown as LocalBackend;
++  }
++
++  it('filters the allowlisted set before paginating', async () => {
++    const backend = policyBackend(FIXTURE);
++    const policy = await createMcpRepositoryPolicy(backend, {
++      GITNEXUS_MCP_ALLOWED_REPOS: 'frontend-web,web-sdk,docs',
++    });
++    const page = (await policy
++      .scopeBackend(backend)
++      .callTool('list_repos', { name_contains: 'Web', limit: 1 })) as {
++      repositories: RepoListing[];
++      pagination: Record<string, unknown>;
++    };
++    expect(page.repositories.map((r) => r.name)).toEqual(['frontend-web']);
++    expect(page.pagination).toEqual({
++      total: 2,
++      limit: 1,
++      offset: 0,
++      returned: 1,
++      hasMore: true,
++      nextOffset: 1,
++    });
++    // Repos outside the allowlist never match, even if their name would.
++    expect(backend.callTool).not.toHaveBeenCalled();
++  });
++
++  it('rejects a non-string name_contains', async () => {
++    const backend = policyBackend(FIXTURE);
++    const policy = await createMcpRepositoryPolicy(backend, {
++      GITNEXUS_MCP_ALLOWED_REPOS: 'docs',
++    });
++    await expect(
++      policy.scopeBackend(backend).callTool('list_repos', { name_contains: ['docs'] }),
++    ).rejects.toThrow(/"name_contains" must be a string/);
++  });
++});
++
++describe('list_repos schema', () => {
++  it('advertises an optional string name_contains parameter', () => {
++    const listTool = GITNEXUS_TOOLS.find((t) => t.name === 'list_repos')!;
++    const prop = listTool.inputSchema.properties.name_contains;
++    expect(prop).toBeDefined();
++    expect(prop.type).toBe('string');
++    expect(listTool.inputSchema.required).toEqual([]);
++    expect(listTool.description).toContain('name_contains');
++  });
++});

@@ -1,0 +1,74 @@
+diff --git a/tests/tools/test_mcp_trust_gating.py b/tests/tools/test_mcp_trust_gating.py
+index 666b6d3b..7e8362a2 100644
+--- a/tests/tools/test_mcp_trust_gating.py
++++ b/tests/tools/test_mcp_trust_gating.py
+@@ -225,9 +225,14 @@ class TestTrustGateApprovalRouting:
+         assert seen[0]["request_id"]
+ 
+     @pytest.mark.parametrize("platform,cron,single_query", [
++        ("", "", True),
++        ("", "1", False),
+         ("webhook", "", False),
++        ("msgraph_webhook", "", False),
+         ("telegram", "1", False),
++        ("telegram", "", True),
+         ("api_server", "", True),
++        ("api_server", "1", False),
+     ])
+     def test_unattended_cron_and_single_query_contexts_do_not_use_callback(
+         self, monkeypatch, platform, cron, single_query
+@@ -239,6 +244,7 @@ class TestTrustGateApprovalRouting:
+             reset_current_session_key,
+             set_current_session_key,
+         )
++        from tools.terminal_tool import set_approval_callback
+ 
+         session_key = f"{platform}-mcp-trust"
+         notified = []
+@@ -247,24 +253,26 @@ class TestTrustGateApprovalRouting:
+         )
+         key_token = set_current_session_key(session_key)
+         approval.register_gateway_notify(session_key, lambda data: notified.append(data))
+-        monkeypatch.setattr(approval_prompt, "prompt_dangerous_approval", lambda *_args, **_kwargs: "deny")
++        panel = MagicMock(return_value="once")
++        set_approval_callback(panel)
+         gateway_waits = []
+         monkeypatch.setattr(
+             approval_prompt._gw,
+             "_await_gateway_decision",
+             lambda *_args, **_kwargs: gateway_waits.append(_args) or {"resolved": True, "choice": "once"},
+         )
+-        if single_query:
+-            monkeypatch.setattr(approval_prompt._ctx, "_is_single_query_approval_context", lambda: True)
++        monkeypatch.setenv("HERMES_SINGLE_QUERY_SESSION", "1" if single_query else "0")
+         try:
+             assert approval_prompt.request_elicitation_consent("write", "Approve once or deny.") == "decline"
+         finally:
++            set_approval_callback(None)
+             approval.unregister_gateway_notify(session_key)
+             reset_current_session_key(key_token)
+             clear_session_vars(session_tokens)
+ 
+         assert notified == []
+         assert gateway_waits == []
++        panel.assert_not_called()
+ 
+ 
+ class TestTrustNormalization:
+diff --git a/tools/approval_prompt.py b/tools/approval_prompt.py
+index b10812dc..4b886271 100644
+--- a/tools/approval_prompt.py
++++ b/tools/approval_prompt.py
+@@ -310,6 +310,12 @@ def request_elicitation_consent(message: str, description: str, *,
+         and not _ctx._is_cron_approval_context()
+         and not _ctx._is_single_query_approval_context()
+     )
++    # A registered CLI panel does not mean a human is present: -q keeps it
++    # installed, and cron/unattended sessions must never wait for an answer.
++    if (_ctx._is_single_query_approval_context() or _ctx._is_cron_approval_context()
++            or (_ctx._is_unattended_platform_approval_context() and not api_run_context)):
++        return "decline"
++
+     if _ctx._is_gateway_approval_context() or api_run_context:
+         notify_cb = _a._gateway_notify_cb(session_key)
+         if notify_cb is None:

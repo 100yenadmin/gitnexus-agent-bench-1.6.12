@@ -1,0 +1,40 @@
+{
+ "locations": [
+  {
+   "path": "hermes_cli/doctor.py",
+   "line": 185
+  },
+  {
+   "path": "hermes_cli/doctor_live.py",
+   "line": 165
+  },
+  {
+   "path": "hermes_cli/doctor_platform.py",
+   "line": 192
+  },
+  {
+   "path": "hermes_cli/doctor_platform.py",
+   "line": 273
+  },
+  {
+   "path": "hermes_cli/doctor_platform.py",
+   "line": 511
+  },
+  {
+   "path": "hermes_cli/doctor_platform.py",
+   "line": 592
+  },
+  {
+   "path": "hermes_cli/doctor_config.py",
+   "line": 450
+  },
+  {
+   "path": "hermes_cli/doctor_state.py",
+   "line": 141
+  },
+  {
+   "path": "hermes_cli/doctor_state.py",
+   "line": 642
+  }
+ ]
+}

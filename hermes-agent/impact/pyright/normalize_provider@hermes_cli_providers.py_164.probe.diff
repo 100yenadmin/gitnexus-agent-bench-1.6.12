@@ -1,0 +1,13 @@
+diff --git a/hermes_cli/providers.py b/hermes_cli/providers.py
+index 04ae7d4fb5..c17e3ef8cf 100644
+--- a/hermes_cli/providers.py
++++ b/hermes_cli/providers.py
+@@ -161,7 +161,7 @@ TRANSPORT_TO_API_MODE: Dict[str, str] = {
+ 
+ # -- Helper functions ---------------------------------------------------------
+ 
+-def normalize_provider(name: str) -> str:
++def normalize_provider(name: str, bench_probe) -> str:
+     """Resolve aliases and normalise casing to a canonical provider id."""
+     key = name.strip().lower()
+     return ALIASES.get(key, key)

@@ -1,0 +1,885 @@
+{
+ "dirs": [
+  "runs-p2"
+ ],
+ "excluded": [],
+ "cells": [
+  {
+   "task": "p2-close",
+   "arm": "A0",
+   "n": 1,
+   "graded": 1,
+   "oracle": 1,
+   "regression": 1,
+   "regression_graded": 1,
+   "clean": 1,
+   "cost": 0.6418506,
+   "turns": 10.0,
+   "wall": 121.2,
+   "gnx": 0.0,
+   "skills": 0,
+   "churn": 20.0,
+   "runs": [
+    "p2-close-A0-t1"
+   ]
+  },
+  {
+   "task": "p2-close",
+   "arm": "A1",
+   "n": 1,
+   "graded": 1,
+   "oracle": 1,
+   "regression": 1,
+   "regression_graded": 1,
+   "clean": 1,
+   "cost": 0.7509024,
+   "turns": 16.0,
+   "wall": 87.7,
+   "gnx": 3.0,
+   "skills": 0,
+   "churn": 20.0,
+   "runs": [
+    "p2-close-A1-t1"
+   ]
+  },
+  {
+   "task": "p2-close",
+   "arm": "A2",
+   "n": 1,
+   "graded": 1,
+   "oracle": 1,
+   "regression": 1,
+   "regression_graded": 1,
+   "clean": 1,
+   "cost": 0.6851146,
+   "turns": 14.0,
+   "wall": 112.1,
+   "gnx": 2.0,
+   "skills": 0,
+   "churn": 14.0,
+   "runs": [
+    "p2-close-A2-t1"
+   ]
+  },
+  {
+   "task": "p2-close",
+   "arm": "C0",
+   "n": 1,
+   "graded": 1,
+   "oracle": 1,
+   "regression": 1,
+   "regression_graded": 1,
+   "clean": 1,
+   "cost": 0.2437,
+   "turns": 1.0,
+   "wall": 164.3,
+   "gnx": 0.0,
+   "skills": 0,
+   "churn": 20.0,
+   "runs": [
+    "p2-close-C0-t1"
+   ]
+  },
+  {
+   "task": "p2-close",
+   "arm": "C2",
+   "n": 1,
+   "graded": 1,
+   "oracle": 1,
+   "regression": 1,
+   "regression_graded": 1,
+   "clean": 1,
+   "cost": 0.2524,
+   "turns": 1.0,
+   "wall": 177.5,
+   "gnx": 4.0,
+   "skills": 0,
+   "churn": 18.0,
+   "runs": [
+    "p2-close-C2-t1"
+   ]
+  },
+  {
+   "task": "p2-close",
+   "arm": "H0",
+   "n": 1,
+   "graded": 1,
+   "oracle": 1,
+   "regression": 1,
+   "regression_graded": 1,
+   "clean": 1,
+   "cost": 0.45037600000000017,
+   "turns": 41.0,
+   "wall": 188.1,
+   "gnx": 1.0,
+   "skills": 0,
+   "churn": 14.0,
+   "runs": [
+    "p2-close-H0-t1"
+   ]
+  },
+  {
+   "task": "p2-close",
+   "arm": "H2",
+   "n": 1,
+   "graded": 1,
+   "oracle": 1,
+   "regression": 1,
+   "regression_graded": 1,
+   "clean": 1,
+   "cost": 0.5015206,
+   "turns": 37.0,
+   "wall": 191.8,
+   "gnx": 5.0,
+   "skills": 0,
+   "churn": 20.0,
+   "runs": [
+    "p2-close-H2-t1"
+   ]
+  },
+  {
+   "task": "p2-declare",
+   "arm": "A0",
+   "n": 1,
+   "graded": 1,
+   "oracle": 1,
+   "regression": 1,
+   "regression_graded": 1,
+   "clean": 1,
+   "cost": 0.7999493999999999,
+   "turns": 14.0,
+   "wall": 126.4,
+   "gnx": 0.0,
+   "skills": 0,
+   "churn": 62.0,
+   "runs": [
+    "p2-declare-A0-t1"
+   ]
+  },
+  {
+   "task": "p2-declare",
+   "arm": "A1",
+   "n": 1,
+   "graded": 1,
+   "oracle": 1,
+   "regression": 1,
+   "regression_graded": 1,
+   "clean": 1,
+   "cost": 0.7064552,
+   "turns": 12.0,
+   "wall": 93.9,
+   "gnx": 0.0,
+   "skills": 0,
+   "churn": 58.0,
+   "runs": [
+    "p2-declare-A1-t1"
+   ]
+  },
+  {
+   "task": "p2-declare",
+   "arm": "A2",
+   "n": 1,
+   "graded": 1,
+   "oracle": 1,
+   "regression": 1,
+   "regression_graded": 1,
+   "clean": 1,
+   "cost": 0.743011,
+   "turns": 9.0,
+   "wall": 93.3,
+   "gnx": 2.0,
+   "skills": 0,
+   "churn": 58.0,
+   "runs": [
+    "p2-declare-A2-t1"
+   ]
+  },
+  {
+   "task": "p2-declare",
+   "arm": "C0",
+   "n": 1,
+   "graded": 1,
+   "oracle": 1,
+   "regression": 1,
+   "regression_graded": 1,
+   "clean": 1,
+   "cost": 0.2551,
+   "turns": 1.0,
+   "wall": 153.3,
+   "gnx": 0.0,
+   "skills": 0,
+   "churn": 58.0,
+   "runs": [
+    "p2-declare-C0-t1"
+   ]
+  },
+  {
+   "task": "p2-declare",
+   "arm": "C2",
+   "n": 1,
+   "graded": 1,
+   "oracle": 1,
+   "regression": 1,
+   "regression_graded": 1,
+   "clean": 1,
+   "cost": 0.3498,
+   "turns": 1.0,
+   "wall": 246.5,
+   "gnx": 5.0,
+   "skills": 0,
+   "churn": 58.0,
+   "runs": [
+    "p2-declare-C2-t1"
+   ]
+  },
+  {
+   "task": "p2-declare",
+   "arm": "H0",
+   "n": 1,
+   "graded": 1,
+   "oracle": 1,
+   "regression": 1,
+   "regression_graded": 1,
+   "clean": 1,
+   "cost": 0.8204943999999998,
+   "turns": 64.0,
+   "wall": 382.4,
+   "gnx": 1.0,
+   "skills": 0,
+   "churn": 58.0,
+   "runs": [
+    "p2-declare-H0-t1"
+   ]
+  },
+  {
+   "task": "p2-declare",
+   "arm": "H2",
+   "n": 1,
+   "graded": 1,
+   "oracle": 1,
+   "regression": 1,
+   "regression_graded": 1,
+   "clean": 1,
+   "cost": 0.4983362,
+   "turns": 37.0,
+   "wall": 185.3,
+   "gnx": 4.0,
+   "skills": 0,
+   "churn": 70.0,
+   "runs": [
+    "p2-declare-H2-t1"
+   ]
+  },
+  {
+   "task": "p2-drainFinalizerPending",
+   "arm": "A0",
+   "n": 1,
+   "graded": 1,
+   "oracle": 1,
+   "regression": 1,
+   "regression_graded": 1,
+   "clean": 1,
+   "cost": 0.5343914,
+   "turns": 7.0,
+   "wall": 75.4,
+   "gnx": 0.0,
+   "skills": 0,
+   "churn": 58.0,
+   "runs": [
+    "p2-drainFinalizerPending-A0-t1"
+   ]
+  },
+  {
+   "task": "p2-drainFinalizerPending",
+   "arm": "A1",
+   "n": 1,
+   "graded": 1,
+   "oracle": 1,
+   "regression": 1,
+   "regression_graded": 1,
+   "clean": 1,
+   "cost": 0.5521592000000001,
+   "turns": 8.0,
+   "wall": 76.0,
+   "gnx": 1.0,
+   "skills": 0,
+   "churn": 58.0,
+   "runs": [
+    "p2-drainFinalizerPending-A1-t1"
+   ]
+  },
+  {
+   "task": "p2-drainFinalizerPending",
+   "arm": "A2",
+   "n": 1,
+   "graded": 1,
+   "oracle": 1,
+   "regression": 1,
+   "regression_graded": 1,
+   "clean": 1,
+   "cost": 0.7835011999999999,
+   "turns": 9.0,
+   "wall": 121.2,
+   "gnx": 2.0,
+   "skills": 0,
+   "churn": 58.0,
+   "runs": [
+    "p2-drainFinalizerPending-A2-t1"
+   ]
+  },
+  {
+   "task": "p2-drainFinalizerPending",
+   "arm": "C0",
+   "n": 1,
+   "graded": 1,
+   "oracle": 1,
+   "regression": 1,
+   "regression_graded": 1,
+   "clean": 1,
+   "cost": 0.1882,
+   "turns": 1.0,
+   "wall": 158.4,
+   "gnx": 0.0,
+   "skills": 0,
+   "churn": 58.0,
+   "runs": [
+    "p2-drainFinalizerPending-C0-t1"
+   ]
+  },
+  {
+   "task": "p2-drainFinalizerPending",
+   "arm": "C2",
+   "n": 1,
+   "graded": 1,
+   "oracle": 1,
+   "regression": 1,
+   "regression_graded": 1,
+   "clean": 1,
+   "cost": 0.3072,
+   "turns": 1.0,
+   "wall": 186.0,
+   "gnx": 4.0,
+   "skills": 0,
+   "churn": 58.0,
+   "runs": [
+    "p2-drainFinalizerPending-C2-t1"
+   ]
+  },
+  {
+   "task": "p2-drainFinalizerPending",
+   "arm": "H0",
+   "n": 1,
+   "graded": 1,
+   "oracle": 1,
+   "regression": 1,
+   "regression_graded": 1,
+   "clean": 1,
+   "cost": 0.7731594,
+   "turns": 77.0,
+   "wall": 427.3,
+   "gnx": 0.0,
+   "skills": 0,
+   "churn": 58.0,
+   "runs": [
+    "p2-drainFinalizerPending-H0-t1"
+   ]
+  },
+  {
+   "task": "p2-drainFinalizerPending",
+   "arm": "H2",
+   "n": 1,
+   "graded": 1,
+   "oracle": 1,
+   "regression": 1,
+   "regression_graded": 1,
+   "clean": 1,
+   "cost": 0.40215710000000005,
+   "turns": 30.0,
+   "wall": 449.4,
+   "gnx": 4.0,
+   "skills": 0,
+   "churn": 58.0,
+   "runs": [
+    "p2-drainFinalizerPending-H2-t1"
+   ]
+  },
+  {
+   "task": "p2-facts",
+   "arm": "A0",
+   "n": 1,
+   "graded": 1,
+   "oracle": 1,
+   "regression": 1,
+   "regression_graded": 1,
+   "clean": 1,
+   "cost": 0.7383209999999999,
+   "turns": 14.0,
+   "wall": 846.3,
+   "gnx": 0.0,
+   "skills": 0,
+   "churn": 34.0,
+   "runs": [
+    "p2-facts-A0-t1"
+   ]
+  },
+  {
+   "task": "p2-facts",
+   "arm": "A1",
+   "n": 1,
+   "graded": 1,
+   "oracle": 1,
+   "regression": 1,
+   "regression_graded": 1,
+   "clean": 1,
+   "cost": 0.7878338000000001,
+   "turns": 14.0,
+   "wall": 183.3,
+   "gnx": 3.0,
+   "skills": 0,
+   "churn": 34.0,
+   "runs": [
+    "p2-facts-A1-t1"
+   ]
+  },
+  {
+   "task": "p2-facts",
+   "arm": "A2",
+   "n": 1,
+   "graded": 1,
+   "oracle": 1,
+   "regression": 1,
+   "regression_graded": 1,
+   "clean": 1,
+   "cost": 0.6924545999999999,
+   "turns": 11.0,
+   "wall": 89.7,
+   "gnx": 0.0,
+   "skills": 0,
+   "churn": 34.0,
+   "runs": [
+    "p2-facts-A2-t1"
+   ]
+  },
+  {
+   "task": "p2-facts",
+   "arm": "C0",
+   "n": 1,
+   "graded": 1,
+   "oracle": 1,
+   "regression": 1,
+   "regression_graded": 1,
+   "clean": 1,
+   "cost": 0.1927,
+   "turns": 1.0,
+   "wall": 120.3,
+   "gnx": 0.0,
+   "skills": 0,
+   "churn": 34.0,
+   "runs": [
+    "p2-facts-C0-t1"
+   ]
+  },
+  {
+   "task": "p2-facts",
+   "arm": "C2",
+   "n": 1,
+   "graded": 1,
+   "oracle": 1,
+   "regression": 1,
+   "regression_graded": 1,
+   "clean": 1,
+   "cost": 0.358,
+   "turns": 1.0,
+   "wall": 233.4,
+   "gnx": 5.0,
+   "skills": 0,
+   "churn": 34.0,
+   "runs": [
+    "p2-facts-C2-t1"
+   ]
+  },
+  {
+   "task": "p2-facts",
+   "arm": "H0",
+   "n": 1,
+   "graded": 1,
+   "oracle": 1,
+   "regression": 1,
+   "regression_graded": 1,
+   "clean": 1,
+   "cost": 0.41737740000000007,
+   "turns": 37.0,
+   "wall": 264.2,
+   "gnx": 1.0,
+   "skills": 0,
+   "churn": 34.0,
+   "runs": [
+    "p2-facts-H0-t1"
+   ]
+  },
+  {
+   "task": "p2-facts",
+   "arm": "H2",
+   "n": 1,
+   "graded": 1,
+   "oracle": 1,
+   "regression": 1,
+   "regression_graded": 1,
+   "clean": 1,
+   "cost": 0.6954608000000003,
+   "turns": 55.0,
+   "wall": 464.5,
+   "gnx": 4.0,
+   "skills": 0,
+   "churn": 34.0,
+   "runs": [
+    "p2-facts-H2-t1"
+   ]
+  },
+  {
+   "task": "p2-getPhaseOutput",
+   "arm": "A0",
+   "n": 1,
+   "graded": 1,
+   "oracle": 1,
+   "regression": 1,
+   "regression_graded": 1,
+   "clean": 1,
+   "cost": 0.5759082000000001,
+   "turns": 9.0,
+   "wall": 724.0,
+   "gnx": 0.0,
+   "skills": 0,
+   "churn": 140.0,
+   "runs": [
+    "p2-getPhaseOutput-A0-t1"
+   ]
+  },
+  {
+   "task": "p2-getPhaseOutput",
+   "arm": "A1",
+   "n": 1,
+   "graded": 1,
+   "oracle": 1,
+   "regression": 1,
+   "regression_graded": 1,
+   "clean": 1,
+   "cost": 0.7033522000000001,
+   "turns": 9.0,
+   "wall": 735.9,
+   "gnx": 2.0,
+   "skills": 0,
+   "churn": 140.0,
+   "runs": [
+    "p2-getPhaseOutput-A1-t1"
+   ]
+  },
+  {
+   "task": "p2-getPhaseOutput",
+   "arm": "A2",
+   "n": 1,
+   "graded": 1,
+   "oracle": 1,
+   "regression": 1,
+   "regression_graded": 1,
+   "clean": 1,
+   "cost": 0.8928706000000001,
+   "turns": 14.0,
+   "wall": 712.3,
+   "gnx": 2.0,
+   "skills": 0,
+   "churn": 140.0,
+   "runs": [
+    "p2-getPhaseOutput-A2-t1"
+   ]
+  },
+  {
+   "task": "p2-getPhaseOutput",
+   "arm": "C0",
+   "n": 1,
+   "graded": 1,
+   "oracle": 1,
+   "regression": 1,
+   "regression_graded": 1,
+   "clean": 1,
+   "cost": 0.2344,
+   "turns": 1.0,
+   "wall": 189.3,
+   "gnx": 0.0,
+   "skills": 0,
+   "churn": 140.0,
+   "runs": [
+    "p2-getPhaseOutput-C0-t1"
+   ]
+  },
+  {
+   "task": "p2-getPhaseOutput",
+   "arm": "C2",
+   "n": 1,
+   "graded": 1,
+   "oracle": 1,
+   "regression": 1,
+   "regression_graded": 1,
+   "clean": 1,
+   "cost": 0.3369,
+   "turns": 1.0,
+   "wall": 249.6,
+   "gnx": 5.0,
+   "skills": 0,
+   "churn": 140.0,
+   "runs": [
+    "p2-getPhaseOutput-C2-t1"
+   ]
+  },
+  {
+   "task": "p2-getPhaseOutput",
+   "arm": "H0",
+   "n": 1,
+   "graded": 1,
+   "oracle": 1,
+   "regression": 1,
+   "regression_graded": 1,
+   "clean": 1,
+   "cost": 0.4257872999999999,
+   "turns": 43.0,
+   "wall": 767.3,
+   "gnx": 0.0,
+   "skills": 0,
+   "churn": 140.0,
+   "runs": [
+    "p2-getPhaseOutput-H0-t1"
+   ]
+  },
+  {
+   "task": "p2-getPhaseOutput",
+   "arm": "H2",
+   "n": 1,
+   "graded": 1,
+   "oracle": 1,
+   "regression": 1,
+   "regression_graded": 1,
+   "clean": 1,
+   "cost": 0.5198676,
+   "turns": 38.0,
+   "wall": 613.6,
+   "gnx": 5.0,
+   "skills": 0,
+   "churn": 128.0,
+   "runs": [
+    "p2-getPhaseOutput-H2-t1"
+   ]
+  },
+  {
+   "task": "p2-resolve",
+   "arm": "A0",
+   "n": 1,
+   "graded": 1,
+   "oracle": 1,
+   "regression": 1,
+   "regression_graded": 1,
+   "clean": 1,
+   "cost": 0.6472254,
+   "turns": 10.0,
+   "wall": 67.5,
+   "gnx": 0.0,
+   "skills": 0,
+   "churn": 32.0,
+   "runs": [
+    "p2-resolve-A0-t1"
+   ]
+  },
+  {
+   "task": "p2-resolve",
+   "arm": "A1",
+   "n": 1,
+   "graded": 1,
+   "oracle": 1,
+   "regression": 1,
+   "regression_graded": 1,
+   "clean": 1,
+   "cost": 0.8241527999999998,
+   "turns": 13.0,
+   "wall": 85.0,
+   "gnx": 1.0,
+   "skills": 0,
+   "churn": 36.0,
+   "runs": [
+    "p2-resolve-A1-t1"
+   ]
+  },
+  {
+   "task": "p2-resolve",
+   "arm": "A2",
+   "n": 1,
+   "graded": 1,
+   "oracle": 1,
+   "regression": 1,
+   "regression_graded": 1,
+   "clean": 1,
+   "cost": 0.8691552,
+   "turns": 14.0,
+   "wall": 86.9,
+   "gnx": 2.0,
+   "skills": 0,
+   "churn": 36.0,
+   "runs": [
+    "p2-resolve-A2-t1"
+   ]
+  },
+  {
+   "task": "p2-resolve",
+   "arm": "C0",
+   "n": 1,
+   "graded": 1,
+   "oracle": 1,
+   "regression": 1,
+   "regression_graded": 1,
+   "clean": 1,
+   "cost": 0.2681,
+   "turns": 1.0,
+   "wall": 171.5,
+   "gnx": 0.0,
+   "skills": 0,
+   "churn": 36.0,
+   "runs": [
+    "p2-resolve-C0-t1"
+   ]
+  },
+  {
+   "task": "p2-resolve",
+   "arm": "C2",
+   "n": 1,
+   "graded": 1,
+   "oracle": 1,
+   "regression": 1,
+   "regression_graded": 1,
+   "clean": 1,
+   "cost": 0.3545,
+   "turns": 1.0,
+   "wall": 211.4,
+   "gnx": 5.0,
+   "skills": 0,
+   "churn": 36.0,
+   "runs": [
+    "p2-resolve-C2-t1"
+   ]
+  },
+  {
+   "task": "p2-resolve",
+   "arm": "H0",
+   "n": 1,
+   "graded": 1,
+   "oracle": 1,
+   "regression": 1,
+   "regression_graded": 1,
+   "clean": 1,
+   "cost": 0.6692135999999999,
+   "turns": 53.0,
+   "wall": 360.3,
+   "gnx": 0.0,
+   "skills": 0,
+   "churn": 32.0,
+   "runs": [
+    "p2-resolve-H0-t1"
+   ]
+  },
+  {
+   "task": "p2-resolve",
+   "arm": "H2",
+   "n": 1,
+   "graded": 1,
+   "oracle": 0,
+   "regression": 1,
+   "regression_graded": 1,
+   "clean": 0,
+   "cost": 1.3006833,
+   "turns": 88.0,
+   "wall": 523.9,
+   "gnx": 4.0,
+   "skills": 0,
+   "churn": 123.0,
+   "runs": [
+    "p2-resolve-H2-t1"
+   ]
+  }
+ ],
+ "arms": {
+  "A0": {
+   "runs": 6,
+   "graded": 6,
+   "resolved": 6,
+   "clean": 6,
+   "cost": 0.6562743333333333,
+   "cost_total": 3.937646,
+   "turns": 10.666666666666666,
+   "wall": 326.8,
+   "gnx": 0.0
+  },
+  "A1": {
+   "runs": 6,
+   "graded": 6,
+   "resolved": 6,
+   "clean": 6,
+   "cost": 0.7208092666666666,
+   "cost_total": 4.324855599999999,
+   "turns": 12.0,
+   "wall": 210.29999999999998,
+   "gnx": 1.6666666666666667
+  },
+  "A2": {
+   "runs": 6,
+   "graded": 6,
+   "resolved": 6,
+   "clean": 6,
+   "cost": 0.7776845333333333,
+   "cost_total": 4.6661072,
+   "turns": 11.833333333333334,
+   "wall": 202.58333333333334,
+   "gnx": 1.6666666666666667
+  },
+  "C0": {
+   "runs": 6,
+   "graded": 6,
+   "resolved": 6,
+   "clean": 6,
+   "cost": 0.2303666666666667,
+   "cost_total": 1.3822,
+   "turns": 1.0,
+   "wall": 159.51666666666665,
+   "gnx": 0.0
+  },
+  "C2": {
+   "runs": 6,
+   "graded": 6,
+   "resolved": 6,
+   "clean": 6,
+   "cost": 0.3264666666666666,
+   "cost_total": 1.9587999999999999,
+   "turns": 1.0,
+   "wall": 217.4,
+   "gnx": 4.666666666666667
+  },
+  "H0": {
+   "runs": 6,
+   "graded": 6,
+   "resolved": 6,
+   "clean": 6,
+   "cost": 0.5927346833333333,
+   "cost_total": 3.5564081,
+   "turns": 52.5,
+   "wall": 398.26666666666665,
+   "gnx": 0.5
+  },
+  "H2": {
+   "runs": 6,
+   "graded": 6,
+   "resolved": 5,
+   "clean": 5,
+   "cost": 0.6530042666666667,
+   "cost_total": 3.9180256,
+   "turns": 47.5,
+   "wall": 404.75,
+   "gnx": 4.333333333333333
+  }
+ }
+}

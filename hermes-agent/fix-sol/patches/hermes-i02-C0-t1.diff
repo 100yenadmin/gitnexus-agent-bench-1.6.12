@@ -1,0 +1,82 @@
+diff --git a/tests/tools/test_mcp_trust_gating.py b/tests/tools/test_mcp_trust_gating.py
+index 666b6d3b..4de59f8c 100644
+--- a/tests/tools/test_mcp_trust_gating.py
++++ b/tests/tools/test_mcp_trust_gating.py
+@@ -225,7 +225,11 @@ class TestTrustGateApprovalRouting:
+         assert seen[0]["request_id"]
+ 
+     @pytest.mark.parametrize("platform,cron,single_query", [
++        ("", "", True),
++        ("telegram", "", True),
++        ("", "1", False),
+         ("webhook", "", False),
++        ("msgraph_webhook", "", False),
+         ("telegram", "1", False),
+         ("api_server", "", True),
+     ])
+@@ -235,6 +239,7 @@ class TestTrustGateApprovalRouting:
+         """A registered callback must not widen consent for webhook, cron, or -q workers (#111526)."""
+         from gateway.session_context import clear_session_vars, set_session_vars
+         from tools import approval, approval_prompt
++        from tools.terminal_tool import set_approval_callback
+         from tools.approval_context import (
+             reset_current_session_key,
+             set_current_session_key,
+@@ -247,24 +252,26 @@ class TestTrustGateApprovalRouting:
+         )
+         key_token = set_current_session_key(session_key)
+         approval.register_gateway_notify(session_key, lambda data: notified.append(data))
+-        monkeypatch.setattr(approval_prompt, "prompt_dangerous_approval", lambda *_args, **_kwargs: "deny")
++        panel_callback = MagicMock(return_value="once")
++        set_approval_callback(panel_callback)
+         gateway_waits = []
+         monkeypatch.setattr(
+             approval_prompt._gw,
+             "_await_gateway_decision",
+             lambda *_args, **_kwargs: gateway_waits.append(_args) or {"resolved": True, "choice": "once"},
+         )
+-        if single_query:
+-            monkeypatch.setattr(approval_prompt._ctx, "_is_single_query_approval_context", lambda: True)
++        monkeypatch.setenv("HERMES_SINGLE_QUERY_SESSION", "1" if single_query else "0")
+         try:
+             assert approval_prompt.request_elicitation_consent("write", "Approve once or deny.") == "decline"
+         finally:
++            set_approval_callback(None)
+             approval.unregister_gateway_notify(session_key)
+             reset_current_session_key(key_token)
+             clear_session_vars(session_tokens)
+ 
+         assert notified == []
+         assert gateway_waits == []
++        panel_callback.assert_not_called()
+ 
+ 
+ class TestTrustNormalization:
+diff --git a/tools/approval_prompt.py b/tools/approval_prompt.py
+index b10812dc..c364fe2a 100644
+--- a/tools/approval_prompt.py
++++ b/tools/approval_prompt.py
+@@ -301,15 +301,18 @@ def request_elicitation_consent(message: str, description: str, *,
+         logger.warning("Elicitation consent: session lookup failed: %s", exc)
+         return "decline"
+ 
++    # A registered CLI panel does not mean a human is present: -q retains it,
++    # and cron may carry a delivery platform without anyone listening.
++    if _ctx._is_single_query_approval_context() or _ctx._is_cron_approval_context():
++        return "decline"
++
+     # api_server is an unattended *platform* for the dangerous-command gate, but a live ``/v1/runs`` run
+     # registers an approval notify callback and answers via ``POST /v1/runs/{id}/approval``
+     # (gateway/platforms/api_server_runs.py), so its per-call MCP consent takes the gateway path too.
+     # A run without a callback still fails closed below; cron and ``-q`` workers stay excluded.
+-    api_run_context = (
+-        _ctx._get_session_platform() == "api_server"
+-        and not _ctx._is_cron_approval_context()
+-        and not _ctx._is_single_query_approval_context()
+-    )
++    api_run_context = _ctx._get_session_platform() == "api_server"
++    if _ctx._is_unattended_platform_approval_context() and not api_run_context:
++        return "decline"
+     if _ctx._is_gateway_approval_context() or api_run_context:
+         notify_cb = _a._gateway_notify_cb(session_key)
+         if notify_cb is None:

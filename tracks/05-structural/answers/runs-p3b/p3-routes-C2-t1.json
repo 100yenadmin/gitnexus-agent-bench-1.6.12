@@ -1,0 +1,112 @@
+{
+ "routes": [
+  {
+   "method": "GET",
+   "path": "/"
+  },
+  {
+   "method": "GET",
+   "path": "/^(?!\\/api(?:\\/|$))(?!.*\\.\\w{1,10}$).*/"
+  },
+  {
+   "method": "POST",
+   "path": "/api/analyze"
+  },
+  {
+   "method": "DELETE",
+   "path": "/api/analyze/:jobId"
+  },
+  {
+   "method": "GET",
+   "path": "/api/analyze/:jobId"
+  },
+  {
+   "method": "GET",
+   "path": "/api/analyze/:jobId/progress"
+  },
+  {
+   "method": "POST",
+   "path": "/api/analyze/upload"
+  },
+  {
+   "method": "GET",
+   "path": "/api/cluster"
+  },
+  {
+   "method": "GET",
+   "path": "/api/clusters"
+  },
+  {
+   "method": "POST",
+   "path": "/api/embed"
+  },
+  {
+   "method": "DELETE",
+   "path": "/api/embed/:jobId"
+  },
+  {
+   "method": "GET",
+   "path": "/api/embed/:jobId"
+  },
+  {
+   "method": "GET",
+   "path": "/api/embed/:jobId/progress"
+  },
+  {
+   "method": "GET",
+   "path": "/api/file"
+  },
+  {
+   "method": "GET",
+   "path": "/api/graph"
+  },
+  {
+   "method": "GET",
+   "path": "/api/grep"
+  },
+  {
+   "method": "GET",
+   "path": "/api/health"
+  },
+  {
+   "method": "GET",
+   "path": "/api/heartbeat"
+  },
+  {
+   "method": "GET",
+   "path": "/api/info"
+  },
+  {
+   "method": "ALL",
+   "path": "/api/mcp"
+  },
+  {
+   "method": "GET",
+   "path": "/api/process"
+  },
+  {
+   "method": "GET",
+   "path": "/api/processes"
+  },
+  {
+   "method": "POST",
+   "path": "/api/query"
+  },
+  {
+   "method": "DELETE",
+   "path": "/api/repo"
+  },
+  {
+   "method": "GET",
+   "path": "/api/repo"
+  },
+  {
+   "method": "GET",
+   "path": "/api/repos"
+  },
+  {
+   "method": "POST",
+   "path": "/api/search"
+  }
+ ]
+}

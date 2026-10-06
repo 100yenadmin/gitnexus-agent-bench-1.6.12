@@ -1,0 +1,16 @@
+{
+ "locations": [
+  {
+   "path": "gitnexus/src/core/ingestion/route-extractors/python-const-resolver.ts",
+   "line": 121
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/route-extractors/js-const-resolver.ts",
+   "line": 839
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/route-extractors/js-const-resolver.ts",
+   "line": 902
+  }
+ ]
+}

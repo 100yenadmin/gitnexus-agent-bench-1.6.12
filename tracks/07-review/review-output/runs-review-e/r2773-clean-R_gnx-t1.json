@@ -1,0 +1,30 @@
+{
+ "schema_version": 1,
+ "verdict": "request_changes",
+ "findings": [
+  {
+   "id": "queryfts-missing-index-counts-as-available",
+   "severity": "medium",
+   "path": "gitnexus/src/core/lbug/lbug-adapter.ts",
+   "line": 3179,
+   "end_line": 3181,
+   "category": "correctness",
+   "scenario": "When the HTTP server (/api/search in bm25 mode, or hybrid mode without a ready embedder) or another CLI/pipeline caller runs searchFTSFromLbug with no repoId against a DB whose FTS indexes were never built or were dropped, LadybugDB throws \"Binder exception: Table X doesn't have an index with name x_fts.\" The new queryFTS catch treats that as 'missing-index' and returns []. searchFTSFromLbug's CLI branch (bm25-index.ts:176-179) then runs queriesSucceeded++ for every table, so ftsAvailable comes back true. api.ts:1388 only shows the 'FTS indexes missing … run --repair-fts' warning when ftsAvailable === false, so the user gets empty keyword results and no degraded signal.",
+   "evidence": "Before the change, queryFTS swallowed only messages containing 'does not exist', which the confirmed missing-index shape (\"doesn't have an index\") does not contain. That error therefore propagated, the bare catch in searchFTSFromLbug counted the table as failed, and ftsAvailable was false. Now classifyFtsQueryError(\"... doesn't have an index ...\") === 'missing-index' returns [] (lbug-adapter.ts:3179). The CLI loop counts any non-throwing queryFTS as a success (bm25-index.ts:177-178: `const result = await queryFTS(...); queriesSucceeded++;`). The MCP pool path handles the same case correctly (benign failure, not counted), so the two paths now disagree. Callers without a repoId include api.ts:1280 and api.ts:1295. No test covers the CLI branch with a missing-index error: the bm25-search tests mock queryFTS to reject or only exercise the pool path.",
+   "recommendation": "Make the CLI branch count availability the same way as the pool path. One option: have queryFTS (or a variant used by searchFTSFromLbug) report missing-index distinctly, e.g. rethrow or return null, so searchFTSFromLbug can skip queriesSucceeded++ for it without pushing to nonBenignErrors. Add a CLI-path unit test where queryFTS hits the missing-index shape and assert ftsAvailable === false with nonBenignErrors undefined.",
+   "blocking": true
+  },
+  {
+   "id": "fts-query-failed-warning-mixed-benign",
+   "severity": "low",
+   "path": "gitnexus/src/mcp/local/local-backend.ts",
+   "line": 2626,
+   "end_line": 2630,
+   "category": "correctness",
+   "scenario": "Some FTS tables have no index (a benign missing-index failure) and at least one other table hits a real error such as a timeout. No table succeeds, so ftsUsed is false while nonBenignErrors is non-empty. query() then sends ftsQueryFailedWarning, which says 'every configured index query returned an error … This is not a missing-index condition'. That is false here, because indexes really are missing, and the --repair-fts guidance that would fix them is withheld.",
+   "evidence": "bm25-index.ts:163-167 records benign failures silently and pushes only non-benign ones. local-backend.ts picks ftsQueryFailedWarning whenever ftsQueryErrors is truthy (`ftsQueryErrors ? ftsQueryFailedWarning(...) : ftsDegradedWarning(...)`), and never checks that the number of errors equals the number of tables.",
+   "recommendation": "Use ftsQueryFailedWarning only when nonBenignErrors.length === FTS_INDEXES.length, or expose a benign-failure count. Otherwise use ftsDegradedWarning with lastErrorRedacted attached. Add a test with mixed benign and non-benign failures.",
+   "blocking": false
+  }
+ ]
+}

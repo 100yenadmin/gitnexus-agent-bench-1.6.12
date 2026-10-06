@@ -1,0 +1,662 @@
+diff --git a/ARCHITECTURE.md b/ARCHITECTURE.md
+index 1c6a99c..b5a557f 100644
+--- a/ARCHITECTURE.md
++++ b/ARCHITECTURE.md
+@@ -131,7 +131,7 @@ scan → structure → [springConfig, markdown, cobol] → parse → [routes, to
+ **Design patterns:**
+ 
+ - **Single graph accumulator** — all phases mutate the same `KnowledgeGraph` in `ctx`; the graph is the primary output.
+-- **Typed phase access** — `getPhaseOutput<T>(deps, 'name')` for type-safe upstream results.
++- **Typed phase access** — `readPhaseOutput<T>(deps, 'name')` for type-safe upstream results.
+ - **Binding accumulator lifecycle** — created in `parse`, disposed by `crossFile` (in `finally`). No other phase should take ownership.
+ - **Skippable phases** — `skipGraphPhases` omits MRO/di/communities/processes (faster tests); `pruneLocalSymbols` still runs (it is graph cleanup, not analysis). `skipWorkers` is no longer a sequential escape hatch — it (like `--workers 0` / `GITNEXUS_WORKER_POOL_SIZE=0`) is rejected with an actionable error, since the worker pool is the sole parse path (§ Chunked parse-and-resolve).
+ - **Local-symbol pruning** — `pruneLocalSymbols` removes inert block-local value symbols after scope resolution has consumed them. Opt out per-call with `PipelineOptions.keepLocalValueSymbols` or globally with the `GITNEXUS_KEEP_LOCAL_VALUE_SYMBOLS` env var.
+@@ -144,7 +144,7 @@ scan → structure → [springConfig, markdown, cobol] → parse → [routes, to
+ 
+ ```typescript
+ import type { PipelinePhase, PhaseResult } from './types.js';
+-import { getPhaseOutput } from './types.js';
++import { readPhaseOutput } from './types.js';
+ import type { ParseOutput } from './parse.js';
+ 
+ export interface MyPhaseOutput {
+@@ -155,7 +155,7 @@ export const myPhase: PipelinePhase<MyPhaseOutput> = {
+   name: 'myPhase',
+   deps: ['parse'],
+   async execute(ctx, deps) {
+-    const { allPaths } = getPhaseOutput<ParseOutput>(deps, 'parse');
++    const { allPaths } = readPhaseOutput<ParseOutput>(deps, 'parse');
+     // ... write to ctx.graph ...
+     return {
+       /* typed output */
+diff --git a/gitnexus/src/core/ingestion/pipeline-phases/call-summaries.ts b/gitnexus/src/core/ingestion/pipeline-phases/call-summaries.ts
+index 6b1db0a..081f76c 100644
+--- a/gitnexus/src/core/ingestion/pipeline-phases/call-summaries.ts
++++ b/gitnexus/src/core/ingestion/pipeline-phases/call-summaries.ts
+@@ -18,7 +18,7 @@
+  */
+ 
+ import type { PipelinePhase, PipelineContext, PhaseResult } from './types.js';
+-import { getPhaseOutput } from './types.js';
++import { readPhaseOutput } from './types.js';
+ import type { ScopeResolutionOutput } from '../scope-resolution/pipeline/phase.js';
+ import {
+   emitCallSummaries,
+@@ -43,7 +43,7 @@ export const callSummariesPhase: PipelinePhase<CallSummariesOutput> = {
+     ctx: PipelineContext,
+     deps: ReadonlyMap<string, PhaseResult<unknown>>,
+   ): Promise<CallSummariesOutput> {
+-    const scope = getPhaseOutput<ScopeResolutionOutput>(deps, 'scopeResolution');
++    const scope = readPhaseOutput<ScopeResolutionOutput>(deps, 'scopeResolution');
+     const summaries = scope.callSummaries;
+     if (summaries.length === 0) return EMPTY;
+ 
+diff --git a/gitnexus/src/core/ingestion/pipeline-phases/cobol.ts b/gitnexus/src/core/ingestion/pipeline-phases/cobol.ts
+index c9332aa..6964f5b 100644
+--- a/gitnexus/src/core/ingestion/pipeline-phases/cobol.ts
++++ b/gitnexus/src/core/ingestion/pipeline-phases/cobol.ts
+@@ -9,7 +9,7 @@
+  */
+ 
+ import type { PipelinePhase, PipelineContext, PhaseResult } from './types.js';
+-import { getPhaseOutput } from './types.js';
++import { readPhaseOutput } from './types.js';
+ import { processCobol, isCobolFile, isJclFile } from '../cobol-processor.js';
+ import { readFileContents } from '../filesystem-walker.js';
+ import type { StructureOutput } from './structure.js';
+@@ -30,7 +30,7 @@ export const cobolPhase: PipelinePhase<CobolOutput> = {
+     ctx: PipelineContext,
+     deps: ReadonlyMap<string, PhaseResult<unknown>>,
+   ): Promise<CobolOutput> {
+-    const { scannedFiles, allPathSet } = getPhaseOutput<StructureOutput>(deps, 'structure');
++    const { scannedFiles, allPathSet } = readPhaseOutput<StructureOutput>(deps, 'structure');
+ 
+     const cobolScanned = scannedFiles.filter((f) => isCobolFile(f.path) || isJclFile(f.path));
+ 
+diff --git a/gitnexus/src/core/ingestion/pipeline-phases/communities.ts b/gitnexus/src/core/ingestion/pipeline-phases/communities.ts
+index a7d7a8d..40060f0 100644
+--- a/gitnexus/src/core/ingestion/pipeline-phases/communities.ts
++++ b/gitnexus/src/core/ingestion/pipeline-phases/communities.ts
+@@ -10,7 +10,7 @@
+  */
+ 
+ import type { PipelinePhase, PipelineContext, PhaseResult } from './types.js';
+-import { getPhaseOutput } from './types.js';
++import { readPhaseOutput } from './types.js';
+ import type { StructureOutput } from './structure.js';
+ import { processCommunities, type CommunityDetectionResult } from '../community-processor.js';
+ import { isDev } from '../utils/env.js';
+@@ -31,7 +31,7 @@ export const communitiesPhase: PipelinePhase<CommunitiesOutput> = {
+     ctx: PipelineContext,
+     deps: ReadonlyMap<string, PhaseResult<unknown>>,
+   ): Promise<CommunitiesOutput> {
+-    const { totalFiles } = getPhaseOutput<StructureOutput>(deps, 'structure');
++    const { totalFiles } = readPhaseOutput<StructureOutput>(deps, 'structure');
+ 
+     ctx.onProgress({
+       phase: 'communities',
+diff --git a/gitnexus/src/core/ingestion/pipeline-phases/cross-file.ts b/gitnexus/src/core/ingestion/pipeline-phases/cross-file.ts
+index 5921eaa..fa6d348 100644
+--- a/gitnexus/src/core/ingestion/pipeline-phases/cross-file.ts
++++ b/gitnexus/src/core/ingestion/pipeline-phases/cross-file.ts
+@@ -32,7 +32,7 @@
+  */
+ 
+ import type { PipelinePhase, PipelineContext, PhaseResult } from './types.js';
+-import { getPhaseOutput } from './types.js';
++import { readPhaseOutput } from './types.js';
+ import type { ParseOutput } from './parse.js';
+ import { isDev } from '../utils/env.js';
+ 
+@@ -50,7 +50,7 @@ export const crossFilePhase: PipelinePhase<CrossFileOutput> = {
+     ctx: PipelineContext,
+     deps: ReadonlyMap<string, PhaseResult<unknown>>,
+   ): Promise<CrossFileOutput> {
+-    const { totalFiles, bindingAccumulator } = getPhaseOutput<ParseOutput>(deps, 'parse');
++    const { totalFiles, bindingAccumulator } = readPhaseOutput<ParseOutput>(deps, 'parse');
+ 
+     try {
+       // Telemetry must run BEFORE dispose: totalBindings, fileCount, and
+diff --git a/gitnexus/src/core/ingestion/pipeline-phases/index.ts b/gitnexus/src/core/ingestion/pipeline-phases/index.ts
+index 99b7cc2..6150f76 100644
+--- a/gitnexus/src/core/ingestion/pipeline-phases/index.ts
++++ b/gitnexus/src/core/ingestion/pipeline-phases/index.ts
+@@ -44,5 +44,5 @@ export { processesPhase, type ProcessesOutput } from './processes.js';
+ 
+ export { runPipeline } from './runner.js';
+ export type { PipelinePhase, PipelineContext, PhaseResult } from './types.js';
+-export { getPhaseOutput } from './types.js';
++export { readPhaseOutput } from './types.js';
+ export { PhaseRegistry, type RegisterPhaseOptions } from './registry.js';
+diff --git a/gitnexus/src/core/ingestion/pipeline-phases/markdown.ts b/gitnexus/src/core/ingestion/pipeline-phases/markdown.ts
+index dd57518..690e9f5 100644
+--- a/gitnexus/src/core/ingestion/pipeline-phases/markdown.ts
++++ b/gitnexus/src/core/ingestion/pipeline-phases/markdown.ts
+@@ -9,7 +9,7 @@
+  */
+ 
+ import type { PipelinePhase, PipelineContext, PhaseResult } from './types.js';
+-import { getPhaseOutput } from './types.js';
++import { readPhaseOutput } from './types.js';
+ import { processMarkdown } from '../markdown-processor.js';
+ import { readFileContents } from '../filesystem-walker.js';
+ import type { StructureOutput } from './structure.js';
+@@ -31,7 +31,7 @@ export const markdownPhase: PipelinePhase<MarkdownOutput> = {
+     ctx: PipelineContext,
+     deps: ReadonlyMap<string, PhaseResult<unknown>>,
+   ): Promise<MarkdownOutput> {
+-    const { scannedFiles, allPathSet } = getPhaseOutput<StructureOutput>(deps, 'structure');
++    const { scannedFiles, allPathSet } = readPhaseOutput<StructureOutput>(deps, 'structure');
+ 
+     const mdScanned = scannedFiles.filter((f) => f.path.endsWith('.md') || f.path.endsWith('.mdx'));
+ 
+diff --git a/gitnexus/src/core/ingestion/pipeline-phases/mro.ts b/gitnexus/src/core/ingestion/pipeline-phases/mro.ts
+index f5c9425..9269f0f 100644
+--- a/gitnexus/src/core/ingestion/pipeline-phases/mro.ts
++++ b/gitnexus/src/core/ingestion/pipeline-phases/mro.ts
+@@ -10,7 +10,7 @@
+  */
+ 
+ import type { PipelinePhase, PipelineContext, PhaseResult } from './types.js';
+-import { getPhaseOutput } from './types.js';
++import { readPhaseOutput } from './types.js';
+ import type { StructureOutput } from './structure.js';
+ import { computeMRO } from '../mro-processor.js';
+ import { isDev } from '../utils/env.js';
+@@ -31,7 +31,7 @@ export const mroPhase: PipelinePhase<MROOutput> = {
+     ctx: PipelineContext,
+     deps: ReadonlyMap<string, PhaseResult<unknown>>,
+   ): Promise<MROOutput> {
+-    const { totalFiles } = getPhaseOutput<StructureOutput>(deps, 'structure');
++    const { totalFiles } = readPhaseOutput<StructureOutput>(deps, 'structure');
+ 
+     ctx.onProgress({
+       phase: 'enriching',
+diff --git a/gitnexus/src/core/ingestion/pipeline-phases/orm.ts b/gitnexus/src/core/ingestion/pipeline-phases/orm.ts
+index 4e6021e..9dd8d61 100644
+--- a/gitnexus/src/core/ingestion/pipeline-phases/orm.ts
++++ b/gitnexus/src/core/ingestion/pipeline-phases/orm.ts
+@@ -9,7 +9,7 @@
+  */
+ 
+ import type { PipelinePhase, PipelineContext, PhaseResult } from './types.js';
+-import { getPhaseOutput } from './types.js';
++import { readPhaseOutput } from './types.js';
+ import type { ParseOutput } from './parse.js';
+ import { generateId } from '../../../lib/utils.js';
+ import type { ExtractedORMQuery } from '../workers/parse-worker.js';
+@@ -30,7 +30,7 @@ export const ormPhase: PipelinePhase<ORMOutput> = {
+     ctx: PipelineContext,
+     deps: ReadonlyMap<string, PhaseResult<unknown>>,
+   ): Promise<ORMOutput> {
+-    const { allORMQueries } = getPhaseOutput<ParseOutput>(deps, 'parse');
++    const { allORMQueries } = readPhaseOutput<ParseOutput>(deps, 'parse');
+ 
+     if (allORMQueries.length === 0) {
+       return { edgesCreated: 0, modelCount: 0 };
+diff --git a/gitnexus/src/core/ingestion/pipeline-phases/parse.ts b/gitnexus/src/core/ingestion/pipeline-phases/parse.ts
+index 503f3be..9d2f010 100644
+--- a/gitnexus/src/core/ingestion/pipeline-phases/parse.ts
++++ b/gitnexus/src/core/ingestion/pipeline-phases/parse.ts
+@@ -17,7 +17,7 @@
+  */
+ 
+ import type { PipelinePhase, PipelineContext, PhaseResult } from './types.js';
+-import { getPhaseOutput } from './types.js';
++import { readPhaseOutput } from './types.js';
+ import type { StructureOutput } from './structure.js';
+ import type { BindingAccumulator } from '../binding-accumulator.js';
+ import type { ParsedFile, SupportedLanguages } from 'gitnexus-shared';
+@@ -125,7 +125,7 @@ export const parsePhase: PipelinePhase<ParseOutput> = {
+     // nothing before parse produces bulk edge volume anyway.
+     ctx.graphEmit?.beginStreaming();
+ 
+-    const { scannedFiles, allPaths, allPathSet, totalFiles } = getPhaseOutput<StructureOutput>(
++    const { scannedFiles, allPaths, allPathSet, totalFiles } = readPhaseOutput<StructureOutput>(
+       deps,
+       'structure',
+     );
+diff --git a/gitnexus/src/core/ingestion/pipeline-phases/processes.ts b/gitnexus/src/core/ingestion/pipeline-phases/processes.ts
+index e34e79d..9a52a4a 100644
+--- a/gitnexus/src/core/ingestion/pipeline-phases/processes.ts
++++ b/gitnexus/src/core/ingestion/pipeline-phases/processes.ts
+@@ -12,7 +12,7 @@
+  */
+ 
+ import type { PipelinePhase, PipelineContext, PhaseResult } from './types.js';
+-import { getPhaseOutput } from './types.js';
++import { readPhaseOutput } from './types.js';
+ import type { CommunitiesOutput } from './communities.js';
+ import type { RoutesOutput } from './routes.js';
+ import type { ToolsOutput } from './tools.js';
+@@ -67,10 +67,10 @@ export const processesPhase: PipelinePhase<ProcessesOutput> = {
+     ctx: PipelineContext,
+     deps: ReadonlyMap<string, PhaseResult<unknown>>,
+   ): Promise<ProcessesOutput> {
+-    const { totalFiles } = getPhaseOutput<StructureOutput>(deps, 'structure');
+-    const { communityResult } = getPhaseOutput<CommunitiesOutput>(deps, 'communities');
+-    const { routeRegistry } = getPhaseOutput<RoutesOutput>(deps, 'routes');
+-    const { toolDefs } = getPhaseOutput<ToolsOutput>(deps, 'tools');
++    const { totalFiles } = readPhaseOutput<StructureOutput>(deps, 'structure');
++    const { communityResult } = readPhaseOutput<CommunitiesOutput>(deps, 'communities');
++    const { routeRegistry } = readPhaseOutput<RoutesOutput>(deps, 'routes');
++    const { toolDefs } = readPhaseOutput<ToolsOutput>(deps, 'tools');
+ 
+     ctx.onProgress({
+       phase: 'processes',
+@@ -93,14 +93,14 @@ export const processesPhase: PipelinePhase<ProcessesOutput> = {
+     //
+     // Typed as `ParseOutput` rather than a locally re-declared structural shape,
+     // the way every other parse consumer does it (cross-file.ts, orm.ts,
+-    // routes.ts, tools.ts). `getPhaseOutput` is a raw `as T` cast, so a local
++    // routes.ts, tools.ts). `readPhaseOutput` is a raw `as T` cast, so a local
+     // shape does not check anything — it only severs the compile-time link, and
+     // renaming `allFetchCalls` on `ParseOutput` would then still compile here and
+     // silently detect zero sinks. The runtime `.filter` below is the actual
+     // guard, and it stays.
+     let parseOutput: ParseOutput | undefined;
+     try {
+-      parseOutput = getPhaseOutput<ParseOutput>(deps, 'parse');
++      parseOutput = readPhaseOutput<ParseOutput>(deps, 'parse');
+     } catch {
+       // Fail open: no sinks, previous behaviour. A missing parse output is a
+       // pipeline-composition question, not a reason to lose every process.
+diff --git a/gitnexus/src/core/ingestion/pipeline-phases/routes.ts b/gitnexus/src/core/ingestion/pipeline-phases/routes.ts
+index 42bf639..e51af9b 100644
+--- a/gitnexus/src/core/ingestion/pipeline-phases/routes.ts
++++ b/gitnexus/src/core/ingestion/pipeline-phases/routes.ts
+@@ -12,7 +12,7 @@
+  */
+ 
+ import type { PipelinePhase, PipelineContext, PhaseResult } from './types.js';
+-import { getPhaseOutput } from './types.js';
++import { readPhaseOutput } from './types.js';
+ import type { ParseOutput } from './parse.js';
+ import { isBladeTemplateFilename } from 'gitnexus-shared';
+ import { nextjsFileToRouteURL, normalizeFetchURL } from '../route-extractors/nextjs.js';
+@@ -189,7 +189,7 @@ export const routesPhase: PipelinePhase<RoutesOutput> = {
+       allExtractedRoutes,
+       allDecoratorRoutes,
+       routeHandlerSymbols,
+-    } = getPhaseOutput<ParseOutput>(deps, 'parse');
++    } = readPhaseOutput<ParseOutput>(deps, 'parse');
+ 
+     // Local copy — routes phase must not mutate upstream ParseOutput
+     const allFetchCalls = [...parseFetchCalls];
+diff --git a/gitnexus/src/core/ingestion/pipeline-phases/spring-auto-configuration.ts b/gitnexus/src/core/ingestion/pipeline-phases/spring-auto-configuration.ts
+index ba0bad6..ac9dcd2 100644
+--- a/gitnexus/src/core/ingestion/pipeline-phases/spring-auto-configuration.ts
++++ b/gitnexus/src/core/ingestion/pipeline-phases/spring-auto-configuration.ts
+@@ -29,7 +29,7 @@ import {
+ import { isDev } from '../utils/env.js';
+ import type { StructureOutput } from './structure.js';
+ import type { PipelineContext, PipelinePhase, PhaseResult } from './types.js';
+-import { getPhaseOutput } from './types.js';
++import { readPhaseOutput } from './types.js';
+ 
+ const MAX_SPRING_METADATA_BYTES = 2 * 1024 * 1024;
+ const ENABLE_AUTO_CONFIGURATION_KEY =
+@@ -240,7 +240,7 @@ export const springAutoConfigurationPhase: PipelinePhase<SpringAutoConfiguration
+     ctx: PipelineContext,
+     deps: ReadonlyMap<string, PhaseResult<unknown>>,
+   ): Promise<SpringAutoConfigurationOutput> {
+-    const { scannedFiles } = getPhaseOutput<StructureOutput>(deps, 'structure');
++    const { scannedFiles } = readPhaseOutput<StructureOutput>(deps, 'structure');
+     let classesByQualifiedName: ReturnType<typeof sourceClassIndexes> | undefined;
+     const resolutions = new Map<string, GraphNode | null>();
+     const ambiguousQualifiedNames = new Set<string>();
+diff --git a/gitnexus/src/core/ingestion/pipeline-phases/spring-config.ts b/gitnexus/src/core/ingestion/pipeline-phases/spring-config.ts
+index 738bc3e..d0c3782 100644
+--- a/gitnexus/src/core/ingestion/pipeline-phases/spring-config.ts
++++ b/gitnexus/src/core/ingestion/pipeline-phases/spring-config.ts
+@@ -19,7 +19,7 @@ import type { Event as YamlEvent } from 'js-yaml';
+ import { SPRING_CONFIG_DESCRIPTION } from '../frameworks/spring/config-bindings.js';
+ import { generateId } from '../../../lib/utils.js';
+ import type { PipelineContext, PipelinePhase, PhaseResult } from './types.js';
+-import { getPhaseOutput } from './types.js';
++import { readPhaseOutput } from './types.js';
+ import type { StructureOutput } from './structure.js';
+ 
+ const require = createRequire(import.meta.url);
+@@ -516,7 +516,7 @@ export const springConfigPhase: PipelinePhase<SpringConfigOutput> = {
+     ctx: PipelineContext,
+     deps: ReadonlyMap<string, PhaseResult<unknown>>,
+   ): Promise<SpringConfigOutput> {
+-    const { scannedFiles } = getPhaseOutput<StructureOutput>(deps, 'structure');
++    const { scannedFiles } = readPhaseOutput<StructureOutput>(deps, 'structure');
+     const configKeys = await readConfigKeys(ctx.repoPath, scannedFiles);
+     for (const entry of configKeys) {
+       const nodeId = configKeyNodeId(entry);
+diff --git a/gitnexus/src/core/ingestion/pipeline-phases/spring-destinations.ts b/gitnexus/src/core/ingestion/pipeline-phases/spring-destinations.ts
+index 47c6726..93c85eb 100644
+--- a/gitnexus/src/core/ingestion/pipeline-phases/spring-destinations.ts
++++ b/gitnexus/src/core/ingestion/pipeline-phases/spring-destinations.ts
+@@ -94,7 +94,7 @@ import { isDev } from '../utils/env.js';
+ import type { ModuleConstants } from '../route-extractors/constant-resolver.js';
+ import type { ParseOutput } from './parse.js';
+ import type { PipelineContext, PipelinePhase, PhaseResult } from './types.js';
+-import { getPhaseOutput } from './types.js';
++import { readPhaseOutput } from './types.js';
+ 
+ export interface SpringDestinationsOutput {
+   /** Destination nodes keyed by `(broker, address)`, and which therefore
+@@ -527,7 +527,7 @@ export const springDestinationsPhase: PipelinePhase<SpringDestinationsOutput> =
+     // The fact stores are keyed by file path and are populated by the same
+     // streaming pass, so the path list is the right cursor for them anyway: it
+     // does not care how the ParsedFile got to scope resolution.
+-    const { allPaths, moduleConstants } = getPhaseOutput<ParseOutput>(deps, 'parse');
++    const { allPaths, moduleConstants } = readPhaseOutput<ParseOutput>(deps, 'parse');
+     const refusalsByReason: Record<string, number> = {};
+     const countRefusal = (reason: SpringDestinationRefusal): void => {
+       refusalsByReason[reason] = (refusalsByReason[reason] ?? 0) + 1;
+diff --git a/gitnexus/src/core/ingestion/pipeline-phases/structure.ts b/gitnexus/src/core/ingestion/pipeline-phases/structure.ts
+index 35ca10c..8f76094 100644
+--- a/gitnexus/src/core/ingestion/pipeline-phases/structure.ts
++++ b/gitnexus/src/core/ingestion/pipeline-phases/structure.ts
+@@ -9,7 +9,7 @@
+  */
+ 
+ import type { PipelinePhase, PipelineContext, PhaseResult } from './types.js';
+-import { getPhaseOutput } from './types.js';
++import { readPhaseOutput } from './types.js';
+ import { processStructure } from '../structure-processor.js';
+ import type { ScanOutput } from './scan.js';
+ 
+@@ -35,7 +35,7 @@ export const structurePhase: PipelinePhase<StructureOutput> = {
+     ctx: PipelineContext,
+     deps: ReadonlyMap<string, PhaseResult<unknown>>,
+   ): Promise<StructureOutput> {
+-    const { scannedFiles, allPaths, totalFiles } = getPhaseOutput<ScanOutput>(deps, 'scan');
++    const { scannedFiles, allPaths, totalFiles } = readPhaseOutput<ScanOutput>(deps, 'scan');
+ 
+     ctx.onProgress({
+       phase: 'structure',
+diff --git a/gitnexus/src/core/ingestion/pipeline-phases/taint-summaries.ts b/gitnexus/src/core/ingestion/pipeline-phases/taint-summaries.ts
+index 96417ff..c15cbd1 100644
+--- a/gitnexus/src/core/ingestion/pipeline-phases/taint-summaries.ts
++++ b/gitnexus/src/core/ingestion/pipeline-phases/taint-summaries.ts
+@@ -9,7 +9,7 @@
+  * Opt-in: registered with `enabledWhen: (o) => o.pdg === true` (the first real
+  * pdg-gated phase). A default `analyze` run never includes it, so the graph is
+  * byte-identical. No always-on phase depends on it (a filtered-out dep would
+- * throw in `getPhaseOutput`).
++ * throw in `readPhaseOutput`).
+  *
+  * @deps    scopeResolution, pruneLocalSymbols
+  * @reads   graph (CALLS edges, Function/Method nodes), scopeResolution output
+@@ -18,7 +18,7 @@
+  */
+ 
+ import type { PipelinePhase, PipelineContext, PhaseResult } from './types.js';
+-import { getPhaseOutput } from './types.js';
++import { readPhaseOutput } from './types.js';
+ import type { ScopeResolutionOutput } from '../scope-resolution/pipeline/phase.js';
+ import {
+   solveInterprocTaint,
+@@ -56,7 +56,7 @@ export const taintSummariesPhase: PipelinePhase<TaintSummariesOutput> = {
+     ctx: PipelineContext,
+     deps: ReadonlyMap<string, PhaseResult<unknown>>,
+   ): Promise<TaintSummariesOutput> {
+-    const scope = getPhaseOutput<ScopeResolutionOutput>(deps, 'scopeResolution');
++    const scope = readPhaseOutput<ScopeResolutionOutput>(deps, 'scopeResolution');
+     const summaries = scope.functionSummaries;
+     if (summaries.length === 0) return EMPTY;
+ 
+diff --git a/gitnexus/src/core/ingestion/pipeline-phases/tools.ts b/gitnexus/src/core/ingestion/pipeline-phases/tools.ts
+index 32a0ae7..aa8b699 100644
+--- a/gitnexus/src/core/ingestion/pipeline-phases/tools.ts
++++ b/gitnexus/src/core/ingestion/pipeline-phases/tools.ts
+@@ -10,7 +10,7 @@
+  */
+ 
+ import type { PipelinePhase, PipelineContext, PhaseResult } from './types.js';
+-import { getPhaseOutput } from './types.js';
++import { readPhaseOutput } from './types.js';
+ import type { ParseOutput } from './parse.js';
+ import { generateId } from '../../../lib/utils.js';
+ import { readFileContents } from '../filesystem-walker.js';
+@@ -36,7 +36,7 @@ export const toolsPhase: PipelinePhase<ToolsOutput> = {
+     ctx: PipelineContext,
+     deps: ReadonlyMap<string, PhaseResult<unknown>>,
+   ): Promise<ToolsOutput> {
+-    const { allToolDefs, allPaths } = getPhaseOutput<ParseOutput>(deps, 'parse');
++    const { allToolDefs, allPaths } = readPhaseOutput<ParseOutput>(deps, 'parse');
+ 
+     const toolDefs: ToolDef[] = [];
+     const seenToolNames = new Set<string>();
+diff --git a/gitnexus/src/core/ingestion/pipeline-phases/types.ts b/gitnexus/src/core/ingestion/pipeline-phases/types.ts
+index 7958e40..e96d0a3 100644
+--- a/gitnexus/src/core/ingestion/pipeline-phases/types.ts
++++ b/gitnexus/src/core/ingestion/pipeline-phases/types.ts
+@@ -96,7 +96,7 @@ export interface PipelinePhase<TOutput = unknown> {
+  * @returns          The typed output of the phase
+  * @throws           If the phase is not found in the dependency map
+  */
+-export function getPhaseOutput<T>(
++export function readPhaseOutput<T>(
+   deps: ReadonlyMap<string, PhaseResult<unknown>>,
+   phaseName: string,
+ ): T {
+diff --git a/gitnexus/src/core/ingestion/pipeline.ts b/gitnexus/src/core/ingestion/pipeline.ts
+index d81b711..a69c5c6 100644
+--- a/gitnexus/src/core/ingestion/pipeline.ts
++++ b/gitnexus/src/core/ingestion/pipeline.ts
+@@ -23,7 +23,7 @@ import { type PipelineProgress } from 'gitnexus-shared';
+ import { PipelineResult } from '../../types/pipeline.js';
+ import {
+   runPipeline,
+-  getPhaseOutput,
++  readPhaseOutput,
+   scanPhase,
+   structurePhase,
+   markdownPhase,
+@@ -342,7 +342,7 @@ export function buildPhaseList(options?: PipelineOptions): PipelinePhase[] {
+       .register(pruneLocalSymbolsPhase)
+       // M4 (#2084): interprocedural taint fixpoint — the first real opt-in
+       // pdg-gated phase. Off ⇒ absent ⇒ byte-identical graph. No always-on
+-      // phase depends on it (a filtered-out dep would throw in getPhaseOutput).
++      // phase depends on it (a filtered-out dep would throw in readPhaseOutput).
+       .register(taintSummariesPhase, { enabledWhen: (o) => o.pdg === true })
+       .register(callSummariesPhase, { enabledWhen: (o) => o.pdg === true })
+       .register(mroPhase, { enabledWhen: (o) => !o.skipGraphPhases })
+@@ -424,7 +424,7 @@ export const runPipelineFromRepo = async (
+     reparsedFileCount,
+     parseCacheHitFileCount,
+     unavailableScopeLanguageFiles,
+-  } = getPhaseOutput<{
++  } = readPhaseOutput<{
+     totalFiles: number;
+     usedWorkerPool: boolean;
+     reparsedFileCount: number;
+@@ -434,7 +434,7 @@ export const runPipelineFromRepo = async (
+ 
+   let communityResult: CommunitiesOutput['communityResult'] | undefined;
+   let processResult: ProcessesOutput['processResult'] | undefined;
+-  const scopeResolutionOutput = getPhaseOutput<ScopeResolutionOutput>(results, 'scopeResolution');
++  const scopeResolutionOutput = readPhaseOutput<ScopeResolutionOutput>(results, 'scopeResolution');
+   const scopeExtractionFailures = scopeResolutionOutput.scopeExtractionFailures;
+   const resolutionOutcomes = scopeResolutionOutput.resolutionOutcomes;
+   const undecidedSatisfaction = scopeResolutionOutput.undecidedSatisfaction;
+@@ -444,12 +444,12 @@ export const runPipelineFromRepo = async (
+ 
+   // Presence check, not `!skipGraphPhases`: phases can now be filtered out by
+   // any `enabledWhen` predicate (streamGraphEmit disables communities/processes
+-  // too), and `getPhaseOutput` THROWS on a phase that was never resolved. Keying
++  // too), and `readPhaseOutput` THROWS on a phase that was never resolved. Keying
+   // off the options flag alone made every filtered-out combination crash here
+   // rather than return undefined results.
+   if (results.has('communities') && results.has('processes')) {
+-    communityResult = getPhaseOutput<CommunitiesOutput>(results, 'communities').communityResult;
+-    processResult = getPhaseOutput<ProcessesOutput>(results, 'processes').processResult;
++    communityResult = readPhaseOutput<CommunitiesOutput>(results, 'communities').communityResult;
++    processResult = readPhaseOutput<ProcessesOutput>(results, 'processes').processResult;
+   }
+ 
+   onProgress({
+@@ -511,15 +511,15 @@ export const runPipelineFromRepo = async (
+     result.runDeferredDerivedPhases = async () => {
+       const derived = await runPipeline(deferredDerivedPhases, ctx, results);
+       // Presence-checked for the same reason as the block above: a phase the
+-      // registry filtered out is absent, and `getPhaseOutput` throws on absent.
++      // registry filtered out is absent, and `readPhaseOutput` throws on absent.
+       if (derived.has('communities')) {
+-        result.communityResult = getPhaseOutput<CommunitiesOutput>(
++        result.communityResult = readPhaseOutput<CommunitiesOutput>(
+           derived,
+           'communities',
+         ).communityResult;
+       }
+       if (derived.has('processes')) {
+-        result.processResult = getPhaseOutput<ProcessesOutput>(derived, 'processes').processResult;
++        result.processResult = readPhaseOutput<ProcessesOutput>(derived, 'processes').processResult;
+       }
+     };
+   }
+diff --git a/gitnexus/src/core/ingestion/scope-resolution/pipeline/phase.ts b/gitnexus/src/core/ingestion/scope-resolution/pipeline/phase.ts
+index 5602dcb..892f1f4 100644
+--- a/gitnexus/src/core/ingestion/scope-resolution/pipeline/phase.ts
++++ b/gitnexus/src/core/ingestion/scope-resolution/pipeline/phase.ts
+@@ -25,7 +25,7 @@
+  */
+ 
+ import type { PipelinePhase, PipelineContext, PhaseResult } from '../../pipeline-phases/types.js';
+-import { getPhaseOutput } from '../../pipeline-phases/types.js';
++import { readPhaseOutput } from '../../pipeline-phases/types.js';
+ import type { StructureOutput } from '../../pipeline-phases/structure.js';
+ import type { ParseOutput } from '../../pipeline-phases/parse.js';
+ import { SupportedLanguages, getLanguageFromFilename } from 'gitnexus-shared';
+@@ -176,8 +176,8 @@ export const scopeResolutionPhase: PipelinePhase<ScopeResolutionOutput> = {
+     deps: ReadonlyMap<string, PhaseResult<unknown>>,
+   ): Promise<ScopeResolutionOutput> {
+     logHeapProbe('scopeResolution-enter');
+-    const { scannedFiles } = getPhaseOutput<StructureOutput>(deps, 'structure');
+-    const parseOutput = getPhaseOutput<ParseOutput>(deps, 'parse');
++    const { scannedFiles } = readPhaseOutput<StructureOutput>(deps, 'structure');
++    const parseOutput = readPhaseOutput<ParseOutput>(deps, 'parse');
+     const { model, parsedFiles: workerParsedFiles, contentLanguageByPath } = parseOutput;
+     const scopeExtractionFailures = new Set(parseOutput.scopeExtractionFailures);
+     // SemanticModel populated during `parse`: scope-resolution consumes
+diff --git a/gitnexus/test/unit/ingestion/pipeline-phase-registry.test.ts b/gitnexus/test/unit/ingestion/pipeline-phase-registry.test.ts
+index 8ee3dce..fb37457 100644
+--- a/gitnexus/test/unit/ingestion/pipeline-phase-registry.test.ts
++++ b/gitnexus/test/unit/ingestion/pipeline-phase-registry.test.ts
+@@ -169,7 +169,7 @@ describe('buildPhaseList — taintSummaries opt-in (#2084)', () => {
+   });
+ 
+   it('no always-on phase depends on the pdg-gated taintSummaries/callSummaries phases', () => {
+-    // A filtered-out dep would throw in getPhaseOutput at runtime, so no
++    // A filtered-out dep would throw in readPhaseOutput at runtime, so no
+     // always-included phase may list a pdg-gated phase in its deps.
+     const offList = buildPhaseList({});
+     for (const p of offList) {
+diff --git a/gitnexus/test/unit/pipeline-runner.test.ts b/gitnexus/test/unit/pipeline-runner.test.ts
+index c29fdd7..79e4c95 100644
+--- a/gitnexus/test/unit/pipeline-runner.test.ts
++++ b/gitnexus/test/unit/pipeline-runner.test.ts
+@@ -5,7 +5,7 @@ import type {
+   PipelineContext,
+   PhaseResult,
+ } from '../../src/core/ingestion/pipeline-phases/types.js';
+-import { getPhaseOutput } from '../../src/core/ingestion/pipeline-phases/types.js';
++import { readPhaseOutput } from '../../src/core/ingestion/pipeline-phases/types.js';
+ import { createKnowledgeGraph } from '../../src/core/graph/graph.js';
+ 
+ function makeCtx(): PipelineContext {
+@@ -34,7 +34,7 @@ describe('runPipeline', () => {
+       name: 'b',
+       deps: ['a'],
+       async execute(_ctx, deps) {
+-        const a = getPhaseOutput<string>(deps, 'a');
++        const a = readPhaseOutput<string>(deps, 'a');
+         order.push('b');
+         return `${a}+B`;
+       },
+@@ -44,7 +44,7 @@ describe('runPipeline', () => {
+       name: 'c',
+       deps: ['a'],
+       async execute(_ctx, deps) {
+-        const a = getPhaseOutput<string>(deps, 'a');
++        const a = readPhaseOutput<string>(deps, 'a');
+         order.push('c');
+         return `${a}+C`;
+       },
+@@ -54,8 +54,8 @@ describe('runPipeline', () => {
+       name: 'd',
+       deps: ['b', 'c'],
+       async execute(_ctx, deps) {
+-        const b = getPhaseOutput<string>(deps, 'b');
+-        const c = getPhaseOutput<string>(deps, 'c');
++        const b = readPhaseOutput<string>(deps, 'b');
++        const c = readPhaseOutput<string>(deps, 'c');
+         order.push('d');
+         return `${b}|${c}`;
+       },
+@@ -253,7 +253,7 @@ describe('runPipeline', () => {
+         deps: i > 0 ? [`step${i - 1}`] : [],
+         async execute(_ctx, deps) {
+           if (idx > 0) {
+-            const prev = getPhaseOutput<number>(deps, `step${idx - 1}`);
++            const prev = readPhaseOutput<number>(deps, `step${idx - 1}`);
+             order.push(`step${idx}`);
+             return prev + 1;
+           }
+@@ -409,13 +409,13 @@ describe('runPipeline with seeded results (#3016 deferred derived phases)', () =
+       name: 'later',
+       deps: ['earlier'],
+       async execute(_ctx, deps) {
+-        return `${getPhaseOutput<string>(deps, 'earlier')}+later`;
++        return `${readPhaseOutput<string>(deps, 'earlier')}+later`;
+       },
+     };
+ 
+     const results = await runPipeline([later], makeCtx(), seeded('earlier', 'earlierOutput'));
+ 
+-    expect(getPhaseOutput<string>(results, 'later')).toBe('earlierOutput+later');
++    expect(readPhaseOutput<string>(results, 'later')).toBe('earlierOutput+later');
+   });
+ 
+   it('returns the seeded results alongside the newly run ones', async () => {
+@@ -472,18 +472,18 @@ describe('runPipeline with seeded results (#3016 deferred derived phases)', () =
+   });
+ });
+ 
+-describe('getPhaseOutput', () => {
++describe('readPhaseOutput', () => {
+   it('retrieves typed output from dependency map', () => {
+     const deps = new Map<string, PhaseResult<unknown>>();
+     deps.set('test', { phaseName: 'test', output: { value: 42 }, durationMs: 0 });
+ 
+-    const result = getPhaseOutput<{ value: number }>(deps, 'test');
++    const result = readPhaseOutput<{ value: number }>(deps, 'test');
+     expect(result.value).toBe(42);
+   });
+ 
+   it('throws for missing phase', () => {
+     const deps = new Map<string, PhaseResult<unknown>>();
+ 
+-    expect(() => getPhaseOutput(deps, 'missing')).toThrow(/Phase 'missing' not found/);
++    expect(() => readPhaseOutput(deps, 'missing')).toThrow(/Phase 'missing' not found/);
+   });
+ });
+diff --git a/gitnexus/test/unit/processes-phase-sink-wiring.test.ts b/gitnexus/test/unit/processes-phase-sink-wiring.test.ts
+index 8f91e79..02e3ae1 100644
+--- a/gitnexus/test/unit/processes-phase-sink-wiring.test.ts
++++ b/gitnexus/test/unit/processes-phase-sink-wiring.test.ts
+@@ -6,7 +6,7 @@
+  * sinks". Every other phase-level test omits `parse` from its deps map, so all
+  * of them take the CATCH branch — the success path had no coverage at all.
+  *
+- * That matters because `getPhaseOutput` is a raw `as T` cast. If the field names
++ * That matters because `readPhaseOutput` is a raw `as T` cast. If the field names
+  * on `ParseOutput` ever drift, the phase reads nothing, detects zero sinks, and
+  * every existing test still passes, because zero sinks is exactly what they
+  * already assert. The wiring could break silently and in complete silence.
+@@ -107,7 +107,7 @@ const terminalsOf = (graph: KnowledgeGraph): string[] => {
+ describe('processes phase — parse-output sink wiring (#2896)', () => {
+   it('declares `parse` as a dependency', () => {
+     // The read and the declaration must not diverge: dropping the dep would
+-    // make `getPhaseOutput` throw into the fail-open catch on every run, and
++    // make `readPhaseOutput` throw into the fail-open catch on every run, and
+     // every other test would still pass.
+     expect(processesPhase.deps).toContain('parse');
+   });

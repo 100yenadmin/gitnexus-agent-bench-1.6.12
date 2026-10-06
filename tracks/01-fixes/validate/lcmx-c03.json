@@ -1,0 +1,56 @@
+{
+ "id": "lcmx-c03",
+ "pr": 837,
+ "base": "88629e6eeca305644c5c2dcdf56429a1ab72fa9a",
+ "fix": "f0e38c61fad0be936e07892e5f47c0fed380e8ea",
+ "tests": [
+  "tests/test_host_uid_hygiene.py",
+  "tests/test_host_uid_shadow.py"
+ ],
+ "oracle_files": [
+  "tests/test_host_uid_hygiene.py",
+  "tests/test_host_uid_shadow.py"
+ ],
+ "oracle_cmd": "bash $BENCH_ROOT/mining/_scripts/lcmx_pytest.sh -q tests/test_host_uid_hygiene.py tests/test_host_uid_shadow.py",
+ "regression_cmd": "bash $BENCH_ROOT/mining/_scripts/lcmx_pytest.sh tests/ -q -n 8",
+ "setup_cmd": "bash $BENCH_ROOT/mining/_scripts/lcmx_setup.sh",
+ "setup_rc": 0,
+ "base_rc": 1,
+ "base_secs": 28.6,
+ "base_tail": [
+  "FAILED tests/test_host_uid_hygiene.py::test_bindings_are_deleted_with_their_rows[delete_session_messages]",
+  "FAILED tests/test_host_uid_hygiene.py::test_bindings_are_deleted_with_their_rows[doctor_clean]",
+  "FAILED tests/test_host_uid_hygiene.py::test_a_reused_store_id_never_inherits_a_stale_binding",
+  "FAILED tests/test_host_uid_hygiene.py::test_two_homes_sharing_one_database_bind_separately",
+  "FAILED tests/test_host_uid_hygiene.py::test_the_key_format_and_a_symlinked_home_give_the_same_tag",
+  "FAILED tests/test_host_uid_shadow.py::test_new_rows_bind_canonical_in_the_lineage_root",
+  "FAILED tests/test_host_uid_shadow.py::test_on_mode_behaves_exactly_like_shadow",
+  "FAILED tests/test_host_uid_shadow.py::test_compression_child_shares_its_root_branch_and_reset_children_start_their_own",
+  "FAILED tests/test_host_uid_shadow.py::test_truncated_or_unreadable_chain_gives_no_root",
+  "FAILED tests/test_host_uid_shadow.py::test_rotation_child_binds_under_the_parent_root",
+  "FAILED tests/test_host_uid_shadow.py::test_same_uid_new_bytes_is_version_new",
+  "FAILED tests/test_host_uid_shadow.py::test_f2_late_off_current_session_end_suffix_is_observed_under_that_session",
+  "FAILED tests/test_host_uid_shadow.py::test_r3_the_lineage_cache_is_keyed_by_home",
+  "FAILED tests/test_host_uid_shadow.py::test_r4_a_permission_denied_state_db_is_a_read_error_not_missing",
+  "FAILED tests/test_host_uid_shadow.py::test_r4_the_lineage_cache_keeps_the_newest_512_entries",
+  "15 failed, 40 passed, 139 warnings in 27.90s"
+ ],
+ "base_import_err": false,
+ "fix_rc1": 0,
+ "fix_secs1": 17.3,
+ "fix_tail1": [
+  "55 passed, 139 warnings in 16.65s"
+ ],
+ "fix_rc2": 0,
+ "fix_secs2": 28.2,
+ "fix_tail2": [
+  "55 passed, 139 warnings in 27.63s"
+ ],
+ "reg_rc": 0,
+ "reg_secs": 355.3,
+ "reg_tail": [
+  "5847 passed, 92 skipped, 16 xfailed, 6806 warnings in 354.54s (0:05:54)"
+ ],
+ "mismatch": [],
+ "final_status": "* (HEAD detached at 88629e6)\n  main\n  remotes/origin/HEAD -> origin/main\n  remotes/origin/main"
+}

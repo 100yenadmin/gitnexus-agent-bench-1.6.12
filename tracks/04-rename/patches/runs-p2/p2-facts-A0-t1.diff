@@ -1,0 +1,161 @@
+diff --git a/gitnexus/src/core/ingestion/cfg/visitors/java-harvest.ts b/gitnexus/src/core/ingestion/cfg/visitors/java-harvest.ts
+index 44b4568..cba7d44 100644
+--- a/gitnexus/src/core/ingestion/cfg/visitors/java-harvest.ts
++++ b/gitnexus/src/core/ingestion/cfg/visitors/java-harvest.ts
+@@ -183,7 +183,7 @@ export class JavaHarvester extends ScopeTreeHarvester {
+   // ── phase 2: per-statement fact extraction ───────────────────────────────
+ 
+   /** Def/use facts for one statement (or construct-header expression) node. */
+-  facts(node: SyntaxNode): StatementFacts {
++  collectFacts(node: SyntaxNode): StatementFacts {
+     const acc = new FactAccumulator(node.startPosition.row + 1);
+     this.walkValue(node, acc);
+     return acc.finish();
+@@ -200,7 +200,7 @@ export class JavaHarvester extends ScopeTreeHarvester {
+    * Def-ONLY facts for a value-position binding carrier (`var x = switch (…) {…}`,
+    * #2207): just the declared name(s)' def, attached to the continuation block the
+    * switch arms rejoin. The switch subject + arm-value USES are already harvested
+-   * onto the branch's own blocks ({@link facts} on each arm), so this must NOT
++   * onto the branch's own blocks ({@link collectFacts} on each arm), so this must NOT
+    * re-walk the value — only each `variable_declarator`'s `name` is a def here.
+    */
+   bindingDefFacts(stmt: SyntaxNode): StatementFacts | undefined {
+diff --git a/gitnexus/src/core/ingestion/cfg/visitors/java.ts b/gitnexus/src/core/ingestion/cfg/visitors/java.ts
+index 236185d..2ec2361 100644
+--- a/gitnexus/src/core/ingestion/cfg/visitors/java.ts
++++ b/gitnexus/src/core/ingestion/cfg/visitors/java.ts
+@@ -212,7 +212,7 @@ class JavaCfgWalk {
+               endLineOf(stmt),
+               stmt.text,
+               'normal',
+-              this.harvest.facts(stmt),
++              this.harvest.collectFacts(stmt),
+             );
+             if (entry === undefined) entry = idx;
+             else this.builder.connect(dangling, idx, 'seq');
+@@ -223,7 +223,7 @@ class JavaCfgWalk {
+               openSimple,
+               endLineOf(stmt),
+               stmt.text,
+-              this.harvest.facts(stmt),
++              this.harvest.collectFacts(stmt),
+             );
+           }
+         }
+@@ -305,7 +305,7 @@ class JavaCfgWalk {
+       endLineOf(stmt),
+       stmt.text,
+       'normal',
+-      this.harvest.facts(stmt),
++      this.harvest.collectFacts(stmt),
+     );
+     return { entry: idx, exits: [idx] };
+   }
+@@ -328,7 +328,7 @@ class JavaCfgWalk {
+       endLineOf(stmt),
+       stmt.text,
+       'normal',
+-      this.harvest.facts(stmt),
++      this.harvest.collectFacts(stmt),
+     );
+     // A return crosses EVERY active finalizer (finally / try-with-resources /
+     // synchronized) before EXIT.
+@@ -348,7 +348,7 @@ class JavaCfgWalk {
+       endLineOf(stmt),
+       stmt.text,
+       'normal',
+-      this.harvest.facts(stmt),
++      this.harvest.collectFacts(stmt),
+     );
+     this.builder.edge(idx, this.currentHandler(), 'throw');
+     return { entry: idx, exits: [] };
+@@ -369,7 +369,7 @@ class JavaCfgWalk {
+       endLineOf(stmt),
+       stmt.text,
+       'normal',
+-      this.harvest.facts(stmt),
++      this.harvest.collectFacts(stmt),
+     );
+     const res = this.cfc.resolveYield();
+     const { target, finalizers } = res ?? {
+@@ -463,7 +463,7 @@ class JavaCfgWalk {
+       endLineOf(cond),
+       cond.text,
+       'normal',
+-      this.harvest.facts(cond),
++      this.harvest.collectFacts(cond),
+     );
+     const exits: number[] = [];
+ 
+@@ -507,7 +507,7 @@ class JavaCfgWalk {
+       endLineOf(cond),
+       cond.text,
+       'normal',
+-      this.harvest.facts(cond),
++      this.harvest.collectFacts(cond),
+     );
+     const loopExit = this.builder.newBlock(endLineOf(stmt), endLineOf(stmt), '');
+ 
+@@ -535,7 +535,7 @@ class JavaCfgWalk {
+       endLineOf(cond),
+       cond.text,
+       'normal',
+-      this.harvest.facts(cond),
++      this.harvest.collectFacts(cond),
+     );
+     const loopExit = this.builder.newBlock(endLineOf(stmt), endLineOf(stmt), '');
+ 
+@@ -561,7 +561,7 @@ class JavaCfgWalk {
+       cond ? endLineOf(cond) : startLineOf(stmt),
+       cond ? cond.text : 'for(;;)',
+       'normal',
+-      cond ? this.harvest.facts(cond) : undefined,
++      cond ? this.harvest.collectFacts(cond) : undefined,
+     );
+     const loopExit = this.builder.newBlock(endLineOf(stmt), endLineOf(stmt), '');
+ 
+@@ -572,7 +572,7 @@ class JavaCfgWalk {
+         endLineOf(incr),
+         incr.text,
+         'normal',
+-        this.harvest.facts(incr),
++        this.harvest.collectFacts(incr),
+       );
+       this.builder.edge(incrBlock, header, 'loop-back');
+     }
+@@ -599,7 +599,7 @@ class JavaCfgWalk {
+         endLineOf(init),
+         init.text,
+         'normal',
+-        this.harvest.facts(init),
++        this.harvest.collectFacts(init),
+       );
+       this.builder.edge(initBlock, header, 'seq');
+       entry = initBlock;
+@@ -649,7 +649,7 @@ class JavaCfgWalk {
+   private visitSynchronized(stmt: SyntaxNode): SeqResult {
+     const bodyNode = this.bodyBlockOf(stmt) ?? null;
+     const lockExpr = this.synchronizedLock(stmt);
+-    const releaseFacts = lockExpr ? this.harvest.facts(lockExpr) : undefined;
++    const releaseFacts = lockExpr ? this.harvest.collectFacts(lockExpr) : undefined;
+     return this.buildProtectedSynthetic(bodyNode, stmt, 'release', releaseFacts);
+   }
+ 
+@@ -683,7 +683,7 @@ class JavaCfgWalk {
+       endLineOf(value),
+       value.text,
+       'normal',
+-      this.harvest.facts(value),
++      this.harvest.collectFacts(value),
+     );
+     const switchExit = this.builder.newBlock(endLineOf(stmt), endLineOf(stmt), '');
+ 
+@@ -1070,7 +1070,7 @@ function buildFunctionCfg(fnNode: SyntaxNode, filePath: string): FunctionCfg | u
+         endLineOf(body),
+         body.text,
+         'normal',
+-        harvest.facts(body),
++        harvest.collectFacts(body),
+       );
+       builder.edge(builder.entryIndex, blk, 'seq');
+       builder.edge(blk, builder.exitIndex, 'return');

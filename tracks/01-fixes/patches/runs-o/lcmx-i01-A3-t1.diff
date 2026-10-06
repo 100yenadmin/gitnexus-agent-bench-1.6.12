@@ -1,0 +1,142 @@
+diff --git a/dag.py b/dag.py
+index 084411e..32408c6 100644
+--- a/dag.py
++++ b/dag.py
+@@ -514,6 +514,20 @@ class SummaryDAG:
+             ).fetchone()
+         return row[0] if row else 0
+ 
++    def get_session_depths(self, session_id: str) -> List[int]:
++        """Distinct node depths for a session, ascending, UNBOUNDED (#750).
++
++        Unlike :meth:`get_session_nodes` (which caps at ``limit=1000`` ordered
++        by depth), this sees every depth however many leaves the session has.
++        """
++        with self._db_lock:
++            rows = self._conn.execute(
++                """SELECT DISTINCT depth FROM summary_nodes
++                   WHERE session_id = ? ORDER BY depth""",
++                (session_id,),
++            ).fetchall()
++        return [int(r[0]) for r in rows]
++
+     def get_session_node_count(self, session_id: str) -> int:
+         """Count summary nodes for a session without loading node rows."""
+         row = self._conn.execute(
+diff --git a/engine.py b/engine.py
+index e5533cb..d680227 100644
+--- a/engine.py
++++ b/engine.py
+@@ -6976,8 +6976,8 @@ class LCMEngine(
+         # the deepest existing node + 1, so condensation can always
+         # create the next depth level.
+         if max_depth < 0:
+-            all_nodes = self._dag.get_session_nodes(self._session_id)
+-            upper = (max(n.depth for n in all_nodes) + 1) if all_nodes else 1
++            session_depths = self._dag.get_session_depths(self._session_id)  # #750: uncapped
++            upper = (session_depths[-1] + 1) if session_depths else 1
+         else:
+             upper = max_depth
+ 
+@@ -7706,12 +7706,13 @@ class LCMEngine(
+         # Node ids placed in the summary prefix — used to dedupe proactive-recall
+         # injection against summaries already visible in the active context.
+         active_summary_node_ids: set = set()
+-        all_nodes = self._dag.get_session_nodes(self._session_id)
+-        if all_nodes:
++        # #750: every depth the session has, not just those in the first 1000 rows
++        session_depths = self._dag.get_session_depths(self._session_id)
++        if session_depths:
+             # Group by depth, take the most recent uncondensed at each level
+             # For active context, we want the highest-level summaries
+             # that haven't been condensed into even higher levels
+-            depths = sorted(set(n.depth for n in all_nodes), reverse=True)
++            depths = sorted(session_depths, reverse=True)
+             for group, d in enumerate(depths):
+                 uncondensed = self._dag.get_uncondensed_at_depth(self._session_id, d, newest=True)
+                 for node in uncondensed:
+diff --git a/tests/test_issue_750_session_depths.py b/tests/test_issue_750_session_depths.py
+new file mode 100644
+index 0000000..9b5f413
+--- /dev/null
++++ b/tests/test_issue_750_session_depths.py
+@@ -0,0 +1,79 @@
++"""#750: long sessions keep their deepest condensed summaries.
++
++Assembly and unlimited-depth condensation used to read the session's depths from
++``get_session_nodes`` (capped at 1000 rows, ordered by depth), so from ~1000
++depth-0 leaves the higher depths fell out of the assembled context and
++condensation stopped building new levels. ``get_session_depths`` reads the
++distinct depths without a row cap."""
++
++from __future__ import annotations
++
++import hermes_lcm.engine as lcm_engine
++from hermes_lcm.config import LCMConfig
++from hermes_lcm.dag import SummaryDAG, SummaryNode
++from hermes_lcm.engine import LCMEngine
++
++
++def _engine(tmp_path, **config) -> LCMEngine:
++    settings = {"fresh_tail_count": 2, "leaf_chunk_tokens": 400, "max_assembly_tokens": 1_000_000,
++                "threshold_full_sweep_enabled": False, "database_path": str(tmp_path / "lcm.db"), **config}
++    engine = LCMEngine(config=LCMConfig(**settings))
++    engine.on_session_start("S", platform="telegram", context_length=2_000_000, conversation_id="conv")
++    return engine
++
++
++def _add(dag: SummaryDAG, session: str, depth: int, index: int, sources: list[int]) -> int:
++    return dag.add_node(SummaryNode(
++        session_id=session, depth=depth, summary=f"d{depth} summary {index}", token_count=5,
++        source_token_count=20, source_ids=sources, source_type="nodes" if depth else "messages",
++        created_at=float(depth * 10_000 + index + 1)))
++
++
++def _build(dag: SummaryDAG, session: str, leaves: int, top_depth: int, fanin: int = 4) -> dict[int, list[int]]:
++    """``leaves`` depth-0 nodes, each level condensed in groups of ``fanin`` up to ``top_depth``."""
++    levels = {0: [_add(dag, session, 0, i, []) for i in range(leaves)]}
++    for depth in range(1, top_depth + 1):
++        below = levels[depth - 1]
++        levels[depth] = [_add(dag, session, depth, i, below[i * fanin:(i + 1) * fanin])
++                         for i in range(len(below) // fanin)]
++    return levels
++
++
++def test_get_session_depths_is_uncapped_ascending_and_session_scoped(tmp_path):
++    dag = SummaryDAG(str(tmp_path / "dag.db"))
++    try:
++        _build(dag, "S", 1024, 3)
++        _add(dag, "other", 7, 0, [])
++        assert dag.get_session_depths("S") == [0, 1, 2, 3]
++        assert dag.get_session_depths("other") == [7]
++        assert dag.get_session_depths("unknown") == []
++        # The capped reader keeps its current behaviour.
++        assert len(dag.get_session_nodes("S")) == 1000
++    finally:
++        dag.close()
++
++
++def test_assembly_renders_depth_3_with_1024_leaves(tmp_path):
++    engine = _engine(tmp_path)
++    try:
++        levels = _build(engine._dag, "S", 1024, 3)
++        assert len(levels[3]) == 16
++        tail = [{"role": "user", "content": "latest question"}]
++        assembled = engine._assemble_context({"role": "system", "content": "sys"}, tail)
++        text = "\n".join(str(msg.get("content", "")) for msg in assembled)
++        for node_id in levels[3]:
++            assert f"(d3, node {node_id})" in text
++    finally:
++        engine.shutdown()
++
++
++def test_unlimited_condensation_builds_the_next_level_past_1000_leaves(tmp_path, monkeypatch):
++    monkeypatch.setattr(lcm_engine, "summarize_with_escalation",
++                        lambda **kwargs: ("Merged arc.\nExpand for details about: arc", 1))
++    engine = _engine(tmp_path, incremental_max_depth=-1, condensation_fanin=4)
++    try:
++        _build(engine._dag, "S", 1000, 1)  # 250 uncondensed depth-1 nodes, no depth 2 yet
++        assert engine._maybe_condense(force_overflow=True) >= 1
++        assert 2 in engine._dag.get_session_depths("S")
++    finally:
++        engine.shutdown()

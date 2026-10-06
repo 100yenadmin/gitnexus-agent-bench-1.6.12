@@ -1,0 +1,53 @@
+{
+ "id": "lcmx-c01",
+ "pr": 560,
+ "base": "68cce8bbe32e3da05d20220909b55d1668bb92c3",
+ "fix": "8f0246decf250b6960fe2a65df980633f593357e",
+ "tests": [
+  "tests/test_issue_559_tool_group_boundary.py"
+ ],
+ "oracle_files": [
+  "tests/test_issue_559_tool_group_boundary.py"
+ ],
+ "oracle_cmd": "bash $BENCH_ROOT/mining/_scripts/lcmx_pytest.sh -q tests/test_issue_559_tool_group_boundary.py",
+ "regression_cmd": "bash $BENCH_ROOT/mining/_scripts/lcmx_pytest.sh tests/ -q -n 8",
+ "setup_cmd": "bash $BENCH_ROOT/mining/_scripts/lcmx_setup.sh",
+ "setup_rc": 0,
+ "base_rc": 1,
+ "base_secs": 6.8,
+ "base_tail": [
+  "FAILED tests/test_issue_559_tool_group_boundary.py::test_leaf_chunk_never_splits_a_parallel_tool_group[between-dynamic-emulated]",
+  "FAILED tests/test_issue_559_tool_group_boundary.py::test_leaf_chunk_never_splits_a_parallel_tool_group[between-threshold-sweep-emulated]",
+  "FAILED tests/test_issue_559_tool_group_boundary.py::test_leaf_chunk_never_splits_a_parallel_tool_group[after-assistant-dynamic-emulated]",
+  "FAILED tests/test_issue_559_tool_group_boundary.py::test_leaf_chunk_never_splits_a_parallel_tool_group[after-assistant-threshold-sweep-emulated]",
+  "FAILED tests/test_issue_559_tool_group_boundary.py::test_tool_group_safe_end[rows0-3-1]",
+  "FAILED tests/test_issue_559_tool_group_boundary.py::test_tool_group_safe_end[rows1-2-1]",
+  "FAILED tests/test_issue_559_tool_group_boundary.py::test_tool_group_safe_end[rows2-4-4]",
+  "FAILED tests/test_issue_559_tool_group_boundary.py::test_tool_group_safe_end[rows3-1-1]",
+  "FAILED tests/test_issue_559_tool_group_boundary.py::test_tool_group_safe_end[rows4-1-3]",
+  "FAILED tests/test_issue_559_tool_group_boundary.py::test_tool_group_safe_end[rows5-2-3]",
+  "FAILED tests/test_issue_559_tool_group_boundary.py::test_tool_group_safe_end[rows6-2-2]",
+  "FAILED tests/test_issue_559_tool_group_boundary.py::test_tool_group_safe_end[rows7-2-2]",
+  "FAILED tests/test_issue_559_tool_group_boundary.py::test_tool_group_safe_end[rows8-2-2]",
+  "FAILED tests/test_issue_559_tool_group_boundary.py::test_leaf_rescue_fallback_does_not_split_a_group",
+  "14 failed, 2 passed, 6 skipped, 113 warnings in 6.20s"
+ ],
+ "base_import_err": true,
+ "fix_rc1": 0,
+ "fix_secs1": 2.9,
+ "fix_tail1": [
+  "16 passed, 6 skipped, 113 warnings in 2.40s"
+ ],
+ "fix_rc2": 0,
+ "fix_secs2": 18.1,
+ "fix_tail2": [
+  "16 passed, 6 skipped, 113 warnings in 17.56s"
+ ],
+ "reg_rc": 0,
+ "reg_secs": 266.3,
+ "reg_tail": [
+  "4576 passed, 90 skipped, 16 xfailed, 2744 warnings in 265.65s (0:04:25)"
+ ],
+ "mismatch": [],
+ "final_status": "* (HEAD detached at 68cce8b)\n  main\n  remotes/origin/HEAD -> origin/main\n  remotes/origin/main"
+}

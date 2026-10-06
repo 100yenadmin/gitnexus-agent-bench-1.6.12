@@ -1,0 +1,40 @@
+{
+ "locations": [
+  {
+   "path": "gitnexus/src/cli/analyze-config.ts",
+   "line": 166
+  },
+  {
+   "path": "gitnexus/src/cli/analyze-config.ts",
+   "line": 183
+  },
+  {
+   "path": "gitnexus/src/cli/analyze-config.ts",
+   "line": 206
+  },
+  {
+   "path": "gitnexus/src/cli/analyze-config.ts",
+   "line": 479
+  },
+  {
+   "path": "gitnexus/src/cli/analyze-config.ts",
+   "line": 482
+  },
+  {
+   "path": "gitnexus/src/cli/analyze.ts",
+   "line": 833
+  },
+  {
+   "path": "gitnexus/src/cli/analyze.ts",
+   "line": 850
+  },
+  {
+   "path": "gitnexus/src/cli/analyze-watch.ts",
+   "line": 163
+  },
+  {
+   "path": "gitnexus/src/server/api.ts",
+   "line": 1755
+  }
+ ]
+}

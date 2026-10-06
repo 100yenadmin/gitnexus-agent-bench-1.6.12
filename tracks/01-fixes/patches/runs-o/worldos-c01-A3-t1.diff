@@ -1,0 +1,415 @@
+diff --git a/servers/engine/combat.py b/servers/engine/combat.py
+index d777466..64d64d9 100644
+--- a/servers/engine/combat.py
++++ b/servers/engine/combat.py
+@@ -216,6 +216,31 @@ def check_action_attack(
+     return True, ""
+ 
+ 
++def casting_time_kind(raw) -> str:
++    """Classify a spell's casting time into the action-economy resource it spends (#778):
++    "bonus" | "reaction" | "long" (minutes/hours — can't fit a 6-second turn) | "action".
++    Accepts both the curated spelling ("1 bonus action") and the SRD one ("bonus-action");
++    a missing value is treated as an action (the 5e default)."""
++    s = str(raw or "").lower().replace("-", " ").replace("_", " ")
++    if "bonus" in s:
++        return "bonus"
++    if "reaction" in s:
++        return "reaction"
++    if "minute" in s or "hour" in s:
++        return "long"
++    return "action"
++
++
++def actions_spent(action_used: bool, attacks_made: int, extra_attacks: int) -> int:
++    """How many whole actions the current combatant has spent this turn (#778). Attacks
++    are counted in Attack-action units (``extra_attacks + 1`` strikes each, partially used
++    actions round up); a used action with no strikes (a cast, a skip, a generic
++    use_action) counts as one. Compare against ``1 + surge_actions`` available."""
++    per_action = max(0, int(extra_attacks)) + 1
++    spent = -(-max(0, int(attacks_made)) // per_action)
++    return max(spent, 1 if action_used else 0)
++
++
+ def is_incapacitated(ch: Character) -> bool:
+     """True if the creature can take no actions, bonus actions, or reactions — the SRD
+     Incapacitated condition and the conditions that include it (Stunned, Paralyzed,
+diff --git a/servers/engine/models.py b/servers/engine/models.py
+index 051e476..598ca9e 100644
+--- a/servers/engine/models.py
++++ b/servers/engine/models.py
+@@ -1419,6 +1419,11 @@ class Combat(_StrictModel):
+     #    current combatant). attacks allowed = (extra_attacks + 1) * (1 + surge_actions).
+     action_attacks_made: int = 0
+     surge_actions: int = 0
++    # What the current turn's action was spent on (#778), so the action is ONE shared
++    # resource across cast_spell / attack / use_action: "cast" (an action-cost spell),
++    # "skip" (use_action(kind="skip")), or "" (unused, or a generic action / attack /
++    # disengage / dash). Resets every next_turn; old snapshots load it as "".
++    action_purpose: Literal["", "cast", "skip"] = ""
+     # Tactical regions for THIS fight (S2.7). Empty = theater-of-the-mind: range/
+     # movement gating is inert and nothing changes. Additive default.
+     zones: list[Zone] = Field(default_factory=list)
+diff --git a/servers/engine/server.py b/servers/engine/server.py
+index 8b44a5c..15aa555 100644
+--- a/servers/engine/server.py
++++ b/servers/engine/server.py
+@@ -4884,6 +4884,7 @@ def next_turn(campaign_id: str) -> dict:
+         # Attack action's worth of strikes and no Action Surge spent yet.
+         c.combat.action_attacks_made = 0
+         c.combat.surge_actions = 0
++        c.combat.action_purpose = ""
+         # LEAK GUARD (cs-1040val): a maneuver die / Guided Strike bonus rides the attack you
+         # spent it on (SRD: "add it to that attack's roll/damage"). If the outgoing combatant
+         # spent one but never attacked this turn, clear the orphaned pending rider so it can't
+@@ -5145,6 +5146,7 @@ def use_action(campaign_id: str, character_id: str, kind: str = "action") -> dic
+                 ok, reason = False, "action already used this turn (already acted or skipped)"
+             else:
+                 c.combat.action_used = True
++                c.combat.action_purpose = "skip"  # #778: attack()/cast_spell() refuse after a skip
+         elif kind in ("action", "bonus"):
+             if not is_current:
+                 ok, reason = False, f"it is not {ch.name}'s turn (only a reaction acts off-turn)"
+@@ -5538,6 +5540,15 @@ def attack(
+                 # named attack scopes the Multiattack budget to its composition
+                 # (a Ghoul Claw is NOT part of its 'two Bite' Multiattack — cs F-3).
+                 ma = _attacker_multiattack_count(attacker, c, attack_name)
++                # #778: the action is shared with cast_spell / use_action. A declared skip
++                # ends the turn's acting; an action-cost cast spent the action, so a strike
++                # needs a further action (Action Surge) — cast_spell filled one action's
++                # strike budget, which the per-action check below then honours.
++                if c.combat.action_purpose == "skip":
++                    raise ValueError(
++                        f"{attacker.name} cannot attack: it skipped this turn "
++                        f"(use_action(kind='skip')). Advance with next_turn."
++                    )
+                 ok, reason = combat.check_action_attack(
+                     is_current=True,
+                     attacks_made=c.combat.action_attacks_made,
+@@ -5545,6 +5556,14 @@ def attack(
+                     surge_actions=c.combat.surge_actions,
+                     multiattack=ma,
+                 )
++                if ok and c.combat.action_purpose == "cast" and c.combat.surge_actions <= 0:
++                    ok = False  # a Multiattack budget can't outlive an action spent on a spell
++                if not ok and c.combat.action_purpose == "cast":
++                    reason = (
++                        "it already cast a spell with its action this turn — spend an Action "
++                        "Surge (use_resource(resource='action_surge')) for another action, "
++                        "or advance with next_turn"
++                    )
+                 if not ok:
+                     raise ValueError(f"{attacker.name} cannot attack: {reason}")
+         # Capture any advantage-granting rider on the target (Guiding Bolt's "next attack
+@@ -7494,6 +7513,48 @@ def cast_spell(
+                         f"advance with next_turn so the order stays in sync."
+                     )
+                 cast_consumes_reaction = True
++        # TURN-WIDE ACTION ECONOMY (#778): the action is ONE resource per turn shared by
++        # cast_spell / attack / use_action, and the spell's casting time decides what it
++        # spends. A bonus-action spell spends only the bonus action; an action spell needs
++        # an unspent action (Action Surge grants one more); a minute/hour cast can't fit a
++        # combat round. Rejected BEFORE any state change (no slot, no concentration).
++        cast_time = combat.casting_time_kind(
++            (curated or {}).get("casting_time") or (srd or {}).get("casting_time")
++        )
++        if c.combat.active and cast_time == "long" and not as_ritual:
++            raw_time = (curated or {}).get("casting_time") or (srd or {}).get("casting_time")
++            raise ValueError(
++                f"cannot cast {canonical} during active combat — its casting time "
++                f"({raw_time}) is longer than a 6-second round. Cast it before or after "
++                f"the fight."
++            )
++        cast_economy = ""  # "action" | "bonus" | "" (reaction / no combat / non-combatant)
++        if caster_cb is not None and not cast_consumes_reaction:
++            if cast_time == "bonus":
++                if c.combat.bonus_action_used:
++                    raise ValueError(
++                        f"{ch.name} has already used its bonus action this turn and cannot "
++                        f"cast {canonical} (casting time: 1 bonus action)."
++                    )
++                cast_economy = "bonus"
++            else:
++                spent = combat.actions_spent(
++                    c.combat.action_used, c.combat.action_attacks_made,
++                    getattr(ch, "extra_attacks", 0),
++                )
++                if spent >= 1 + max(0, int(c.combat.surge_actions)):
++                    how = {
++                        "cast": "already cast a spell",
++                        "skip": "skipped this turn",
++                    }.get(c.combat.action_purpose) or (
++                        "attacked" if c.combat.action_attacks_made > 0 else "took an action"
++                    )
++                    raise ValueError(
++                        f"{ch.name} has already used its action this turn ({how}) and "
++                        f"cannot cast {canonical} (casting time: 1 action). Cast a "
++                        f"bonus-action spell, spend an Action Surge, or advance with next_turn."
++                    )
++                cast_economy = "action"
+         # KNOWN / PREPARED GATE (F03-7 + F03-8). Compare CASE-INSENSITIVELY (F03-7): the
+         # cast-side `canonical` is the proper-cased SRD name, but legacy snapshots may carry
+         # raw-cased strings (learn_spells/prepare_spells now canonicalize on write, but old
+@@ -7829,10 +7890,21 @@ def cast_spell(
+         # is separate from the character, so the re-validation above didn't touch it).
+         if cast_consumes_reaction and caster_cb is not None:
+             caster_cb.reaction_used = True
+-        # An on-turn cast consumes the combatant's action (mirrors attack()'s action_used
+-        # bookkeeping). Required so next_turn's PC-skip guard recognises a spell as "acted".
+-        elif caster_cb is not None and not cast_consumes_reaction:
++        # An on-turn cast spends what its casting time costs (#778). A bonus-action spell
++        # spends ONLY the bonus action. An action spell spends a whole action: mark it used
++        # (next_turn's PC-skip guard recognises a spell as "acted"), tag it "cast", and fill
++        # that action's strike budget so a following attack() needs an Action Surge.
++        elif cast_economy == "bonus":
++            c.combat.bonus_action_used = True
++        elif cast_economy == "action":
++            per_action = max(0, int(getattr(ch, "extra_attacks", 0))) + 1
++            spent = combat.actions_spent(
++                c.combat.action_used, c.combat.action_attacks_made,
++                getattr(ch, "extra_attacks", 0),
++            )
+             c.combat.action_used = True
++            c.combat.action_purpose = "cast"
++            c.combat.action_attacks_made = (spent + 1) * per_action
+         save_campaign(c)
+         updated = c.characters[character_id]
+         result = {
+diff --git a/servers/engine/tests/test_turn_action_economy.py b/servers/engine/tests/test_turn_action_economy.py
+new file mode 100644
+index 0000000..dec41ba
+--- /dev/null
++++ b/servers/engine/tests/test_turn_action_economy.py
+@@ -0,0 +1,232 @@
++"""Turn-wide action economy (#778): the action is ONE resource per turn shared by
++cast_spell / attack / use_action, decided by the spell's casting time."""
++
++import pytest
++
++import combat
++import models
++import server
++import store
++
++
++@pytest.fixture
++def fight(tmp_path, monkeypatch):
++    monkeypatch.setenv("WORLDOS_STATE_DIR", str(tmp_path))
++    cid = server.create_campaign("turn-economy")["id"]
++    ids = [
++        server.create_character(cid, n, kind=k, max_hp=60, armor_class=12)["id"]
++        for n, k in (("A", "player"), ("B", "player"), ("M", "monster"))
++    ]
++    server.start_combat(cid, ids)
++    cur = server.get_state(cid)["current_turn"]
++    other = next(i for i in ids if i != cur)
++    server.update_character(cid, cur, {
++        "spell_slots": {str(l): {"maximum": 4, "used": 0} for l in (1, 2, 3)},
++    })
++    return cid, cur, other
++
++
++def _cast(cid, cur, other, name, **kw):
++    return server.cast_spell(cid, cur, name, target_id=other, **kw)
++
++
++def _attack(cid, cur, other):
++    return server.attack(cid, cur, other, attack_bonus=5, damage_dice="1d6")
++
++
++# --- pure helpers ---------------------------------------------------------------
++
++@pytest.mark.parametrize("raw, kind", [
++    ("1 bonus action", "bonus"), ("bonus-action", "bonus"),
++    ("1 action", "action"), ("action", "action"), (None, "action"),
++    ("reaction", "reaction"), ("1 reaction", "reaction"),
++    ("minute", "long"), ("10 minutes", "long"), ("hour", "long"), ("1 hour", "long"),
++])
++def test_casting_time_kind(raw, kind):
++    assert combat.casting_time_kind(raw) == kind
++
++
++@pytest.mark.parametrize("used, made, extra, expected", [
++    (False, 0, 0, 0), (True, 0, 0, 1), (True, 1, 0, 1), (True, 2, 0, 2),
++    (True, 1, 1, 1), (True, 2, 1, 1), (True, 3, 1, 2),
++])
++def test_actions_spent(used, made, extra, expected):
++    assert combat.actions_spent(used, made, extra) == expected
++
++
++# --- too permissive: one action per turn across tools ---------------------------
++
++def test_cast_then_cast_rejected(fight):
++    cid, cur, other = fight
++    _cast(cid, cur, other, "Fire Bolt")
++    with pytest.raises(ValueError, match="already used its action"):
++        _cast(cid, cur, other, "Fire Bolt")
++
++
++def test_rejected_cast_spends_no_slot(fight):
++    cid, cur, other = fight
++    _cast(cid, cur, other, "Fire Bolt")
++    with pytest.raises(ValueError, match="already used its action"):
++        _cast(cid, cur, other, "Fireball")
++    assert server.get_character(cid, cur)["spell_slots"]["3"]["used"] == 0
++
++
++def test_cast_then_attack_rejected(fight):
++    cid, cur, other = fight
++    _cast(cid, cur, other, "Fire Bolt")
++    with pytest.raises(ValueError, match="already cast a spell"):
++        _attack(cid, cur, other)
++
++
++def test_cast_then_attack_rejected_with_extra_attack(fight):
++    cid, cur, other = fight
++    server.update_character(cid, cur, {"extra_attacks": 1})
++    _cast(cid, cur, other, "Fire Bolt")
++    with pytest.raises(ValueError, match="already cast a spell"):
++        _attack(cid, cur, other)
++
++
++def test_attack_then_cast_rejected(fight):
++    cid, cur, other = fight
++    _attack(cid, cur, other)
++    with pytest.raises(ValueError, match="already used its action"):
++        _cast(cid, cur, other, "Fire Bolt")
++
++
++def test_extra_attack_partial_then_cast_rejected(fight):
++    cid, cur, other = fight
++    server.update_character(cid, cur, {"extra_attacks": 1})
++    _attack(cid, cur, other)  # 1 of 2 strikes — the Attack action is still spent
++    with pytest.raises(ValueError, match="already used its action"):
++        _cast(cid, cur, other, "Fire Bolt")
++
++
++def test_skip_then_attack_rejected(fight):
++    cid, cur, other = fight
++    assert server.use_action(cid, cur, "skip")["ok"] is True
++    with pytest.raises(ValueError, match="skipped this turn"):
++        _attack(cid, cur, other)
++
++
++def test_skip_then_cast_rejected(fight):
++    cid, cur, other = fight
++    server.use_action(cid, cur, "skip")
++    with pytest.raises(ValueError, match="already used its action"):
++        _cast(cid, cur, other, "Fire Bolt")
++
++
++def test_generic_action_then_cast_rejected(fight):
++    cid, cur, other = fight
++    assert server.use_action(cid, cur, "action")["ok"] is True
++    with pytest.raises(ValueError, match="already used its action"):
++        _cast(cid, cur, other, "Fire Bolt")
++
++
++def test_cast_then_use_action_rejected(fight):
++    cid, cur, other = fight
++    _cast(cid, cur, other, "Fire Bolt")
++    assert server.use_action(cid, cur, "action")["ok"] is False
++
++
++# --- too restrictive: a bonus-action spell spends only the bonus action ----------
++
++@pytest.mark.parametrize("bonus_spell", ["Healing Word", "Misty Step"])  # curated / SRD spelling
++def test_bonus_cast_then_action_cast_allowed(fight, bonus_spell):
++    cid, cur, other = fight
++    _cast(cid, cur, other, bonus_spell)
++    st = store.load_campaign(cid).combat
++    assert st.bonus_action_used is True and st.action_used is False
++    _cast(cid, cur, other, "Fireball")  # the action is still free
++
++
++def test_bonus_cast_then_use_action_allowed(fight):
++    cid, cur, other = fight
++    _cast(cid, cur, other, "Healing Word")
++    assert server.use_action(cid, cur, "action")["ok"] is True
++
++
++def test_bonus_cast_then_attack_allowed(fight):
++    cid, cur, other = fight
++    _cast(cid, cur, other, "Healing Word")
++    assert _attack(cid, cur, other)["attacks_made_this_turn"] == 1
++
++
++def test_second_bonus_cast_rejected(fight):
++    cid, cur, other = fight
++    _cast(cid, cur, other, "Healing Word")
++    with pytest.raises(ValueError, match="already used its bonus action"):
++        _cast(cid, cur, other, "Misty Step")
++
++
++def test_action_cast_then_bonus_cast_allowed(fight):
++    cid, cur, other = fight
++    _cast(cid, cur, other, "Fire Bolt")
++    _cast(cid, cur, other, "Healing Word")
++
++
++# --- long casting times -----------------------------------------------------------
++
++@pytest.mark.parametrize("spell, lvl", [("Identify", "1"), ("Glyph of Warding", "3")])  # minute / hour
++def test_minute_or_hour_cast_refused_in_combat(fight, spell, lvl):
++    cid, cur, other = fight
++    with pytest.raises(ValueError, match="casting time"):
++        _cast(cid, cur, other, spell)
++    assert server.get_character(cid, cur)["spell_slots"][lvl]["used"] == 0
++
++
++# --- Action Surge + attacks keep working -----------------------------------------
++
++def test_action_surge_allows_one_more_action(fight):
++    cid, cur, other = fight
++    server.set_class_resource(cid, cur, "action_surge", max=1, recharge="short")
++    _cast(cid, cur, other, "Fire Bolt")
++    server.use_resource(cid, cur, "action_surge")
++    _cast(cid, cur, other, "Fire Bolt")  # the surged action
++    with pytest.raises(ValueError, match="already used its action"):
++        _cast(cid, cur, other, "Fire Bolt")
++    with pytest.raises(ValueError, match="already cast a spell"):
++        _attack(cid, cur, other)
++
++
++def test_action_surge_cast_then_attack(fight):
++    cid, cur, other = fight
++    server.set_class_resource(cid, cur, "action_surge", max=1, recharge="short")
++    _cast(cid, cur, other, "Fire Bolt")
++    server.use_resource(cid, cur, "action_surge")
++    _attack(cid, cur, other)
++    with pytest.raises(ValueError):
++        _attack(cid, cur, other)
++
++
++def test_action_surge_attack_then_cast(fight):
++    cid, cur, other = fight
++    server.set_class_resource(cid, cur, "action_surge", max=1, recharge="short")
++    _attack(cid, cur, other)
++    server.use_resource(cid, cur, "action_surge")
++    _cast(cid, cur, other, "Fire Bolt")
++    with pytest.raises(ValueError, match="already cast a spell"):
++        _attack(cid, cur, other)
++
++
++def test_generic_action_then_attacks_still_work(fight):
++    cid, cur, other = fight
++    server.update_character(cid, cur, {"extra_attacks": 1})
++    assert server.use_action(cid, cur, "action")["ok"] is True
++    _attack(cid, cur, other)
++    assert _attack(cid, cur, other)["attacks_made_this_turn"] == 2
++
++
++# --- reset + snapshot compatibility ----------------------------------------------
++
++def test_next_turn_resets_action_purpose(fight):
++    cid, cur, other = fight
++    _cast(cid, cur, other, "Fire Bolt")
++    assert store.load_campaign(cid).combat.action_purpose == "cast"
++    server.next_turn(cid)
++    assert store.load_campaign(cid).combat.action_purpose == ""
++
++
++def test_old_snapshot_loads_action_purpose_default():
++    dumped = models.Combat().model_dump()
++    dumped.pop("action_purpose")
++    assert models.Combat.model_validate(dumped).action_purpose == ""

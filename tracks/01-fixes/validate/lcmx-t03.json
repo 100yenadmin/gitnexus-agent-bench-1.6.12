@@ -1,0 +1,41 @@
+{
+ "id": "lcmx-t03",
+ "pr": 171,
+ "base": "c3e8f6bd5802b79f8a182a7feeaf9bcb0b406c94",
+ "fix": "39219f8b5f039bb29b40b4a57a4bcae3f18d78f1",
+ "tests": [
+  "tests/test_embedding_backfill.py"
+ ],
+ "oracle_files": [
+  "tests/test_embedding_backfill.py"
+ ],
+ "oracle_cmd": "bash $BENCH_ROOT/mining/_scripts/lcmx_pytest.sh -q tests/test_embedding_backfill.py",
+ "regression_cmd": "bash $BENCH_ROOT/mining/_scripts/lcmx_pytest.sh tests/ -q -n 8",
+ "setup_cmd": "bash $BENCH_ROOT/mining/_scripts/lcmx_setup.sh",
+ "setup_rc": 0,
+ "base_rc": 1,
+ "base_secs": 3.3,
+ "base_tail": [
+  "FAILED tests/test_embedding_backfill.py::test_empty_leaf_summaries_are_not_pending_or_sent_to_provider",
+  "FAILED tests/test_embedding_backfill.py::test_retry_uncertain_does_not_resend_empty_summary",
+  "2 failed, 42 passed, 102 warnings in 2.44s"
+ ],
+ "base_import_err": false,
+ "fix_rc1": 0,
+ "fix_secs1": 4.6,
+ "fix_tail1": [
+  "44 passed, 102 warnings in 4.09s"
+ ],
+ "fix_rc2": 0,
+ "fix_secs2": 2.5,
+ "fix_tail2": [
+  "44 passed, 102 warnings in 1.98s"
+ ],
+ "reg_rc": 0,
+ "reg_secs": 34.6,
+ "reg_tail": [
+  "3077 passed, 13 skipped, 12 xfailed, 2503 warnings in 34.06s"
+ ],
+ "mismatch": [],
+ "final_status": "* (HEAD detached at c3e8f6b)\n  main\n  remotes/origin/HEAD -> origin/main\n  remotes/origin/main"
+}

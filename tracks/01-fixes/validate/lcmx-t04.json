@@ -1,0 +1,40 @@
+{
+ "id": "lcmx-t04",
+ "pr": 245,
+ "base": "488f013c79000c867ca384ec053528968dc4ebd0",
+ "fix": "7fcf5543dbef365f7f5ac30763567f5c581f9eb9",
+ "tests": [
+  "tests/test_lcm_core.py"
+ ],
+ "oracle_files": [
+  "tests/test_lcm_core.py"
+ ],
+ "oracle_cmd": "bash $BENCH_ROOT/mining/_scripts/lcmx_pytest.sh -q tests/test_lcm_core.py",
+ "regression_cmd": "bash $BENCH_ROOT/mining/_scripts/lcmx_pytest.sh tests/ -q -n 8",
+ "setup_cmd": "bash $BENCH_ROOT/mining/_scripts/lcmx_setup.sh",
+ "setup_rc": 0,
+ "base_rc": 1,
+ "base_secs": 13.5,
+ "base_tail": [
+  "FAILED tests/test_lcm_core.py::TestProviderPrefixedAuxiliaryCalls::test_summary_body_may_quote_the_closing_tag",
+  "1 failed, 327 passed, 112 warnings in 12.90s"
+ ],
+ "base_import_err": false,
+ "fix_rc1": 0,
+ "fix_secs1": 20.7,
+ "fix_tail1": [
+  "328 passed, 112 warnings in 20.14s"
+ ],
+ "fix_rc2": 0,
+ "fix_secs2": 19.1,
+ "fix_tail2": [
+  "328 passed, 112 warnings in 18.51s"
+ ],
+ "reg_rc": 0,
+ "reg_secs": 34.4,
+ "reg_tail": [
+  "3168 passed, 14 skipped, 12 xfailed, 2503 warnings in 33.11s"
+ ],
+ "mismatch": [],
+ "final_status": "* (HEAD detached at 488f013)\n  main\n  remotes/origin/HEAD -> origin/main\n  remotes/origin/main"
+}

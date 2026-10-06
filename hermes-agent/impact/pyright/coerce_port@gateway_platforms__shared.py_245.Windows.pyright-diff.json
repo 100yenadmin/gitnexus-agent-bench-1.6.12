@@ -1,0 +1,91 @@
+{
+ "platform": "Windows",
+ "summary": {
+  "filesAnalyzed": 2383,
+  "errorCount": 15426,
+  "warningCount": 77,
+  "informationCount": 0,
+  "timeInSec": 136.432
+ },
+ "added": [
+  {
+   "file": "gateway/platforms/api_server.py",
+   "line": 231,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "plugins/platforms/a2a/adapter.py",
+   "line": 749,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "plugins/platforms/a2a/adapter.py",
+   "line": 750,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "plugins/platforms/a2a/protocol.py",
+   "line": 46,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "plugins/platforms/a2a/tools.py",
+   "line": 228,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "plugins/platforms/email/adapter.py",
+   "line": 95,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "plugins/platforms/irc/adapter.py",
+   "line": 128,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "plugins/platforms/photon/adapter.py",
+   "line": 545,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "plugins/platforms/photon/adapter.py",
+   "line": 1567,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "plugins/platforms/photon/adapter.py",
+   "line": 1584,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "plugins/platforms/raft/adapter.py",
+   "line": 485,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "plugins/platforms/teams/adapter.py",
+   "line": 366,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "plugins/platforms/telegram/update_admission.py",
+   "line": 173,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  }
+ ],
+ "removed_keys": []
+}

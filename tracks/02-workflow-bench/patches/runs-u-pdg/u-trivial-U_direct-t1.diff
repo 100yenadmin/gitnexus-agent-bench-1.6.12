@@ -1,0 +1,85 @@
+diff --git a/gitnexus/src/cli/help-i18n.ts b/gitnexus/src/cli/help-i18n.ts
+index ede4097..6b6d742 100644
+--- a/gitnexus/src/cli/help-i18n.ts
++++ b/gitnexus/src/cli/help-i18n.ts
+@@ -86,7 +86,7 @@ const OPTION_DESCRIPTION_KEYS = {
+   'mcp|--auth-token <token>': 'help.option.mcp.authToken',
+   'serve|-p, --port <port>': 'help.option.port',
+   'serve|--host <host>': 'help.option.serve.host',
+-  'status|--json': 'help.option.status.json',
++  'status|-j, --json': 'help.option.status.json',
+   'uninstall|-f, --force': 'help.option.uninstall.force',
+   'clean|-f, --force': 'help.option.force.confirmation',
+   'clean|--all': 'help.option.clean.all',
+diff --git a/gitnexus/src/cli/index.ts b/gitnexus/src/cli/index.ts
+index 22bb3c0..da85c35 100644
+--- a/gitnexus/src/cli/index.ts
++++ b/gitnexus/src/cli/index.ts
+@@ -292,7 +292,7 @@ program
+   .command('status')
+   .description('Show index status for the current repo or a registered index')
+   .option('-r, --repo <name>', 'Registered repository alias or path (works after checkout removal)')
+-  .option('--json', 'Emit machine-readable index and analyzer provenance')
++  .option('-j, --json', 'Emit machine-readable index and analyzer provenance')
+   .addHelpText('after', () => t('help.identityCache.environment'))
+   .action(createLazyAction(() => import('./status.js'), 'statusCommand'));
+ 
+diff --git a/gitnexus/test/unit/status-json-alias.test.ts b/gitnexus/test/unit/status-json-alias.test.ts
+new file mode 100644
+index 0000000..6870bbe
+--- /dev/null
++++ b/gitnexus/test/unit/status-json-alias.test.ts
+@@ -0,0 +1,53 @@
++import { spawnSync } from 'node:child_process';
++import fs from 'node:fs';
++import os from 'node:os';
++import path from 'node:path';
++import { afterEach, beforeEach, describe, expect, it } from 'vitest';
++import { CLI_SPAWN_PREFIX } from '../helpers/cli-entry.js';
++
++let tmpDir: string;
++
++function runStatus(args: string[]) {
++  return spawnSync(process.execPath, [...CLI_SPAWN_PREFIX, 'status', ...args], {
++    cwd: tmpDir,
++    encoding: 'utf8',
++    env: { ...process.env, GITNEXUS_HOME: tmpDir, GITNEXUS_LANG: 'en' },
++  });
++}
++
++function jsonLine(stdout: string): unknown {
++  const line = stdout
++    .split('\n')
++    .map((l) => l.trim())
++    .find((l) => l.startsWith('{'));
++  expect(line, stdout).toBeDefined();
++  return JSON.parse(line!);
++}
++
++describe('gitnexus status -j alias', () => {
++  beforeEach(() => {
++    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'gitnexus-status-json-alias-'));
++  });
++
++  afterEach(() => {
++    fs.rmSync(tmpDir, { recursive: true, force: true });
++  });
++
++  it('documents -j as the short form of --json in help', () => {
++    const result = runStatus(['--help']);
++
++    expect(result.status).toBe(0);
++    expect(result.stdout).toContain('-j, --json');
++  });
++
++  it('-j emits the same machine-readable output as --json', () => {
++    const long = runStatus(['--json']);
++    const short = runStatus(['-j']);
++
++    expect(long.status, long.stderr).toBe(0);
++    expect(short.status, short.stderr).toBe(0);
++    expect(short.stderr).not.toContain('unknown option');
++    expect(jsonLine(short.stdout)).toEqual(jsonLine(long.stdout));
++    expect(jsonLine(short.stdout)).toMatchObject({ schemaVersion: 1 });
++  });
++});

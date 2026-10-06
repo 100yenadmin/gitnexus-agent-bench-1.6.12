@@ -1,0 +1,37 @@
+{
+ "flows": [
+  {
+   "category": "command-injection",
+   "source": {
+    "path": "gitnexus/src/server/repo-tools.ts",
+    "line": 62
+   },
+   "sink": {
+    "path": "gitnexus/src/server/repo-tools.ts",
+    "line": 16
+   }
+  },
+  {
+   "category": "path-traversal",
+   "source": {
+    "path": "gitnexus/src/server/repo-tools.ts",
+    "line": 66
+   },
+   "sink": {
+    "path": "gitnexus/src/server/repo-tools.ts",
+    "line": 32
+   }
+  },
+  {
+   "category": "code-injection",
+   "source": {
+    "path": "gitnexus/src/server/repo-tools.ts",
+    "line": 78
+   },
+   "sink": {
+    "path": "gitnexus/src/server/repo-tools.ts",
+    "line": 41
+   }
+  }
+ ]
+}

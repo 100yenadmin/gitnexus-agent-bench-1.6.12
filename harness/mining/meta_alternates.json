@@ -1,0 +1,19 @@
+{
+ "lcmx-t01": {
+  "class": "trivial",
+  "notes": "ALTERNATE. 1 source file (identity_anchor.py, 10 lines) but semantically subtle (fork predicate shared with host_uid._is_fork_child). Statement names engine._identity_anchor_chain because issue #891 and the hidden tests do."
+ },
+ "lcmx-i04": {
+  "class": "investigation",
+  "notes": "ALTERNATE. Fix spans message_analysis.py (new private merge helper) + engine.py (_sanitize_active_context_messages and its token-budget caller in _assemble_context). Only 1 of 3 oracle tests is red at base. First regression run hit a load-induced timing failure (tests/test_embedding_provider.py::test_voyage_does_not_dispatch_next_split_after_deadline); rerun green (logs/fix_regression_rerun.log) and the test passes 3/3 alone.",
+  "regression_log": "fix_regression_rerun.log"
+ },
+ "lcmx-i06": {
+  "class": "investigation",
+  "notes": "ALTERNATE. Fix is engine.py only (51 lines, _derive_auto_focus_topic truncation); borderline investigation. Oracle files are large (tests/test_auto_focus_topic.py + tests/test_lcm_engine.py, ~40s)."
+ },
+ "worldos-i03": {
+  "class": "investigation",
+  "notes": "ALTERNATE. Fix is servers/engine/server.py only (59 lines): cross_door -> travel_to -> _move_party_to clears stage_cell; the new seeding uses combat_grid.reachable + rest_blocked_cells. Only 1 oracle test is red at base."
+ }
+}

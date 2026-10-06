@@ -1,0 +1,18 @@
+{
+ "schema_version": 1,
+ "verdict": "request_changes",
+ "findings": [
+  {
+   "id": "property-widening-rekeys-constructor-parameter-properties",
+   "severity": "high",
+   "path": "gitnexus/src/core/ingestion/utils/callable-labels.ts",
+   "line": 42,
+   "end_line": 52,
+   "category": "correctness",
+   "scenario": "TypeScript `class Svc { constructor(private repo: Repo) {} run() { return this.repo.find(); } }`. Because `isPositionQualifiedLocalLabel` now includes 'Property', parse-worker applies `enclosingCallablePrefix` to the parameter-property definition node. That node sits inside the constructor's `method_definition`, which is in LOCAL_SCOPE_BODY_NODE_TYPES, so the ancestor walk returns the constructor before it reaches the class boundary. The class member is re-keyed from `Property:svc.ts:Svc.repo` to `Property:svc.ts:Svc.constructor.repo@1:14`, and the HAS_PROPERTY and ACCESSES edges follow it. The docblock's claim that 'a class field stays unqualified even inside a function' is false for constructor-declared fields. The same walk applies to any field declared inside a callable, such as promoted constructor parameters. Any stored reference or cross-file consumer that addresses the member by its class-qualified id stops matching, and an incremental re-key lands on a class member, which the change says it never touches.",
+   "evidence": "I built HEAD and the working tree into temp copies and ran the same pipeline probe on both. The baseline emitted `N Property:svc.ts:Svc.repo`, `E HAS_PROPERTY Class:svc.ts:Svc -> Property:svc.ts:Svc.repo` and `E ACCESSES Method:svc.ts:Svc.run#0 -> Property:svc.ts:Svc.repo`. The local diff emitted `N Property:svc.ts:Svc.constructor.repo@1:14`, `E HAS_PROPERTY Class:svc.ts:Svc -> Property:svc.ts:Svc.constructor.repo@1:14` and `E ACCESSES Method:svc.ts:Svc.run#0 -> Property:svc.ts:Svc.constructor.repo@1:14`. The gate is at callable-labels.ts:47 (`label === 'Property'`), used by parse-worker.ts:2310 (`isPositionQualifiedLocalLabel(nodeLabel) && definitionNode ? enclosingCallablePrefix(...)`).",
+   "recommendation": "Do not position-qualify a Property that is a class member. Skip `nestedCallablePrefix` for Property when it has a class owner (constructor parameter or promoted property, or whenever `isFunctionLocalProperty` is false), or drop 'Property' from `isPositionQualifiedLocalLabel` and keep the widening to Variable/Const/Static. Add a regression test that a TS constructor parameter property keeps `Property:<file>:<Class>.<name>`.",
+   "blocking": true
+  }
+ ]
+}

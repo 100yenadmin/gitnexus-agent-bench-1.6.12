@@ -1,0 +1,291 @@
+diff --git a/servers/engine/combat_grid.py b/servers/engine/combat_grid.py
+index 62689b8..22c4a8f 100644
+--- a/servers/engine/combat_grid.py
++++ b/servers/engine/combat_grid.py
+@@ -178,14 +178,20 @@ def reachable(
+     an occupied cell, so `occupied` cells are dropped from the result (and the start
+     itself is excluded — you stay put for free, it's not a "move to").
+ 
+-    `occupied` should NOT include `start` (the mover doesn't block itself). `difficult`
+-    empty (no terrain) => flat cost 1 (PR-1 behaviour, byte-for-byte). Returns a set of
+-    (x, y) cells. Pure Dijkstra over per-step cost; deterministic.
++    The `start` cell is EXEMPT from the occupied/impassable checks (#1511): a mover standing
++    on a cell that is now blocked (its own token, or terrain a later scene marked solid) can
++    still step OFF it. `difficult` empty (no terrain) => flat cost 1 (PR-1 behaviour,
++    byte-for-byte). Returns a set of (x, y) cells. Pure Dijkstra over per-step cost;
++    deterministic.
+     """
+     if budget_cells <= 0:
+         return set()
+     import heapq
+ 
++    # The mover never blocks itself — and neither does the ground it already stands on.
++    occupied = set(occupied) - {start}
++    impassable = set(impassable) - {start}
++
+     # Dijkstra: costs are 1 or 2, so a priority queue gives the minimal-cost distance to
+     # each cell. Occupied/impassable cells can't be entered (a creature/wall blocks). The
+     # cost to ENTER a difficult cell is 2; open cells cost 1.
+@@ -235,11 +241,16 @@ def shortest_path(
+     out of bounds / unreachable without crossing a blocked cell. Deterministic (a fixed
+     tie-break on equal-cost cells via the neighbour order). On OPEN floor with no difficult
+     terrain this returns a straight diagonal whose cost equals the straight-line Chebyshev —
+-    behaviour is unchanged when there are no obstacles/terrain (additive)."""
++    behaviour is unchanged when there are no obstacles/terrain (additive).
++
++    The `start` cell is EXEMPT from the occupied/impassable checks (#1511): a mover standing
++    on a now-blocked cell (e.g. a crate a later scene marked solid) can still walk off it."""
+     if start == goal:
+         return []
+     if not (0 <= goal[0] < width and 0 <= goal[1] < height):
+         return None
++    occupied = set(occupied) - {start}
++    impassable = set(impassable) - {start}
+     if goal in occupied or goal in impassable:
+         return None
+     import heapq
+diff --git a/servers/engine/server.py b/servers/engine/server.py
+index 0cf3bde..29ccbfc 100644
+--- a/servers/engine/server.py
++++ b/servers/engine/server.py
+@@ -4644,7 +4644,8 @@ def rest_blocked_cells(
+         ``scene_grid.impassable_cells`` — the same derivation a painted fight uses — and (2) rest
+         OCCUPANCY: every character's ``stage_cell`` in this location PLUS any ``npc:<id>`` spawn
+         anchors W1 writes into ``scene_grid.spawns`` (both are where PEOPLE stand at rest). The
+-        mover's own ``exclude_id`` cell is removed (you never block yourself).
++        mover's own ``exclude_id`` cell(s) are removed from the FINAL set — occupancy AND
++        terrain (#1511) — so a mover stranded on a now-impassable cell is never trapped.
+ 
+     Pure read of engine-owned state; no mutation, no I/O. If the location has no scene_grid, or a
+     non-positive grid, returns ``(0, 0, set())`` (the caller treats that as "not walkable here" —
+@@ -4662,27 +4663,26 @@ def rest_blocked_cells(
+     # a walk routes around seated NPCs even before any of them has been walked. Only characters in
+     # THIS location count (an NPC anchored elsewhere doesn't block this room).
+     occupied: set[tuple[int, int]] = set()
++    # The mover's OWN cell(s) — never in its blocked set, whether occupancy or terrain (#1511).
++    own: set[tuple[int, int]] = set()
+     for ch in c.characters.values():
+-        if ch.id == exclude_id:
+-            continue
+         if ch.location_id and ch.location_id != location.id:
+             continue
+         sc = getattr(ch, "stage_cell", None)
+         if sc is not None:
+-            occupied.add((int(sc[0]), int(sc[1])))
++            (own if ch.id == exclude_id else occupied).add((int(sc[0]), int(sc[1])))
+     spawns = getattr(grid, "spawns", None) or {}
+     if isinstance(spawns, dict):
+         for key, cells in spawns.items():
+             if not (isinstance(key, str) and key.startswith("npc:")):
+                 continue  # party/foes/npcs positional lists are NOT per-id occupancy — skip
+-            if key == f"npc:{exclude_id}":
+-                continue
+             for cell in cells or []:
+                 # Defensive: SceneGrid.spawns is dict[str, list[Cell]] (Cell=tuple[int,int]) and
+                 # pydantic enforces this shape on load — but skip rather than IndexError on a
+                 # malformed in-memory-constructed entry that bypassed the model validator.
+                 if isinstance(cell, (list, tuple)) and len(cell) == 2:
+-                    occupied.add((int(cell[0]), int(cell[1])))
++                    target = own if (exclude_id and key == f"npc:{exclude_id}") else occupied
++                    target.add((int(cell[0]), int(cell[1])))
+ 
+     # (1) walls + prop footprints, minus any cell someone stands on (never trap a stander on a
+     # prop) — the SAME impassable_cells derivation a painted fight uses.
+@@ -4690,7 +4690,49 @@ def rest_blocked_cells(
+         (x, y)
+         for x, y in scene_grid_mod.impassable_cells(grid, width, height, occupied=occupied)
+     }
+-    return width, height, impassable | occupied
++    # The mover's own cell is removed LAST so a mover stranded on a now-impassable cell (a prop
++    # PR #1507 made solid, or a combat write-back onto a wall) can still path off it.
++    return width, height, (impassable | occupied) - own
++
++
++def _settle_stage_cell_on_rest_grid(c: "Campaign", ch: "Character") -> None:
++    """#1511: if ``ch.stage_cell`` is REST-blocked in its room — off the rest grid, on a wall /
++    prop the rest scene marks impassable, or on another stander's cell — move it to the nearest
++    walkable rest cell. Used by ``end_combat``'s write-back: the fight's grid may have allowed a
++    cell the room's rest scene grid forbids. Prefers cells reachable from where the survivor
++    stands (the start is exempt from the blocked checks), ranked nearest-first with a stable
++    (y, x) tiebreak; falls back to the nearest free cell anywhere on the grid; clears the cell
++    (unplaced) when the room has no free cell at all. No-op without a scene grid."""
++    sc = getattr(ch, "stage_cell", None)
++    if sc is None:
++        return
++    loc_id = ch.location_id or c.current_location_id
++    loc = c.locations.get(loc_id) if loc_id else None
++    grid = getattr(loc, "scene_grid", None) if loc is not None else None
++    if grid is None:
++        return
++    width, height, blocked = rest_blocked_cells(c, loc, exclude_id=ch.id)
++    if width <= 0 or height <= 0:
++        return
++    cell = (int(sc[0]), int(sc[1]))
++    # rest_blocked_cells drops the mover's own cell, so re-check its terrain explicitly.
++    terrain = {(x, y) for x, y in scene_grid_mod.impassable_cells(grid, width, height)}
++    in_bounds = 0 <= cell[0] < width and 0 <= cell[1] < height
++    if in_bounds and cell not in blocked and cell not in terrain:
++        return
++    blocked = blocked | terrain
++
++    def _rank(cand: tuple[int, int]) -> tuple[int, int, int]:
++        return (combat_grid.chebyshev_cells(cand, cell), cand[1], cand[0])
++
++    candidates: set[tuple[int, int]] = set()
++    if in_bounds:
++        candidates = combat_grid.reachable(cell, width * height, set(), width, height, impassable=blocked)
++    if not candidates:
++        candidates = {
++            (x, y) for x in range(width) for y in range(height) if (x, y) not in blocked
++        }
++    ch.stage_cell = min(candidates, key=_rank) if candidates else None
+ 
+ 
+ def _seed_stage_cells_on_arrival(c: "Campaign", dest: "Location") -> list[str]:
+@@ -7428,6 +7470,10 @@ def end_combat(campaign_id: str, resolution: str = "") -> dict:
+         # the grid) get a write-back; a zone/theater fight leaves x/y None ⇒ NO stage_cell write,
+         # byte-for-byte today's behavior. The dead are skipped (a corpse has no rest position).
+         # This IS the engine writing its own sole-writer field from its own combat state.
++        # #1511: the fight's grid may have allowed a cell the room's REST scene grid forbids (a
++        # wall/prop, or off the rest grid) — write every survivor first, then settle any whose
++        # cell is rest-blocked onto the nearest walkable rest cell so nobody ends up trapped.
++        written: list = []
+         for cb in c.combat.order:
+             if cb.x is None or cb.y is None:
+                 continue
+@@ -7435,6 +7481,9 @@ def end_combat(campaign_id: str, resolution: str = "") -> dict:
+             if ch is None or ch.dead or ch.current_hp <= 0:
+                 continue
+             ch.stage_cell = (int(cb.x), int(cb.y))
++            written.append(ch)
++        for ch in written:
++            _settle_stage_cell_on_rest_grid(c, ch)
+         c.combat = Combat()
+         save_campaign(c)
+         return result
+diff --git a/servers/engine/tests/test_grid_walkability_p1.py b/servers/engine/tests/test_grid_walkability_p1.py
+index b42b024..e4f5782 100644
+--- a/servers/engine/tests/test_grid_walkability_p1.py
++++ b/servers/engine/tests/test_grid_walkability_p1.py
+@@ -34,6 +34,20 @@ def test_shortest_path_unreachable_is_none():
+                                      impassable=box) is None
+ 
+ 
++def test_start_cell_exempt_from_occupied_and_impassable():
++    """#1511: a mover standing on a blocked cell (its own token, or a now-solid prop) can still
++    step off it; the start is never returned as a destination."""
++    start = (1, 1)
++    p = combat_grid.shortest_path(start, (2, 1), occupied={start}, width=3, height=3,
++                                  impassable={start})
++    assert p == [(2, 1)]
++    r = combat_grid.reachable(start, 1, occupied={start}, width=3, height=3, impassable={start})
++    assert start not in r
++    assert len(r) == 8  # every neighbour of the centre is open
++    # the goal-is-start shortcut still returns [] (already there)
++    assert combat_grid.shortest_path(start, start, {start}, 3, 3, impassable={start}) == []
++
++
+ def test_reachable_excludes_and_blocks_through_impassable():
+     r = combat_grid.reachable((0, 0), 4, occupied=set(), width=4, height=2,
+                               impassable={(1, 0), (1, 1)})
+diff --git a/servers/engine/tests/test_living_stage.py b/servers/engine/tests/test_living_stage.py
+index 8a08f90..b147562 100644
+--- a/servers/engine/tests/test_living_stage.py
++++ b/servers/engine/tests/test_living_stage.py
+@@ -126,6 +126,41 @@ def test_end_combat_writes_survivors_final_cells_back_to_stage(staged):
+     assert tuple(c.characters[ally].stage_cell) == (1, 0)   # never moved → unchanged
+ 
+ 
++def _force_combat_cell(cid, char_id, cell):
++    c = server._require(cid)
++    cb = next(cb for cb in c.combat.order if cb.character_id == char_id)
++    cb.x, cb.y = cell
++    server.save_campaign(c)
++
++
++def test_end_combat_moves_survivor_off_rest_blocked_prop(staged):
++    """#1511: the fight's grid allowed a cell the REST scene forbids (the crate at (4,2)) — the
++    write-back settles the survivor on the nearest walkable rest cell instead of trapping it."""
++    cid, hero, ally, goblin, _loc = staged
++    server.start_combat(cid, [hero, ally, goblin], seed_from_stage=True)
++    _force_combat_cell(cid, hero, (4, 2))
++    server.end_combat(cid, resolution="cleared")
++    c = server._require(cid)
++    # Nearest walkable neighbour of (4,2), ranked (chebyshev, y, x) → (3,1).
++    assert tuple(c.characters[hero].stage_cell) == (3, 1)
++    assert tuple(c.characters[ally].stage_cell) == (1, 0)  # a legal cell is left alone
++
++
++def test_end_combat_moves_survivor_off_wall_and_off_grid(staged):
++    cid, hero, ally, goblin, _loc = staged
++    server.start_combat(cid, [hero, ally, goblin], seed_from_stage=True)
++    _force_combat_cell(cid, hero, (2, 2))   # a wall cell in the rest scene
++    _force_combat_cell(cid, ally, (9, 9))   # off the 5x3 rest grid
++    server.end_combat(cid, resolution="cleared")
++    c = server._require(cid)
++    hero_cell = tuple(c.characters[hero].stage_cell)
++    ally_cell = tuple(c.characters[ally].stage_cell)
++    assert hero_cell == (1, 1)  # nearest reachable walkable neighbour of (2,2)
++    assert ally_cell == (3, 2)  # nearest free in-grid cell to (9,9)
++    terrain = {(2, 1), (2, 2), (4, 2)}
++    assert hero_cell not in terrain and ally_cell not in terrain and hero_cell != ally_cell
++
++
+ def test_end_combat_skips_the_dead(staged):
+     """A downed combatant has no rest position — its cell is NOT written back to stage_cell."""
+     cid, hero, ally, goblin, _loc = staged
+diff --git a/servers/engine/tests/test_walk_to.py b/servers/engine/tests/test_walk_to.py
+index cce9354..152f783 100644
+--- a/servers/engine/tests/test_walk_to.py
++++ b/servers/engine/tests/test_walk_to.py
+@@ -102,6 +102,30 @@ def test_rest_blocked_cells_excludes_mover(room):
+     assert (1, 0) in blocked      # the ally still blocks its cell
+ 
+ 
++def test_rest_blocked_cells_excludes_mover_on_impassable_terrain(room):
++    """#1511: a mover stranded on a now-impassable cell (a crate PR #1507 made solid) never has
++    its OWN cell in its blocked set — terrain or occupancy. Others still see the crate blocked."""
++    cid, hero, _ally, loc_id = room
++    c = server._require(cid)
++    c.characters[hero].stage_cell = (4, 2)  # standing ON the crate prop
++    loc = c.locations[loc_id]
++    _w, _h, blocked = server.rest_blocked_cells(c, loc, exclude_id=hero)
++    assert (4, 2) not in blocked
++    assert (2, 1) in blocked and (1, 0) in blocked  # other walls + the ally still block
++    _w, _h, blocked_all = server.rest_blocked_cells(c, loc)
++    assert (4, 2) in blocked_all  # for everyone else the stander's cell is blocked
++
++
++def test_rest_blocked_cells_excludes_mover_npc_spawn_on_wall(room):
++    cid, _hero, _ally, loc_id = room
++    c = server._require(cid)
++    loc = c.locations[loc_id]
++    loc.scene_grid.spawns = {"npc:sentry": [(2, 1)]}  # anchored on a wall cell
++    _w, _h, blocked = server.rest_blocked_cells(c, loc, exclude_id="sentry")
++    assert (2, 1) not in blocked
++    assert (2, 2) in blocked
++
++
+ def test_rest_blocked_cells_reads_npc_spawns(room):
+     cid, _hero, _ally, loc_id = room
+     c = server._require(cid)
+@@ -187,6 +211,19 @@ def test_walk_to_rejects_unreachable(room):
+     assert "unreachable" in out["move_blocked"]["reason"]
+ 
+ 
++def test_walk_to_off_a_crate_cell_to_adjacent_open_cell(room):
++    """#1511: a character whose stage_cell sits on a crate (old save / combat write-back) is not
++    trapped — it can walk_to an adjacent open cell."""
++    cid, hero, _ally, _loc = room
++    c = server._require(cid)
++    c.characters[hero].stage_cell = (4, 2)
++    server.save_campaign(c)
++    out = server.walk_to(cid, hero, 3, 2)
++    assert out["walked"] is True
++    assert out["path"] == [[4, 2], [3, 2]]
++    assert tuple(server._require(cid).characters[hero].stage_cell) == (3, 2)
++
++
+ # ── walk -> travel -> walk: stage_cell must not bleed across rooms (review thread) ────
+ 
+ 

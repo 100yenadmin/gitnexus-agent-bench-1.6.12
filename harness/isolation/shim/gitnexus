@@ -1,0 +1,4 @@
+#!/bin/bash
+# `gitnexus` on the agent's PATH (and as the per-run npm global bin, via a symlink to this file): forwards to launcher-run.sh.
+s=$0; [ -L "$s" ] && s=$(readlink "$s")
+exec "$(cd "$(dirname "$s")/.." && pwd)/launcher-run.sh" "$@"

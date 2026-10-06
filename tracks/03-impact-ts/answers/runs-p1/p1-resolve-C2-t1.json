@@ -1,0 +1,64 @@
+{
+ "locations": [
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/c-cpp-harvest.ts",
+   "line": 474
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/c-cpp-harvest.ts",
+   "line": 537
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/csharp-harvest.ts",
+   "line": 480
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/csharp-harvest.ts",
+   "line": 557
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/go-harvest.ts",
+   "line": 350
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/go-harvest.ts",
+   "line": 351
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/go-harvest.ts",
+   "line": 357
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/go-harvest.ts",
+   "line": 560
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/go-harvest.ts",
+   "line": 585
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/go-harvest.ts",
+   "line": 650
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/java-harvest.ts",
+   "line": 437
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/java-harvest.ts",
+   "line": 511
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/scope-tree-harvest.ts",
+   "line": 154
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/scope-tree-harvest.ts",
+   "line": 155
+  },
+  {
+   "path": "gitnexus/src/core/ingestion/cfg/visitors/scope-tree-harvest.ts",
+   "line": 159
+  }
+ ]
+}

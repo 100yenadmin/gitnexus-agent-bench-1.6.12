@@ -1,0 +1,308 @@
+diff --git a/dag.py b/dag.py
+index 084411e..956ca8a 100644
+--- a/dag.py
++++ b/dag.py
+@@ -544,6 +544,22 @@ class SummaryDAG:
+             for row in rows
+         }
+ 
++    def get_session_depths(self, session_id: str) -> List[int]:
++        """Return all distinct depths for a session, with no row cap.
++
++        Returns an empty list for an unknown session. This is used by context
++        assembly to ensure all depths are visible regardless of the number of
++        leaf nodes.
++        """
++        with self._db_lock:
++            rows = self._conn.execute(
++                """SELECT DISTINCT depth FROM summary_nodes
++                   WHERE session_id = ?
++                   ORDER BY depth""",
++                (session_id,),
++            ).fetchall()
++        return [int(row[0]) for row in rows]
++
+     def get_node_provenance(self, node_id: int) -> Optional[Dict[str, Any]]:
+         """Return the recorded escalation level and model for a node, or ``None`` (#441)."""
+         with self._db_lock:
+diff --git a/engine.py b/engine.py
+index e5533cb..5471051 100644
+--- a/engine.py
++++ b/engine.py
+@@ -7706,12 +7706,12 @@ class LCMEngine(
+         # Node ids placed in the summary prefix — used to dedupe proactive-recall
+         # injection against summaries already visible in the active context.
+         active_summary_node_ids: set = set()
+-        all_nodes = self._dag.get_session_nodes(self._session_id)
+-        if all_nodes:
++        depths_list = self._dag.get_session_depths(self._session_id)
++        if depths_list:
+             # Group by depth, take the most recent uncondensed at each level
+             # For active context, we want the highest-level summaries
+             # that haven't been condensed into even higher levels
+-            depths = sorted(set(n.depth for n in all_nodes), reverse=True)
++            depths = sorted(depths_list, reverse=True)
+             for group, d in enumerate(depths):
+                 uncondensed = self._dag.get_uncondensed_at_depth(self._session_id, d, newest=True)
+                 for node in uncondensed:
+diff --git a/tests/test_issue_750_condensation_depth_visibility.py b/tests/test_issue_750_condensation_depth_visibility.py
+new file mode 100644
+index 0000000..144ea5a
+--- /dev/null
++++ b/tests/test_issue_750_condensation_depth_visibility.py
+@@ -0,0 +1,255 @@
++"""Tests for issue #750: long sessions losing deepest condensed summaries.
++
++When a session has many leaf nodes (depth 0), the context assembly would lose
++higher-depth summary nodes because get_session_nodes has a default limit of 1000.
++This caused the depths set to only contain depth 0, losing summaries at depths 1, 2, 3+.
++
++The fix adds SummaryDAG.get_session_depths() which returns all distinct depths
++without a row limit, and updates _assemble_context to use it.
++"""
++
++import pytest
++from pathlib import Path
++
++from hermes_lcm.dag import SummaryDAG, SummaryNode
++
++
++class TestGetSessionDepths:
++    """Tests for SummaryDAG.get_session_depths()."""
++
++    @pytest.fixture
++    def dag(self, tmp_path):
++        return SummaryDAG(tmp_path / "test.db")
++
++    def test_get_session_depths_empty_session_returns_empty_list(self, dag):
++        """Unknown session should return empty list."""
++        depths = dag.get_session_depths("nonexistent")
++        assert depths == []
++
++    def test_get_session_depths_single_depth(self, dag):
++        """Session with nodes at single depth."""
++        dag.add_node(SummaryNode(
++            session_id="s1", depth=0, summary="Node 1",
++            token_count=10, source_ids=[1], source_type="messages",
++        ))
++        dag.add_node(SummaryNode(
++            session_id="s1", depth=0, summary="Node 2",
++            token_count=10, source_ids=[2], source_type="messages",
++        ))
++
++        depths = dag.get_session_depths("s1")
++        assert depths == [0]
++
++    def test_get_session_depths_multiple_depths(self, dag):
++        """Session with nodes at multiple depths should return all."""
++        # Create depth 0 nodes
++        for i in range(3):
++            dag.add_node(SummaryNode(
++                session_id="s1", depth=0, summary=f"D0-{i}",
++                token_count=10, source_ids=[i], source_type="messages",
++            ))
++        # Create depth 1 node
++        dag.add_node(SummaryNode(
++            session_id="s1", depth=1, summary="D1",
++            token_count=20, source_ids=[1, 2, 3], source_type="nodes",
++        ))
++        # Create depth 2 node
++        dag.add_node(SummaryNode(
++            session_id="s1", depth=2, summary="D2",
++            token_count=30, source_ids=[4], source_type="nodes",
++        ))
++
++        depths = dag.get_session_depths("s1")
++        assert depths == [0, 1, 2]
++
++    def test_get_session_depths_with_gaps(self, dag):
++        """Session with gaps in depths (0, 2, 4) should return all present."""
++        dag.add_node(SummaryNode(
++            session_id="s1", depth=0, summary="D0",
++            token_count=10, source_ids=[1], source_type="messages",
++        ))
++        dag.add_node(SummaryNode(
++            session_id="s1", depth=2, summary="D2",
++            token_count=20, source_ids=[2], source_type="nodes",
++        ))
++        dag.add_node(SummaryNode(
++            session_id="s1", depth=4, summary="D4",
++            token_count=30, source_ids=[3], source_type="nodes",
++        ))
++
++        depths = dag.get_session_depths("s1")
++        assert depths == [0, 2, 4]
++
++    def test_get_session_depths_ordered_ascending(self, dag):
++        """Should return depths in ascending order."""
++        # Add in random order
++        dag.add_node(SummaryNode(
++            session_id="s1", depth=3, summary="D3",
++            token_count=40, source_ids=[3], source_type="nodes",
++        ))
++        dag.add_node(SummaryNode(
++            session_id="s1", depth=1, summary="D1",
++            token_count=20, source_ids=[1], source_type="nodes",
++        ))
++        dag.add_node(SummaryNode(
++            session_id="s1", depth=0, summary="D0",
++            token_count=10, source_ids=[0], source_type="messages",
++        ))
++        dag.add_node(SummaryNode(
++            session_id="s1", depth=2, summary="D2",
++            token_count=30, source_ids=[2], source_type="nodes",
++        ))
++
++        depths = dag.get_session_depths("s1")
++        assert depths == [0, 1, 2, 3]
++
++    def test_get_session_depths_not_affected_by_get_session_nodes_limit(self, dag):
++        """Should return all depths even when leaf count exceeds 1000.
++
++        This is the core issue #750: when there are >1000 depth-0 nodes,
++        get_session_nodes(limit=1000) would only return depth-0 nodes,
++        losing higher-depth summaries. get_session_depths should not
++        have this limitation.
++        """
++        # Create 1100 depth-0 nodes (exceeds get_session_nodes default limit)
++        for i in range(1100):
++            dag.add_node(SummaryNode(
++                session_id="s1", depth=0, summary=f"Leaf-{i}",
++                token_count=5, source_ids=[i], source_type="messages",
++            ))
++
++        # Create summary at depth 1
++        dag.add_node(SummaryNode(
++            session_id="s1", depth=1, summary="Summary level 1",
++            token_count=50, source_ids=list(range(500)), source_type="nodes",
++        ))
++
++        # Create summary at depth 2
++        dag.add_node(SummaryNode(
++            session_id="s1", depth=2, summary="Summary level 2",
++            token_count=100, source_ids=[1100], source_type="nodes",
++        ))
++
++        # Create summary at depth 3
++        dag.add_node(SummaryNode(
++            session_id="s1", depth=3, summary="Summary level 3",
++            token_count=150, source_ids=[1101], source_type="nodes",
++        ))
++
++        depths = dag.get_session_depths("s1")
++        # Should include all depths, not just 0
++        assert depths == [0, 1, 2, 3]
++
++    def test_get_session_depths_isolated_to_session(self, dag):
++        """Should only return depths for the specified session."""
++        # Session 1: depths 0, 1
++        dag.add_node(SummaryNode(
++            session_id="s1", depth=0, summary="S1-D0",
++            token_count=10, source_ids=[1], source_type="messages",
++        ))
++        dag.add_node(SummaryNode(
++            session_id="s1", depth=1, summary="S1-D1",
++            token_count=20, source_ids=[2], source_type="nodes",
++        ))
++
++        # Session 2: depths 0, 2
++        dag.add_node(SummaryNode(
++            session_id="s2", depth=0, summary="S2-D0",
++            token_count=10, source_ids=[3], source_type="messages",
++        ))
++        dag.add_node(SummaryNode(
++            session_id="s2", depth=2, summary="S2-D2",
++            token_count=30, source_ids=[4], source_type="nodes",
++        ))
++
++        assert dag.get_session_depths("s1") == [0, 1]
++        assert dag.get_session_depths("s2") == [0, 2]
++
++    def test_get_session_depths_after_deletion(self, dag):
++        """After deleting nodes at a depth, it should no longer appear."""
++        # Create nodes at depths 0, 1, 2
++        for i in range(2):
++            dag.add_node(SummaryNode(
++                session_id="s1", depth=0, summary=f"D0-{i}",
++                token_count=10, source_ids=[i], source_type="messages",
++            ))
++        dag.add_node(SummaryNode(
++            session_id="s1", depth=1, summary="D1",
++            token_count=20, source_ids=[1, 2], source_type="nodes",
++        ))
++        dag.add_node(SummaryNode(
++            session_id="s1", depth=2, summary="D2",
++            token_count=30, source_ids=[3], source_type="nodes",
++        ))
++
++        assert dag.get_session_depths("s1") == [0, 1, 2]
++
++        # Delete nodes below depth 2
++        dag.delete_below_depth("s1", 2)
++
++        # Should now only have depth 2
++        assert dag.get_session_depths("s1") == [2]
++
++    def test_get_session_depths_high_depth_nodes(self, dag):
++        """Should handle high depth values correctly."""
++        # Create nodes at very high depths
++        dag.add_node(SummaryNode(
++            session_id="s1", depth=0, summary="D0",
++            token_count=10, source_ids=[1], source_type="messages",
++        ))
++        dag.add_node(SummaryNode(
++            session_id="s1", depth=10, summary="D10",
++            token_count=50, source_ids=[2], source_type="nodes",
++        ))
++        dag.add_node(SummaryNode(
++            session_id="s1", depth=20, summary="D20",
++            token_count=100, source_ids=[3], source_type="nodes",
++        ))
++
++        depths = dag.get_session_depths("s1")
++        assert depths == [0, 10, 20]
++
++
++class TestAssemblyDepthHandling:
++    """Tests to verify assembly uses get_session_depths correctly."""
++
++    @pytest.fixture
++    def dag(self, tmp_path):
++        return SummaryDAG(tmp_path / "test.db")
++
++    def test_get_session_nodes_vs_get_session_depths_with_many_leaves(self, dag):
++        """Demonstrate the issue that get_session_nodes has a limit but get_session_depths doesn't."""
++        # Create 1100 depth-0 nodes (exceeds get_session_nodes default limit of 1000)
++        for i in range(1100):
++            dag.add_node(SummaryNode(
++                session_id="s1", depth=0, summary=f"Leaf-{i}",
++                token_count=5, source_ids=[i], source_type="messages",
++            ))
++
++        # Create summary nodes at higher depths
++        dag.add_node(SummaryNode(
++            session_id="s1", depth=1, summary="D1 summary",
++            token_count=50, source_ids=list(range(100)), source_type="nodes",
++        ))
++        dag.add_node(SummaryNode(
++            session_id="s1", depth=2, summary="D2 summary",
++            token_count=100, source_ids=[1101], source_type="nodes",
++        ))
++
++        # OLD BEHAVIOR (buggy): get_session_nodes with default limit
++        # Would only return depth 0 nodes when there are >1000 leaves
++        all_nodes_limited = dag.get_session_nodes("s1")
++        depths_from_limited = sorted(set(n.depth for n in all_nodes_limited))
++
++        # This may be [0] if leaf count exceeds 1000
++        # (though it depends on internal ordering in this test)
++        assert 0 in depths_from_limited
++
++        # NEW BEHAVIOR (correct): get_session_depths doesn't have a limit
++        all_depths = dag.get_session_depths("s1")
++
++        # Should include all depths
++        assert 0 in all_depths
++        assert 1 in all_depths
++        assert 2 in all_depths
++        assert all_depths == [0, 1, 2]

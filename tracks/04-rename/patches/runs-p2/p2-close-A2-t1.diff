@@ -1,0 +1,73 @@
+diff --git a/gitnexus/src/core/lbug/graph-emit-sink.ts b/gitnexus/src/core/lbug/graph-emit-sink.ts
+index d13ab47..e4ffb98 100644
+--- a/gitnexus/src/core/lbug/graph-emit-sink.ts
++++ b/gitnexus/src/core/lbug/graph-emit-sink.ts
+@@ -513,7 +513,7 @@ export class GraphEmitSink implements KnowledgeGraph, GraphEmitControl {
+     const relsByPair = new Map<string, { csvPath: string; rows: number }>();
+     let totalRows = 0;
+     for (const [pairKey, writer] of this.relWriters) {
+-      writer.close();
++      writer.closeWriter();
+       if (writer.poison !== undefined) errors.push(writer.poison);
+       relsByPair.set(pairKey, { csvPath: writer.csvPath, rows: writer.rows });
+       totalRows += writer.rows;
+@@ -541,7 +541,7 @@ export class GraphEmitSink implements KnowledgeGraph, GraphEmitControl {
+     this.finalized = true;
+     for (const writer of this.relWriters.values()) {
+       try {
+-        writer.close();
++        writer.closeWriter();
+       } catch {
+         /* best-effort */
+       }
+diff --git a/gitnexus/src/core/lbug/pdg-emit-sink.ts b/gitnexus/src/core/lbug/pdg-emit-sink.ts
+index fafcd2c..3eaa54e 100644
+--- a/gitnexus/src/core/lbug/pdg-emit-sink.ts
++++ b/gitnexus/src/core/lbug/pdg-emit-sink.ts
+@@ -219,7 +219,7 @@ export class PdgEmitSink implements KnowledgeGraph {
+ 
+     const nodeFiles = new Map<NodeTableName, { csvPath: string; rows: number }>();
+     if (this.bbWriter !== undefined) {
+-      this.bbWriter.close();
++      this.bbWriter.closeWriter();
+       if (this.bbWriter.poison !== undefined) errors.push(this.bbWriter.poison);
+       nodeFiles.set('BasicBlock' as NodeTableName, {
+         csvPath: this.bbWriter.csvPath,
+@@ -229,7 +229,7 @@ export class PdgEmitSink implements KnowledgeGraph {
+ 
+     const relsByPair = new Map<string, { csvPath: string; rows: number }>();
+     for (const [pairKey, writer] of this.relWriters) {
+-      writer.close();
++      writer.closeWriter();
+       if (writer.poison !== undefined) errors.push(writer.poison);
+       relsByPair.set(pairKey, { csvPath: writer.csvPath, rows: writer.rows });
+     }
+@@ -259,13 +259,13 @@ export class PdgEmitSink implements KnowledgeGraph {
+     if (this.finalized) return;
+     this.finalized = true;
+     try {
+-      this.bbWriter?.close();
++      this.bbWriter?.closeWriter();
+     } catch {
+       /* best-effort */
+     }
+     for (const writer of this.relWriters.values()) {
+       try {
+-        writer.close();
++        writer.closeWriter();
+       } catch {
+         /* best-effort */
+       }
+diff --git a/gitnexus/src/core/lbug/sync-csv-writer.ts b/gitnexus/src/core/lbug/sync-csv-writer.ts
+index fecff95..973fbda 100644
+--- a/gitnexus/src/core/lbug/sync-csv-writer.ts
++++ b/gitnexus/src/core/lbug/sync-csv-writer.ts
+@@ -94,7 +94,7 @@ export class SyncCsvWriter {
+    *  throws: a final-flush IO error is recorded as poison and the fd is still
+    *  closed, so a write error neither leaks an fd nor escapes here — the owning
+    *  sink reads {@link poison} after closing every writer and fails loudly then. */
+-  close(): void {
++  closeWriter(): void {
+     try {
+       if (this.poison === undefined) this.flush();
+     } catch (e) {

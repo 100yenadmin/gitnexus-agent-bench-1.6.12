@@ -1,0 +1,30 @@
+{
+ "schema_version": 1,
+ "verdict": "request_changes",
+ "findings": [
+  {
+   "id": "queryfts-missing-index-counted-as-success",
+   "severity": "high",
+   "path": "gitnexus/src/core/lbug/lbug-adapter.ts",
+   "line": 3179,
+   "end_line": 3181,
+   "category": "correctness",
+   "scenario": "On the CLI/HTTP path (no repoId: `/api/search` in server/api.ts and hybrid-search.ts), when the FTS extension is loaded but the FTS indexes were never built or got dropped, every QUERY_FTS_INDEX call fails with \"Binder exception: Table X doesn't have an index with name x_fts.\" Before this diff, that message did not match the old `.includes('does not exist')` check, so queryFTS rethrew and searchFTSFromLbug's catch left the table uncounted, giving ftsAvailable=false. Now queryFTS returns [] for 'missing-index'. searchFTSFromLbug's CLI branch (bm25-index.ts:177-178) treats any non-throwing call as success and runs `queriesSucceeded++`, so ftsAvailable becomes true even though every index is missing. As a result /api/search no longer attaches ftsDegradedWarning, the `gitnexus analyze --repair-fts` hint disappears, and augmentation/hybrid callers treat FTS as healthy while keyword search silently returns nothing. That is the #2767 failure mode this change is meant to fix.",
+   "evidence": "lbug-adapter.ts:3179 `if (classifyFtsQueryError(message) === 'missing-index') { return []; }`. bm25-index.ts:176-179: `const result = await queryFTS(...); queriesSucceeded++; resultsByIndex.push(result);`. bm25-index.ts:187: `const ftsAvailable = queriesSucceeded > 0;`. api.ts:1388: `if (results.ftsAvailable === false) response.warning = ftsDegradedWarning();`. The new bm25-search tests mock queryFTS to throw on missing-index, so they never exercise the real queryFTS swallowing it.",
+   "recommendation": "Keep missing-index distinguishable from success on the CLI path. Either have queryFTS rethrow (or return a sentinel) for missing-index and have searchFTSFromLbug's catch classify it as benign, or make the CLI branch call executePrepared through queryFTSViaExecutor so both branches share the same outcome logic. Add a test that runs the real queryFTS with a missing-index error and asserts ftsAvailable === false.",
+   "blocking": true
+  },
+  {
+   "id": "fts-caps-trigger-does-not-reopen-pool",
+   "severity": "low",
+   "path": "gitnexus/src/mcp/local/local-backend.ts",
+   "line": 1592,
+   "end_line": 1617,
+   "category": "correctness",
+   "scenario": "The new `ftsCapsChanged` reinit trigger is described as an independent signal that a warm MCP session uses to notice `--repair-fts`. Two things stop it from working that way. First, it only delegates to pool-adapter initLbug, which returns false and reuses the existing handle whenever the file identity is unchanged (pool-adapter.ts:669-670), so a caps-only change never reopens anything. Second, repair-fts stamps `fts.status: 'available'`, the same value a normal successful analyze already wrote, so the most common repair (indexes broke after an analyze that recorded 'available') does not change the field at all. What actually picks up the repair is still the file-identity change alone. The extra trigger adds a loadMeta-driven reinit round-trip on the first warm check after every cold init (ftsStatus is left undefined there) and creates a false sense of coverage.",
+   "evidence": "local-backend.ts:1592 `const ftsCapsChanged = observedState?.ftsStatus !== ftsStatus;` leads to `initLbug(poolKey, repo.lbugPath)`. pool-adapter.ts:670 `if (!dbIdentityChanged(existing.dbIdentity, current)) return false; // unchanged → reuse`. run-analyze.ts writes `fts: { status: ftsReady ? runtimeCapabilities.fts : 'unavailable' }` on full analyze, and repair writes `status: 'available'`.",
+   "recommendation": "Either force a real reopen when only the caps changed (for example, a forced-reopen option on initLbug while idle), or have repair write a distinct per-repair marker such as `capabilities.fts.repairedAt` and compare that. Also seed ftsStatus at cold init from meta that is already loaded, so the first warm check does not do a spurious reinit. Otherwise, remove the trigger and its comments that claim independent coverage.",
+   "blocking": false
+  }
+ ]
+}

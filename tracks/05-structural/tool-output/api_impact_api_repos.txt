@@ -1,0 +1,95 @@
+
+  GitNexus MCP (1.6.12)
+{"level":30,"time":1791218588312,"name":"gitnexus","repoCount":1,"repos":["gnxu-taint"],"msg":"GitNexus: MCP server starting"}
+{
+  "routes": [
+    {
+      "route": "/api/repos",
+      "method": null,
+      "handler": "gitnexus-web/e2e/language-switching.spec.ts",
+      "runtimeEvidence": {
+        "confirmed": false
+      },
+      "responseShape": {
+        "success": [],
+        "error": []
+      },
+      "middleware": [],
+      "consumers": [],
+      "executionFlows": [],
+      "impactSummary": {
+        "directConsumers": 0,
+        "affectedFlows": 0,
+        "riskLevel": "LOW"
+      }
+    },
+    {
+      "route": "/api/repos",
+      "method": "GET",
+      "handler": "gitnexus/src/server/api.ts",
+      "runtimeEvidence": {
+        "confirmed": false
+      },
+      "responseShape": {
+        "success": [
+          "content",
+          "start",
+          "startLine",
+          "endLine",
+          "totalLines",
+          "length",
+          "raw",
+          "error",
+          "result",
+          "limit",
+          "status",
+          "contentRetention",
+          "sourceAvailable",
+          "available",
+          "deleted",
+          "name",
+          "results",
+          "jobId",
+          "id",
+          "repoUrl",
+          "repoPath",
+          "repoName",
+          "progress",
+          "startedAt",
+          "completedAt",
+          "stringify",
+          "partial"
+        ],
+        "error": [
+          "error",
+          "code",
+          "reason",
+          "message",
+          "lockErr"
+        ]
+      },
+      "middleware": [],
+      "consumers": [],
+      "executionFlows": [
+        "CreateJob → IsTerminalJobStatus",
+        "HandleQueryRequest → IsExplicitFtsDisablement",
+        "HandleFileRequest → BadRequestError",
+        "HandleQueryRequest → IsDbBusyError",
+        "HandleQueryRequest → IsOpenRetryExhausted",
+        "HandleQueryRequest → SkipFtsOption",
+        "CreateServer → IsTransientStorageInspection",
+        "CreateServer → Claim",
+        "HandleQueryRequest → Clear",
+        "HandleQueryRequest → CascadeClear",
+        "HandleQueryRequest → Clear",
+        "CreateServer → GetPull"
+      ],
+      "impactSummary": {
+        "directConsumers": 0,
+        "affectedFlows": 12,
+        "riskLevel": "LOW"
+      }
+    }
+  ],
+  "total": 2
+}

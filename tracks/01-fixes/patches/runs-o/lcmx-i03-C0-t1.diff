@@ -1,0 +1,133 @@
+diff --git a/db_bootstrap.py b/db_bootstrap.py
+index 5b31c38..bd06ecc 100644
+--- a/db_bootstrap.py
++++ b/db_bootstrap.py
+@@ -3286,6 +3286,7 @@ def run_versioned_migrations(conn: sqlite3.Connection) -> None:
+ 
+     refuse_schema_version_too_new(conn)
+     current_version = get_schema_version(conn)
++    stored_version = current_version
+     if current_version < 2:
+         mark_migration_step_complete(conn, "v2_external_content_fts_triggers")
+         current_version = 2
+@@ -3316,4 +3317,7 @@ def run_versioned_migrations(conn: sqlite3.Connection) -> None:
+     # feature materialized lazily by VectorStore (recorded via the named
+     # ``embeddings_v1`` marker), so a disabled install stays at v5 with no
+     # embedding tables and the numeric counter is free for the temporal train.
+-    set_schema_version(conn, current_version)
++    # Even an UPSERT of the existing value needs SQLite's writer slot. Fresh
++    # agent clones must be able to open a current-schema DB under a WAL writer.
++    if current_version != stored_version:
++        set_schema_version(conn, current_version)
+diff --git a/store.py b/store.py
+index 3ebfcd0..cd52edb 100644
+--- a/store.py
++++ b/store.py
+@@ -384,9 +384,15 @@ class MessageStore:
+             "observed_at_source",
+             "ALTER TABLE messages ADD COLUMN observed_at_source TEXT",
+         )
+-        self._conn.execute(
+-            "UPDATE messages SET ingested_at = timestamp WHERE ingested_at IS NULL"
+-        )
++        # A zero-row UPDATE still acquires the writer slot. Check for legacy
++        # rows first so normal agent cloning remains read-only; real backfills
++        # retain the same write/fail-closed behavior.
++        if self._conn.execute(
++            "SELECT 1 FROM messages WHERE ingested_at IS NULL LIMIT 1"
++        ).fetchone() is not None:
++            self._conn.execute(
++                "UPDATE messages SET ingested_at = timestamp WHERE ingested_at IS NULL"
++            )
+ 
+     # -- Write operations ---------------------------------------------------
+ 
+diff --git a/tests/test_startup_writer_contention.py b/tests/test_startup_writer_contention.py
+new file mode 100644
+index 0000000..90e4d28
+--- /dev/null
++++ b/tests/test_startup_writer_contention.py
+@@ -0,0 +1,83 @@
++"""Current-schema engine clones must not need SQLite writer ownership (#363)."""
++
++import copy
++import sqlite3
++
++import pytest
++
++from hermes_lcm import db_bootstrap
++from hermes_lcm.config import LCMConfig
++from hermes_lcm.engine import LCMEngine
++
++
++@pytest.mark.parametrize("startup_work", ["none", "migration", "legacy-row"])
++def test_deepcopy_under_active_wal_writer(tmp_path, monkeypatch, startup_work):
++    monkeypatch.setattr(db_bootstrap, "SQLITE_BUSY_TIMEOUT_MS", 10)
++    db_path = tmp_path / "clone.db"
++    prototype = LCMEngine(
++        config=LCMConfig(database_path=str(db_path)),
++        hermes_home=str(tmp_path / "hermes"),
++    )
++    clone = None
++    writer = sqlite3.connect(db_path, timeout=0.01)
++    try:
++        store_id = prototype._store.append(
++            "original-session", {"role": "user", "content": "keep this message"}
++        )
++        db_bootstrap.join_background_integrity_scans()
++        if startup_work == "migration":
++            writer.execute(
++                "UPDATE metadata SET value = ? WHERE key = 'schema_version'",
++                (str(db_bootstrap.SCHEMA_VERSION - 1),),
++            )
++        elif startup_work == "legacy-row":
++            writer.execute(
++                "UPDATE messages SET ingested_at = NULL WHERE store_id = ?", (store_id,)
++            )
++        writer.commit()
++        before = writer.execute(
++            "SELECT store_id, session_id, content, timestamp, ingested_at FROM messages"
++        ).fetchall()
++        assert writer.execute("PRAGMA journal_mode=WAL").fetchone()[0] == "wal"
++        writer.execute("BEGIN IMMEDIATE")
++
++        if startup_work == "none":
++            clone = copy.deepcopy(prototype)
++            assert isinstance(clone, LCMEngine)
++            assert clone._store is not prototype._store
++            assert clone._dag is not prototype._dag
++            assert clone._lifecycle is not prototype._lifecycle
++            for helper in (clone._store, clone._dag, clone._lifecycle):
++                assert helper._conn.total_changes == 0
++            assert clone._store._conn.execute(
++                "SELECT store_id, session_id, content, timestamp, ingested_at FROM messages"
++            ).fetchall() == before
++        else:
++            with pytest.raises(sqlite3.OperationalError, match="database is locked"):
++                copy.deepcopy(prototype)
++        assert writer.in_transaction
++        writer.rollback()
++        assert writer.execute(
++            "SELECT store_id, session_id, content, timestamp, ingested_at FROM messages"
++        ).fetchall() == before
++
++        # Once writer ownership is available, real work must still complete.
++        if startup_work != "none":
++            clone = copy.deepcopy(prototype)
++            assert (
++                db_bootstrap.read_existing_schema_version(clone._store._conn)
++                == db_bootstrap.SCHEMA_VERSION
++            )
++            row = clone._store._conn.execute(
++                "SELECT timestamp, ingested_at FROM messages WHERE store_id = ?", (store_id,)
++            ).fetchone()
++            assert row[1] is not None
++            if startup_work == "legacy-row":
++                assert row[1] == row[0]
++    finally:
++        writer.rollback()
++        writer.close()
++        if clone is not None:
++            clone.shutdown()
++        prototype.shutdown()
++        db_bootstrap.join_background_integrity_scans()

@@ -1,0 +1,96 @@
+diff --git a/db_bootstrap.py b/db_bootstrap.py
+index 5b31c388..5b606641 100644
+--- a/db_bootstrap.py
++++ b/db_bootstrap.py
+@@ -3286,6 +3286,7 @@ def run_versioned_migrations(conn: sqlite3.Connection) -> None:
+ 
+     refuse_schema_version_too_new(conn)
+     current_version = get_schema_version(conn)
++    initial_version = current_version
+     if current_version < 2:
+         mark_migration_step_complete(conn, "v2_external_content_fts_triggers")
+         current_version = 2
+@@ -3316,4 +3317,7 @@ def run_versioned_migrations(conn: sqlite3.Connection) -> None:
+     # feature materialized lazily by VectorStore (recorded via the named
+     # ``embeddings_v1`` marker), so a disabled install stays at v5 with no
+     # embedding tables and the numeric counter is free for the temporal train.
+-    set_schema_version(conn, current_version)
++    # A current-schema open is read-only at the version-marker boundary. This
++    # lets parallel engine clones coexist with legitimate WAL writers.
++    if current_version != initial_version:
++        set_schema_version(conn, current_version)
+diff --git a/store.py b/store.py
+index 3ebfcd04..01c545ab 100644
+--- a/store.py
++++ b/store.py
+@@ -384,9 +384,12 @@ class MessageStore:
+             "observed_at_source",
+             "ALTER TABLE messages ADD COLUMN observed_at_source TEXT",
+         )
+-        self._conn.execute(
+-            "UPDATE messages SET ingested_at = timestamp WHERE ingested_at IS NULL"
+-        )
++        if self._conn.execute(
++            "SELECT 1 FROM messages WHERE ingested_at IS NULL LIMIT 1"
++        ).fetchone():
++            self._conn.execute(
++                "UPDATE messages SET ingested_at = timestamp WHERE ingested_at IS NULL"
++            )
+ 
+     # -- Write operations ---------------------------------------------------
+ 
+diff --git a/tests/test_lcm_core.py b/tests/test_lcm_core.py
+index 2a620690..107301d3 100644
+--- a/tests/test_lcm_core.py
++++ b/tests/test_lcm_core.py
+@@ -8487,6 +8487,50 @@ class TestLCMEngineCloning:
+             if clone is not None:
+                 clone.shutdown()
+ 
++    def test_deepcopy_current_schema_does_not_require_writer_ownership(
++        self, tmp_path, monkeypatch
++    ):
++        """Hermes agent cloning must survive an in-flight FTS metadata writer."""
++        from hermes_lcm import store as store_module
++        from hermes_lcm.db_bootstrap import join_background_integrity_scans
++        from hermes_lcm.engine import LCMEngine
++
++        db_path = tmp_path / "lcm-deepcopy-writer.db"
++        config = LCMConfig(database_path=str(db_path))
++        prototype = LCMEngine(config=config, hermes_home=str(tmp_path / "hermes"))
++        clone = None
++        writer = None
++        try:
++            # Let first-open integrity scans publish their markers, then model the
++            # same valid WAL writer boundary while Hermes deep-copies the engine.
++            join_background_integrity_scans(timeout=30.0)
++            writer = sqlite3.connect(str(db_path), isolation_level=None)
++            writer.execute("PRAGMA journal_mode=WAL")
++            writer.execute("BEGIN IMMEDIATE")
++
++            original_configure = store_module.configure_connection
++
++            def configure_without_lock_wait(conn):
++                original_configure(conn)
++                conn.execute("PRAGMA busy_timeout=1")
++
++            monkeypatch.setattr(
++                store_module, "configure_connection", configure_without_lock_wait
++            )
++
++            clone = copy.deepcopy(prototype)
++
++            assert isinstance(clone, LCMEngine)
++            assert clone is not prototype
++            assert clone._config.database_path == prototype._config.database_path
++        finally:
++            if writer is not None:
++                writer.rollback()
++                writer.close()
++            prototype.shutdown()
++            if clone is not None:
++                clone.shutdown()
++
+     def test_deepcopy_matches_hermes_host_copy_contract_without_fallback(self, tmp_path):
+         from hermes_lcm.engine import LCMEngine
+ 

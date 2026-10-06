@@ -1,0 +1,47 @@
+[
+ {
+  "id": "p3-routes",
+  "sub": "routes",
+  "endpoint": null,
+  "statement": "Route map: list every HTTP route that the GitNexus web server (`gitnexus serve`) registers in `gitnexus/src/server/`: the HTTP method and the path of each (for example `GET /api/health`). Include every method (GET, POST, DELETE, ...) and any route that accepts all methods (use method `ALL` for those).\n\nDo not modify any repository files. Write `.bench-review/answer.json` as UTF-8 JSON with exactly this shape:\n{\"routes\": [{\"method\": \"GET\", \"path\": \"/api/health\"}]}\nThen reply with a one-line summary.",
+  "base": "GitNexus c4ecf398 (gnxu-base index)",
+  "ground_truth": "gt.json",
+  "user_instruction_file_on_claude_arms": true
+ },
+ {
+  "id": "p3-tools",
+  "sub": "tools",
+  "endpoint": null,
+  "statement": "Tool map: list the names of all MCP tools that the GitNexus MCP server defines (the tools an MCP client can call).\n\nDo not modify any repository files. Write `.bench-review/answer.json` as UTF-8 JSON with exactly this shape:\n{\"tools\": [\"tool_name\", \"...\"]}\nThen reply with a one-line summary.",
+  "base": "GitNexus c4ecf398 (gnxu-base index)",
+  "ground_truth": "gt.json",
+  "user_instruction_file_on_claude_arms": true
+ },
+ {
+  "id": "p3-consumers-repos",
+  "sub": "consumers",
+  "endpoint": "/api/repos",
+  "statement": "API impact: the response shape of the server endpoint `GET /api/repos` (registered in `gitnexus/src/server/api.ts`) is about to change. Which source files of the web UI in `gitnexus-web/src/` (excluding tests) would be affected: the file that sends the request to this endpoint, plus every file that calls the function sending it (one level of callers, not further)?\n\nDo not modify any repository files. Write `.bench-review/answer.json` as UTF-8 JSON with exactly this shape:\n{\"files\": [\"gitnexus-web/src/<path>\"]}\nThen reply with a one-line summary.",
+  "base": "GitNexus c4ecf398 (gnxu-base index)",
+  "ground_truth": "gt.json",
+  "user_instruction_file_on_claude_arms": true
+ },
+ {
+  "id": "p3-consumers-file",
+  "sub": "consumers",
+  "endpoint": "/api/file",
+  "statement": "API impact: the response shape of the server endpoint `GET /api/file` (registered in `gitnexus/src/server/api.ts`) is about to change. Which source files of the web UI in `gitnexus-web/src/` (excluding tests) would be affected: the file that sends the request to this endpoint, plus every file that calls the function sending it (one level of callers, not further)?\n\nDo not modify any repository files. Write `.bench-review/answer.json` as UTF-8 JSON with exactly this shape:\n{\"files\": [\"gitnexus-web/src/<path>\"]}\nThen reply with a one-line summary.",
+  "base": "GitNexus c4ecf398 (gnxu-base index)",
+  "ground_truth": "gt.json",
+  "user_instruction_file_on_claude_arms": true
+ },
+ {
+  "id": "p3-consumers-query",
+  "sub": "consumers",
+  "endpoint": "/api/query",
+  "statement": "API impact: the response shape of the server endpoint `POST /api/query` (registered in `gitnexus/src/server/api.ts`) is about to change. Which source files of the web UI in `gitnexus-web/src/` (excluding tests) would be affected: the file that sends the request to this endpoint, plus every file that calls the function sending it (one level of callers, not further)?\n\nDo not modify any repository files. Write `.bench-review/answer.json` as UTF-8 JSON with exactly this shape:\n{\"files\": [\"gitnexus-web/src/<path>\"]}\nThen reply with a one-line summary.",
+  "base": "GitNexus c4ecf398 (gnxu-base index)",
+  "ground_truth": "gt.json",
+  "user_instruction_file_on_claude_arms": true
+ }
+]

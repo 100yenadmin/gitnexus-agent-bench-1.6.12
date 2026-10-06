@@ -1,0 +1,72 @@
+[
+ {
+  "name": "format_bytes",
+  "cls": null,
+  "file": "hermes_cli/sizefmt.py",
+  "line": 7,
+  "role": "alias"
+ },
+ {
+  "name": "_norm",
+  "cls": null,
+  "file": "hermes_cli/observability/shared_metrics_contract.py",
+  "line": 598,
+  "role": "common"
+ },
+ {
+  "name": "_write",
+  "cls": null,
+  "file": "pm/lock.py",
+  "line": 66,
+  "role": "common"
+ },
+ {
+  "name": "_fail",
+  "cls": null,
+  "file": "hermes_cli/plugins_cmd.py",
+  "line": 113,
+  "role": "common"
+ },
+ {
+  "name": "_section",
+  "cls": null,
+  "file": "hermes_cli/doctor_report.py",
+  "line": 31,
+  "role": "common"
+ },
+ {
+  "name": "has_credentials",
+  "cls": "CredentialPool",
+  "file": "agent/credential_pool.py",
+  "line": 1036,
+  "role": "method"
+ },
+ {
+  "name": "export",
+  "cls": "ProviderRegistry",
+  "file": "agent/provider_registry.py",
+  "line": 161,
+  "role": "method"
+ },
+ {
+  "name": "normalize_provider",
+  "cls": null,
+  "file": "hermes_cli/providers.py",
+  "line": 164,
+  "role": "namesake"
+ },
+ {
+  "name": "acquire",
+  "cls": "UpdateLock",
+  "file": "hermes_cli/update_lock.py",
+  "line": 313,
+  "role": "method-spare"
+ },
+ {
+  "name": "coerce_port",
+  "cls": null,
+  "file": "gateway/platforms/_shared.py",
+  "line": 245,
+  "role": "alias-spare"
+ }
+]

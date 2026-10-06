@@ -1,0 +1,130 @@
+diff --git a/command.py b/command.py
+index a012a1c..98226a0 100644
+--- a/command.py
++++ b/command.py
+@@ -2849,6 +2849,19 @@ def _embedding_current_profile(conn: sqlite3.Connection) -> sqlite3.Row | None:
+         raise
+ 
+ 
++def _embedding_text_present(value: object) -> int:
++    return int(value is not None and bool(str(value).strip()))
++
++
++def _register_embedding_text_present(conn: sqlite3.Connection) -> None:
++    # SQLite's TRIM only strips ASCII spaces, so blank detection uses Python's
++    # str.strip() (all Unicode whitespace, e.g. "\v\f"). A blank summary is
++    # never embeddable, and sending one makes Voyage reject the whole batch.
++    conn.create_function(
++        "lcm_embedding_text_present", 1, _embedding_text_present, deterministic=True
++    )
++
++
+ def _embedding_pending_rows(
+     conn: sqlite3.Connection,
+     identity_hash: str,
+@@ -2857,7 +2870,8 @@ def _embedding_pending_rows(
+     # Discovery excludes both recorded rows and every durable in-flight state.
+     # A dispatched/uncertain row may already have been accepted remotely, so it
+     # must never be silently resent; only explicit --retry-uncertain operator
+-    # authorization can return it to discovery.
++    # authorization can return it to discovery. Blank summaries are skipped.
++    _register_embedding_text_present(conn)
+     inflight_exists = conn.execute(
+         "SELECT 1 FROM sqlite_master WHERE type='table' "
+         "AND name='lcm_embedding_backfill_inflight'"
+@@ -2875,6 +2889,7 @@ def _embedding_pending_rows(
+     )
+     where = """
+         n.depth = 0
++        AND lcm_embedding_text_present(n.summary)
+         AND NOT EXISTS (
+             SELECT 1
+             FROM lcm_embedding_meta AS m
+@@ -2908,11 +2923,16 @@ def _embedding_authorized_uncertain_rows(
+     identity_hash: str,
+     limit: int,
+ ) -> tuple[int, list[sqlite3.Row]]:
+-    """Select exact uncertain rows without consuming their durable markers."""
++    """Select exact uncertain rows without consuming their durable markers.
++
++    Blank summaries are never selected, so their markers stay untouched.
++    """
++    _register_embedding_text_present(conn)
+     where = """
+         f.identity_hash = ?
+         AND f.state = 'uncertain'
+         AND n.depth = 0
++        AND lcm_embedding_text_present(n.summary)
+         AND NOT EXISTS (
+             SELECT 1
+             FROM lcm_embedding_meta AS m
+diff --git a/tests/test_embedding_backfill.py b/tests/test_embedding_backfill.py
+index 673dbdd..dca2f72 100644
+--- a/tests/test_embedding_backfill.py
++++ b/tests/test_embedding_backfill.py
+@@ -200,6 +200,65 @@ def test_dry_run_reports_counts_tokens_and_cost_without_calls_or_writes(
+     assert provider.calls == []
+ 
+ 
++_BLANK_SUMMARIES = ("", "   ", "\v\f", "　\n\t")
++
++
++def _blank_leaf_summaries(engine, node_ids: list[int]) -> None:
++    conn = sqlite3.connect(engine._store.db_path)
++    try:
++        conn.executemany(
++            "UPDATE summary_nodes SET summary = ? WHERE node_id = ?",
++            zip(_BLANK_SUMMARIES, node_ids),
++        )
++        conn.commit()
++    finally:
++        conn.close()
++
++
++def test_blank_leaf_summaries_are_never_counted_or_sent(monkeypatch, tmp_path):
++    engine = _engine(tmp_path)
++    node_ids = _seed(engine, 6)
++    blank_ids = node_ids[1:5]
++    _blank_leaf_summaries(engine, blank_ids)
++    provider = FakeProvider()
++    monkeypatch.setattr(command_mod, "resolve_provider", lambda _config, **_kw: provider)
++
++    preview = handle_lcm_command("embed backfill", engine)
++
++    assert "pending: 2" in preview
++    assert "selected: 2" in preview
++    assert provider.calls == []
++
++    applied = handle_lcm_command("embed backfill --apply", engine)
++
++    assert "status: complete" in applied
++    assert "embedded: 2" in applied
++    assert "remaining: 0" in applied
++    assert provider.calls == [["summary-5", "summary-0"]]
++    assert _meta_ids(engine) == [str(node_ids[0]), str(node_ids[5])]
++
++
++def test_retry_uncertain_skips_blank_summary_and_keeps_its_marker(
++    monkeypatch, tmp_path
++):
++    engine = _engine(tmp_path)
++    node_ids = _seed(engine, 2)
++    _blank_leaf_summaries(engine, [node_ids[0]])
++    _mark_uncertain(engine, node_ids)
++    provider = FakeProvider()
++    monkeypatch.setattr(command_mod, "resolve_provider", lambda _config, **_kw: provider)
++
++    result = handle_lcm_command(
++        "embed backfill --apply --retry-uncertain --limit 5", engine
++    )
++
++    assert "selected: 1" in result
++    assert "embedded: 1" in result
++    assert provider.calls == [["summary-1"]]
++    assert _meta_ids(engine) == [str(node_ids[1])]
++    assert _inflight_rows(engine) == [(str(node_ids[0]), "uncertain")]
++
++
+ def test_apply_batches_records_correct_meta_and_is_idempotent(monkeypatch, tmp_path):
+     engine = _engine(tmp_path)
+     node_ids = _seed(engine, 35)

@@ -1,0 +1,41 @@
+
+===== format_bytes: occurrences=44 hits=41 gt=24
+ jedi-candidates 24  GT-not-jedi 0  jedi-not-GT 0
+ unresolved tokens: 0
+
+===== _norm: occurrences=107 hits=30 gt=27
+ jedi-candidates 28  GT-not-jedi 0  jedi-not-GT 1
+  JEDI-only ('hermes_cli/observability/shared_metrics_fields.py', 15) MODEL_IDENTIFIER_MAX_LENGTH, PROVIDER_IDENTIFIER_MAX_LENGTH, _bucket, _metric_identifier, _norm,
+ unresolved tokens: 0
+
+===== _fail: occurrences=233 hits=26 gt=20
+ jedi-candidates 21  GT-not-jedi 0  jedi-not-GT 1
+  JEDI-only ('hermes_cli/plugins_cmd_catalog.py', 639) PluginOperationError, _ask_yes, _declared_capabilities_from_manifest, _fail, _is_tty, _read_manifest,
+ unresolved tokens: 0
+
+===== normalize_provider: occurrences=160 hits=37 gt=20
+ jedi-candidates 21  GT-not-jedi 1  jedi-not-GT 2
+  GT-only ('hermes_cli/doctor_config.py', 265) [('normalize', [['hermes_cli/doctor_config.py', 260, 'statement']])] valid_provider_ids.add(normalize(known_provider))
+  JEDI-only ('hermes_cli/doctor_config.py', 226) return known, custom_providers, resolve_auth, normalize, resolve_full
+  JEDI-only ('hermes_cli/model_switch.py', 18) host_mandated_api_mode, is_aggregator, normalize_provider, resolve_provider_full)
+ unresolved tokens: 1
+   U hermes_cli/plugins.py 1156 normalize , = | registry=registry, label=label, article=options.get("article", "a"), normalize=normalize_fn,
+
+===== CredentialPool.has_credentials: occurrences=28 hits=28 gt=27
+ jedi-candidates 27  GT-not-jedi 0  jedi-not-GT 0
+ unresolved tokens: 0
+
+===== _write: occurrences=127 hits=21 gt=13
+ jedi-candidates 13  GT-not-jedi 0  jedi-not-GT 0
+ unresolved tokens: 0
+
+===== _section: occurrences=102 hits=15 gt=9
+ jedi-candidates 12  GT-not-jedi 0  jedi-not-GT 3
+  JEDI-only ('hermes_cli/doctor_config.py', 8) Finding, _fail_and_issue, _section, check_bool, check_fail, check_info, check_ok, check_warn, doctor_check,
+  JEDI-only ('hermes_cli/doctor_platform.py', 15) Finding, _fail_and_issue, _section, check_bool, check_fail, check_info, check_ok, check_warn, doctor_check,
+  JEDI-only ('hermes_cli/doctor_state.py', 10) Finding, _fail_and_issue, _section, check_bool, check_info, check_ok, check_warn, doctor_check, ensure_dir,
+ unresolved tokens: 0
+
+===== ProviderRegistry.export: occurrences=34 hits=8 gt=7
+ jedi-candidates 7  GT-not-jedi 0  jedi-not-GT 0
+ unresolved tokens: 0

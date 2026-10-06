@@ -1,0 +1,89 @@
+{
+ "source_run": "runs-p2/p2-close-H2-t1",
+ "tool": "rename",
+ "calls": [
+  {
+   "status": "success",
+   "old_name": "close",
+   "new_name": "closeWriter",
+   "files_affected": 2,
+   "total_edits": 10,
+   "graph_edits": 10,
+   "text_search_edits": 0,
+   "changes": [
+    {
+     "file_path": "gitnexus/src/core/lbug/sync-csv-writer.ts",
+     "edits": [
+      {
+       "line": 93,
+       "old_text": "/** Flush remaining rows (unless already poisoned) and close the fd. Never",
+       "new_text": "/** Flush remaining rows (unless already poisoned) and closeWriter the fd. Never",
+       "confidence": "graph"
+      },
+      {
+       "line": 97,
+       "old_text": "close(): void {",
+       "new_text": "closeWriter(): void {",
+       "confidence": "graph"
+      }
+     ]
+    },
+    {
+     "file_path": "gitnexus/src/core/lbug/pdg-emit-sink.ts",
+     "edits": [
+      {
+       "line": 205,
+       "old_text": "/** Flush + close every streamed writer and return the COPY manifest. Every",
+       "new_text": "/** Flush + closeWriter every streamed writer and return the COPY manifest. Every",
+       "confidence": "graph"
+      },
+      {
+       "line": 206,
+       "old_text": "*  fd is closed even when a writer is poisoned (its `close` never throws); any",
+       "new_text": "*  fd is closed even when a writer is poisoned (its `closeWriter` never throws); any",
+       "confidence": "graph"
+      },
+      {
+       "line": 222,
+       "old_text": "this.bbWriter.close();",
+       "new_text": "this.bbWriter.closeWriter();",
+       "confidence": "graph"
+      },
+      {
+       "line": 232,
+       "old_text": "writer.close();",
+       "new_text": "writer.closeWriter();",
+       "confidence": "graph"
+      },
+      {
+       "line": 255,
+       "old_text": "* `finalized` flag; close errors are swallowed because the run is already",
+       "new_text": "* `finalized` flag; closeWriter errors are swallowed because the run is already",
+       "confidence": "graph"
+      },
+      {
+       "line": 258,
+       "old_text": "close(): void {",
+       "new_text": "closeWriter(): void {",
+       "confidence": "graph"
+      },
+      {
+       "line": 262,
+       "old_text": "this.bbWriter?.close();",
+       "new_text": "this.bbWriter?.closeWriter();",
+       "confidence": "graph"
+      },
+      {
+       "line": 268,
+       "old_text": "writer.close();",
+       "new_text": "writer.closeWriter();",
+       "confidence": "graph"
+      }
+     ]
+    }
+   ],
+   "applied": true
+  }
+ ],
+ "used_by_apply_and_check": "calls[0]"
+}

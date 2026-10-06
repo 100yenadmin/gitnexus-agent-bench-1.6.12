@@ -1,0 +1,18 @@
+{
+ "schema_version": 1,
+ "verdict": "request_changes",
+ "findings": [
+  {
+   "id": "ruby-lambda-proc-caller-alias",
+   "severity": "medium",
+   "path": "gitnexus/src/core/ingestion/languages/ruby/query.ts",
+   "line": 102,
+   "end_line": 114,
+   "category": "correctness",
+   "scenario": "A Ruby file defines a method named handler and then assigns handler = lambda { |x| target(x) } (or proc with a brace block). The call inside the closure is now attributed to the unrelated handler method, creating a false CALLS edge.",
+   "evidence": "The new patterns attach a Function definition named handler to the closure block, but RUBY_QUERIES in tree-sitter-queries.ts only emits closure Function nodes for assignment right: (lambda), not the (call) forms lambda/proc. A source-worker probe emitted only Method:a.rb:handler#1 and Method:a.rb:target#1 for this fixture. resolveDefGraphId therefore misses the closure position/qualified keys and aliases its definition through simpleKey to Method:a.rb:handler#1. Executing emitReferencesViaLookup with the new captures produced Method:a.rb:handler#1 -> Method:a.rb:target#1; removing only the newly added closure declaration capture restored File:a.rb -> Method:a.rb:target#1.",
+   "recommendation": "Add matching graph-node definition rules for the lambda/proc call forms alongside these scope declarations, and cover a binding that shares its name with an existing method so the closure cannot alias that method.",
+   "blocking": true
+  }
+ ]
+}

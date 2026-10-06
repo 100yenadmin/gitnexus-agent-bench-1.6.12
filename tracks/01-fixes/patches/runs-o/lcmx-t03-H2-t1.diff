@@ -1,0 +1,267 @@
+diff --git a/command.py b/command.py
+index a012a1c..095f59d 100644
+--- a/command.py
++++ b/command.py
+@@ -2941,6 +2941,11 @@ def _embedding_authorized_uncertain_rows(
+     return total, rows
+ 
+ 
++def _is_blank_summary(text: str | None) -> bool:
++    """Check if a summary is blank using Python's str.strip() definition."""
++    return text is None or not str(text).strip()
++
++
+ def _embedding_batch_estimate(
+     provider: str, token_counts: list[int], max_batch_items: int | None = None
+ ) -> int:
+@@ -3869,6 +3874,7 @@ def _embedding_backfill_summary_text(
+         documents = [
+             (str(row["node_id"]), str(row["summary"]), count_tokens(row["summary"]))
+             for row in rows
++            if not _is_blank_summary(row["summary"])
+         ]
+         estimated_tokens, estimated_cost_tokens, estimated_batches = _estimates(documents)
+         return _embedding_backfill_report(
+@@ -3948,6 +3954,7 @@ def _embedding_backfill_summary_text(
+         documents = [
+             (str(row["node_id"]), str(row["summary"]), count_tokens(row["summary"]))
+             for row in rows
++            if not _is_blank_summary(row["summary"])
+         ]
+ 
+         # Bulk backfill bypasses the interactive per-minute spend guard (it has
+diff --git a/tests/test_embedding_backfill.py b/tests/test_embedding_backfill.py
+index 673dbdd..f745124 100644
+--- a/tests/test_embedding_backfill.py
++++ b/tests/test_embedding_backfill.py
+@@ -1511,3 +1511,230 @@ def test_backfill_apply_honors_env_batch_size(monkeypatch, tmp_path):
+     assert "embedded: 5" in result
+     assert "remaining: 0" in result
+     assert [len(batch) for batch in provider.calls] == [2, 2, 1]
++
++
++def test_dry_run_skips_blank_summaries_in_selected_but_counts_in_pending(
++    monkeypatch, tmp_path
++):
++    engine = _engine(tmp_path)
++    dag = SummaryDAG(engine._store.db_path)
++    try:
++        node_ids = [
++            dag.add_node(SummaryNode(
++                session_id="session-a",
++                depth=0,
++                summary="real-summary-0",
++                source_token_count=100,
++                created_at=1.0,
++                latest_at=1.0,
++            )),
++            dag.add_node(SummaryNode(
++                session_id="session-a",
++                depth=0,
++                summary="",
++                source_token_count=100,
++                created_at=2.0,
++                latest_at=2.0,
++            )),
++            dag.add_node(SummaryNode(
++                session_id="session-a",
++                depth=0,
++                summary="   ",
++                source_token_count=100,
++                created_at=4.0,
++                latest_at=4.0,
++            )),
++            dag.add_node(SummaryNode(
++                session_id="session-a",
++                depth=0,
++                summary="\t\n\v\f",
++                source_token_count=100,
++                created_at=5.0,
++                latest_at=5.0,
++            )),
++            dag.add_node(SummaryNode(
++                session_id="session-a",
++                depth=0,
++                summary="real-summary-5",
++                source_token_count=100,
++                created_at=6.0,
++                latest_at=6.0,
++            )),
++        ]
++    finally:
++        dag.close()
++
++    store = VectorStore(engine._store.db_path, config=engine._config)
++    try:
++        store.register_profile("model-a", "ollama", 2)
++    finally:
++        store.close()
++
++    provider = FakeProvider()
++    monkeypatch.setattr(command_mod, "resolve_provider", lambda _config, **_kw: provider)
++
++    result = handle_lcm_command("embed backfill", engine)
++
++    assert "status: dry-run" in result
++    assert "pending: 5" in result
++    assert "selected: 2" in result
++    assert provider.calls == []
++    assert _meta_ids(engine) == []
++
++
++def test_apply_skips_blank_summaries_without_sending_to_provider(
++    monkeypatch, tmp_path
++):
++    engine = _engine(tmp_path)
++    dag = SummaryDAG(engine._store.db_path)
++    try:
++        node_0 = dag.add_node(SummaryNode(
++            session_id="session-a",
++            depth=0,
++            summary="real-summary-0",
++            source_token_count=100,
++            created_at=1.0,
++            latest_at=1.0,
++        ))
++        node_1 = dag.add_node(SummaryNode(
++            session_id="session-a",
++            depth=0,
++            summary="",
++            source_token_count=100,
++            created_at=2.0,
++            latest_at=2.0,
++        ))
++        node_2 = dag.add_node(SummaryNode(
++            session_id="session-a",
++            depth=0,
++            summary="real-summary-2",
++            source_token_count=100,
++            created_at=3.0,
++            latest_at=3.0,
++        ))
++    finally:
++        dag.close()
++
++    store = VectorStore(engine._store.db_path, config=engine._config)
++    try:
++        store.register_profile("model-a", "ollama", 2)
++    finally:
++        store.close()
++
++    provider = FakeProvider()
++    monkeypatch.setattr(command_mod, "resolve_provider", lambda _config, **_kw: provider)
++
++    result = handle_lcm_command("embed backfill --apply", engine)
++
++    assert "status: complete" in result
++    assert "embedded: 2" in result
++    assert "remaining: 1" in result
++    assert provider.calls == [["real-summary-2", "real-summary-0"]]
++    assert _meta_ids(engine) == [str(node_0), str(node_2)]
++
++
++def test_apply_with_blank_sends_only_non_blank_to_provider(
++    monkeypatch, tmp_path
++):
++    engine = _engine(tmp_path)
++    dag = SummaryDAG(engine._store.db_path)
++    try:
++        node_0 = dag.add_node(SummaryNode(
++            session_id="session-a",
++            depth=0,
++            summary="real-0",
++            source_token_count=100,
++            created_at=1.0,
++            latest_at=1.0,
++        ))
++        node_1 = dag.add_node(SummaryNode(
++            session_id="session-a",
++            depth=0,
++            summary="   \t  ",
++            source_token_count=100,
++            created_at=2.0,
++            latest_at=2.0,
++        ))
++        node_2 = dag.add_node(SummaryNode(
++            session_id="session-a",
++            depth=0,
++            summary="real-2",
++            source_token_count=100,
++            created_at=3.0,
++            latest_at=3.0,
++        ))
++    finally:
++        dag.close()
++
++    store = VectorStore(engine._store.db_path, config=engine._config)
++    try:
++        store.register_profile("model-a", "ollama", 2)
++    finally:
++        store.close()
++
++    provider = FakeProvider()
++    monkeypatch.setattr(command_mod, "resolve_provider", lambda _config, **_kw: provider)
++
++    result = handle_lcm_command("embed backfill --apply", engine)
++
++    assert "status: complete" in result
++    assert "embedded: 2" in result
++    assert provider.calls == [["real-2", "real-0"]]
++    assert _meta_ids(engine) == [str(node_0), str(node_2)]
++
++
++def test_retry_uncertain_skips_blank_summaries(monkeypatch, tmp_path):
++    engine = _engine(tmp_path)
++    dag = SummaryDAG(engine._store.db_path)
++    try:
++        node_0 = dag.add_node(SummaryNode(
++            session_id="session-a",
++            depth=0,
++            summary="real-0",
++            source_token_count=100,
++            created_at=1.0,
++            latest_at=1.0,
++        ))
++        node_1 = dag.add_node(SummaryNode(
++            session_id="session-a",
++            depth=0,
++            summary="",
++            source_token_count=100,
++            created_at=2.0,
++            latest_at=2.0,
++        ))
++        node_2 = dag.add_node(SummaryNode(
++            session_id="session-a",
++            depth=0,
++            summary="real-2",
++            source_token_count=100,
++            created_at=3.0,
++            latest_at=3.0,
++        ))
++    finally:
++        dag.close()
++
++    store = VectorStore(engine._store.db_path, config=engine._config)
++    try:
++        store.register_profile("model-a", "ollama", 2)
++    finally:
++        store.close()
++
++    identity = _mark_uncertain(engine, [node_0, node_1, node_2])
++
++    provider = FakeProvider()
++    monkeypatch.setattr(command_mod, "resolve_provider", lambda _config, **_kw: provider)
++
++    result = handle_lcm_command("embed backfill --apply --retry-uncertain", engine)
++
++    assert "status: partial" in result
++    assert "embedded: 2" in result
++    assert sorted(provider.calls[0]) == ["real-0", "real-2"]
++    assert _meta_ids(engine) == [str(node_0), str(node_2)]
++    inflight = _inflight_rows(engine)
++    found_blank_uncertain = False
++    for embedded_id, state in inflight:
++        if embedded_id == str(node_1):
++            assert state == "uncertain"
++            found_blank_uncertain = True
++    assert found_blank_uncertain

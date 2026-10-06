@@ -1,0 +1,79 @@
+diff --git a/gitnexus/src/server/repo-tools.ts b/gitnexus/src/server/repo-tools.ts
+index 968fab7..6ad2833 100644
+--- a/gitnexus/src/server/repo-tools.ts
++++ b/gitnexus/src/server/repo-tools.ts
+@@ -53,32 +53,51 @@ export function licenseText(): string {
+   return fs.readFileSync(path.join(SNIPPET_ROOT, 'LICENSE'), 'utf8');
+ }
+ 
++/** Route handlers, named (variant for the engine check: same flows as the inline-callback version). */
++export function handleBlame(req: express.Request, res: express.Response): void {
++  const file = req.query.file as string;
++  res.json(blameSummary(file));
++}
++
++export function handleSnippet(req: express.Request, res: express.Response): void {
++  const rel = req.query.path as string;
++  res.type('text/plain').send(readSnippet(rel));
++}
++
++export function handleCommitSubject(req: express.Request, res: express.Response): void {
++  const ref = req.query.ref as string;
++  try {
++    res.json({ subject: commitSubject(ref) });
++  } catch {
++    res.status(400).json({ error: 'invalid ref' });
++  }
++}
++
++export function makeFilterHandler(listRows: () => Promise<Record<string, unknown>[]>) {
++  return async function handleFilter(req: express.Request, res: express.Response): Promise<void> {
++    const expr = req.body.filter as string;
++    res.json(filterRows(await listRows(), expr));
++  };
++}
++
++export function handleLicense(_req: express.Request, res: express.Response): void {
++  res.type('text/plain').send(licenseText());
++}
++
++/** Inline-callback flow with the sink in the callback itself (intra-procedural control). */
++export function handleBlameInline(req: express.Request, res: express.Response): void {
++  res.type('text/plain').send(execSync('git log -1 --format=%an -- ' + (req.query.file as string), { cwd: SNIPPET_ROOT, encoding: 'utf8' }));
++}
++
+ /** Small repository utilities for the web UI (blame authors, file snippets, commit subjects, row filters). */
+ export function mountRepoTools(
+   app: express.Express,
+   listRows: () => Promise<Record<string, unknown>[]>,
+ ): void {
+-  app.get('/api/blame', (req, res) => {
+-    const file = req.query.file as string;
+-    res.json(blameSummary(file));
+-  });
+-  app.get('/api/snippet', (req, res) => {
+-    const rel = req.query.path as string;
+-    res.type('text/plain').send(readSnippet(rel));
+-  });
+-  app.get('/api/commit-subject', (req, res) => {
+-    const ref = req.query.ref as string;
+-    try {
+-      res.json({ subject: commitSubject(ref) });
+-    } catch {
+-      res.status(400).json({ error: 'invalid ref' });
+-    }
+-  });
+-  app.post('/api/rows/filter', async (req, res) => {
+-    const expr = req.body.filter as string;
+-    res.json(filterRows(await listRows(), expr));
+-  });
+-  app.get('/api/license', (_req, res) => {
+-    res.type('text/plain').send(licenseText());
+-  });
++  app.get('/api/blame', handleBlame);
++  app.get('/api/snippet', handleSnippet);
++  app.get('/api/commit-subject', handleCommitSubject);
++  app.post('/api/rows/filter', makeFilterHandler(listRows));
++  app.get('/api/license', handleLicense);
++  app.get('/api/last-author', handleBlameInline);
+ }

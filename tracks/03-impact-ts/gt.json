@@ -1,0 +1,772 @@
+[
+ {
+  "name": "parseSourceSafe",
+  "cls": null,
+  "file": "gitnexus/src/core/tree-sitter/safe-parse.ts",
+  "line": 212,
+  "sites": [
+   {
+    "file": "gitnexus/src/core/embeddings/ast-utils.ts",
+    "line": 44,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/group/extractors/graphql-extractor.ts",
+    "line": 625,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/group/extractors/graphql-extractor.ts",
+    "line": 708,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/group/extractors/grpc-extractor.ts",
+    "line": 480,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/group/extractors/http-route-extractor.ts",
+    "line": 426,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/group/extractors/http-route-extractor.ts",
+    "line": 457,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/group/extractors/include-extractor.ts",
+    "line": 550,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/group/extractors/python-workspace-extractor.ts",
+    "line": 158,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/group/extractors/thrift-extractor.ts",
+    "line": 315,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/group/extractors/tree-sitter-scanner.ts",
+    "line": 159,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/import-resolvers/node-workspace-packages.ts",
+    "line": 833,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/languages/c/captures.ts",
+    "line": 43,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/languages/cpp/captures.ts",
+    "line": 167,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/languages/cpp/range-bindings.ts",
+    "line": 42,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/languages/csharp/captures.ts",
+    "line": 120,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/languages/dart/captures.ts",
+    "line": 151,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/languages/go/captures.ts",
+    "line": 114,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/languages/go/range-binding.ts",
+    "line": 30,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/languages/java/captures.ts",
+    "line": 138,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/languages/java/spring-config-bindings.ts",
+    "line": 230,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/languages/javascript/captures.ts",
+    "line": 981,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/languages/kotlin/captures.ts",
+    "line": 101,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/languages/kotlin/spring-config-bindings.ts",
+    "line": 424,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/languages/kotlin/spring-config-bindings.ts",
+    "line": 433,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/languages/objective-c.ts",
+    "line": 258,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/languages/php/captures.ts",
+    "line": 110,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/languages/python/captures.ts",
+    "line": 72,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/languages/ruby/captures.ts",
+    "line": 221,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/languages/rust/captures.ts",
+    "line": 38,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/languages/rust/range-binding.ts",
+    "line": 51,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/languages/swift/captures.ts",
+    "line": 141,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/languages/typescript/captures.ts",
+    "line": 383,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/languages/zig/captures.ts",
+    "line": 1161,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/languages/zig/range-binding.ts",
+    "line": 85,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/languages/zig/workspace-static-gating.ts",
+    "line": 34,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/pipeline-phases/parse-impl.ts",
+    "line": 369,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/route-extractors/django.ts",
+    "line": 411,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/route-extractors/django.ts",
+    "line": 446,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/workers/parse-worker.ts",
+    "line": 1617,
+    "code": "TS2554"
+   }
+  ]
+ },
+ {
+  "name": "getPhaseOutput",
+  "cls": null,
+  "file": "gitnexus/src/core/ingestion/pipeline-phases/types.ts",
+  "line": 99,
+  "sites": [
+   {
+    "file": "gitnexus/src/core/ingestion/pipeline-phases/call-summaries.ts",
+    "line": 46,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/pipeline-phases/cobol.ts",
+    "line": 33,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/pipeline-phases/communities.ts",
+    "line": 34,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/pipeline-phases/cross-file.ts",
+    "line": 53,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/pipeline-phases/markdown.ts",
+    "line": 34,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/pipeline-phases/mro.ts",
+    "line": 34,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/pipeline-phases/orm.ts",
+    "line": 33,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/pipeline-phases/parse.ts",
+    "line": 128,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/pipeline-phases/processes.ts",
+    "line": 103,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/pipeline-phases/processes.ts",
+    "line": 70,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/pipeline-phases/processes.ts",
+    "line": 71,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/pipeline-phases/processes.ts",
+    "line": 72,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/pipeline-phases/processes.ts",
+    "line": 73,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/pipeline-phases/routes.ts",
+    "line": 192,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/pipeline-phases/spring-auto-configuration.ts",
+    "line": 243,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/pipeline-phases/spring-config.ts",
+    "line": 519,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/pipeline-phases/spring-destinations.ts",
+    "line": 530,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/pipeline-phases/structure.ts",
+    "line": 38,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/pipeline-phases/taint-summaries.ts",
+    "line": 59,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/pipeline-phases/tools.ts",
+    "line": 39,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/pipeline.ts",
+    "line": 427,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/pipeline.ts",
+    "line": 437,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/pipeline.ts",
+    "line": 451,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/pipeline.ts",
+    "line": 452,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/pipeline.ts",
+    "line": 516,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/pipeline.ts",
+    "line": 522,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/scope-resolution/pipeline/phase.ts",
+    "line": 179,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/scope-resolution/pipeline/phase.ts",
+    "line": 180,
+    "code": "TS2554"
+   }
+  ]
+ },
+ {
+  "name": "resolve",
+  "cls": "ScopeTreeHarvester",
+  "file": "gitnexus/src/core/ingestion/cfg/visitors/scope-tree-harvest.ts",
+  "line": 123,
+  "sites": [
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/c-cpp-harvest.ts",
+    "line": 474,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/c-cpp-harvest.ts",
+    "line": 537,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/csharp-harvest.ts",
+    "line": 480,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/csharp-harvest.ts",
+    "line": 557,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/go-harvest.ts",
+    "line": 350,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/go-harvest.ts",
+    "line": 351,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/go-harvest.ts",
+    "line": 357,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/go-harvest.ts",
+    "line": 560,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/go-harvest.ts",
+    "line": 585,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/go-harvest.ts",
+    "line": 650,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/java-harvest.ts",
+    "line": 437,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/java-harvest.ts",
+    "line": 511,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/scope-tree-harvest.ts",
+    "line": 154,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/scope-tree-harvest.ts",
+    "line": 155,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/scope-tree-harvest.ts",
+    "line": 159,
+    "code": "TS2554"
+   }
+  ]
+ },
+ {
+  "name": "init",
+  "cls": "LocalBackend",
+  "file": "gitnexus/src/mcp/local/local-backend.ts",
+  "line": 1779,
+  "sites": [
+   {
+    "file": "gitnexus/src/cli/eval-server.ts",
+    "line": 836,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/cli/group.ts",
+    "line": 117,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/cli/group.ts",
+    "line": 371,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/cli/group.ts",
+    "line": 489,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/cli/group.ts",
+    "line": 534,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/cli/mcp.ts",
+    "line": 139,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/cli/tool.ts",
+    "line": 28,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/server/api.ts",
+    "line": 1066,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/server/api.ts",
+    "line": 1090,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/server/api.ts",
+    "line": 1283,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/server/api.ts",
+    "line": 964,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/server/api.ts",
+    "line": 992,
+    "code": "TS2322"
+   }
+  ]
+ },
+ {
+  "name": "sortSinkKinds",
+  "cls": null,
+  "file": "gitnexus/src/core/ingestion/taint/source-sink-config.ts",
+  "line": 158,
+  "sites": [
+   {
+    "file": "gitnexus/src/core/ingestion/taint/propagate.ts",
+    "line": 375,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/taint/propagate.ts",
+    "line": 911,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/taint/summary-harvest.ts",
+    "line": 524,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/taint/summary-harvest.ts",
+    "line": 531,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/taint/summary-harvest.ts",
+    "line": 551,
+    "code": "TS2554"
+   }
+  ]
+ },
+ {
+  "name": "resolveConstant",
+  "cls": null,
+  "file": "gitnexus/src/core/ingestion/route-extractors/constant-resolver.ts",
+  "line": 225,
+  "sites": [
+   {
+    "file": "gitnexus/src/core/ingestion/route-extractors/js-const-resolver.ts",
+    "line": 839,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/route-extractors/js-const-resolver.ts",
+    "line": 902,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/route-extractors/python-const-resolver.ts",
+    "line": 121,
+    "code": "TS2554"
+   }
+  ]
+ },
+ {
+  "name": "validateBranchName",
+  "cls": null,
+  "file": "gitnexus/src/core/git-ref.ts",
+  "line": 56,
+  "sites": [
+   {
+    "file": "gitnexus/src/cli/analyze-config.ts",
+    "line": 166,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/server/api.ts",
+    "line": 1755,
+    "code": "TS2554"
+   }
+  ]
+ },
+ {
+  "name": "close",
+  "cls": "SyncCsvWriter",
+  "file": "gitnexus/src/core/lbug/sync-csv-writer.ts",
+  "line": 97,
+  "sites": [
+   {
+    "file": "gitnexus/src/core/lbug/graph-emit-sink.ts",
+    "line": 516,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/lbug/graph-emit-sink.ts",
+    "line": 544,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/lbug/pdg-emit-sink.ts",
+    "line": 222,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/lbug/pdg-emit-sink.ts",
+    "line": 232,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/lbug/pdg-emit-sink.ts",
+    "line": 262,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/lbug/pdg-emit-sink.ts",
+    "line": 268,
+    "code": "TS2554"
+   }
+  ]
+ },
+ {
+  "name": "resolveCallerGraphId",
+  "cls": null,
+  "file": "gitnexus/src/core/ingestion/scope-resolution/graph-bridge/ids.ts",
+  "line": 546,
+  "sites": [
+   {
+    "file": "gitnexus/src/core/ingestion/frameworks/spring/aop.ts",
+    "line": 233,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/frameworks/spring/conditionals.ts",
+    "line": 245,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/frameworks/spring/di-metadata.ts",
+    "line": 265,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/frameworks/spring/dynamic-lookups.ts",
+    "line": 136,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/frameworks/spring/non-http-handlers.ts",
+    "line": 135,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/languages/php/scope-resolver.ts",
+    "line": 329,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/scope-resolution/graph-bridge/edges.ts",
+    "line": 146,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/scope-resolution/graph-bridge/edges.ts",
+    "line": 229,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/scope-resolution/graph-bridge/references-to-edges.ts",
+    "line": 116,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/scope-resolution/passes/callable-value-flow.ts",
+    "line": 1358,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/scope-resolution/passes/free-call-fallback.ts",
+    "line": 704,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/scope-resolution/passes/return-shape-members.ts",
+    "line": 479,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/scope-resolution/passes/unique-name-properties.ts",
+    "line": 494,
+    "code": "TS2554"
+   }
+  ]
+ },
+ {
+  "name": "drainFinalizerPending",
+  "cls": null,
+  "file": "gitnexus/src/core/ingestion/cfg/control-flow-context.ts",
+  "line": 220,
+  "sites": [
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/csharp.ts",
+    "line": 1055,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/csharp.ts",
+    "line": 916,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/csharp.ts",
+    "line": 991,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/dart.ts",
+    "line": 947,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/go.ts",
+    "line": 472,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/java.ts",
+    "line": 1029,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/java.ts",
+    "line": 963,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/java.ts",
+    "line": 967,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/kotlin.ts",
+    "line": 939,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/php.ts",
+    "line": 900,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/python.ts",
+    "line": 516,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/python.ts",
+    "line": 632,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/ruby.ts",
+    "line": 904,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/swift.ts",
+    "line": 947,
+    "code": "TS2554"
+   },
+   {
+    "file": "gitnexus/src/core/ingestion/cfg/visitors/typescript.ts",
+    "line": 684,
+    "code": "TS2554"
+   }
+  ]
+ }
+]

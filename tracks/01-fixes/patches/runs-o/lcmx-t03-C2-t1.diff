@@ -1,0 +1,141 @@
+diff --git a/command.py b/command.py
+index a012a1c..db3a0b1 100644
+--- a/command.py
++++ b/command.py
+@@ -2854,6 +2854,13 @@ def _embedding_pending_rows(
+     identity_hash: str,
+     limit: int,
+ ) -> tuple[int, list[sqlite3.Row]]:
++    # SQLite TRIM does not implement Python's Unicode whitespace semantics.
++    # Filter in SQL so blank rows affect neither counts nor the selection limit.
++    conn.create_function(
++        "lcm_nonblank_summary", 1,
++        lambda text: bool(text is not None and text.strip()),
++        deterministic=True,
++    )
+     # Discovery excludes both recorded rows and every durable in-flight state.
+     # A dispatched/uncertain row may already have been accepted remotely, so it
+     # must never be silently resent; only explicit --retry-uncertain operator
+@@ -2875,6 +2882,7 @@ def _embedding_pending_rows(
+     )
+     where = """
+         n.depth = 0
++        AND lcm_nonblank_summary(n.summary)
+         AND NOT EXISTS (
+             SELECT 1
+             FROM lcm_embedding_meta AS m
+@@ -2909,10 +2917,16 @@ def _embedding_authorized_uncertain_rows(
+     limit: int,
+ ) -> tuple[int, list[sqlite3.Row]]:
+     """Select exact uncertain rows without consuming their durable markers."""
++    conn.create_function(
++        "lcm_nonblank_summary", 1,
++        lambda text: bool(text is not None and text.strip()),
++        deterministic=True,
++    )
+     where = """
+         f.identity_hash = ?
+         AND f.state = 'uncertain'
+         AND n.depth = 0
++        AND lcm_nonblank_summary(n.summary)
+         AND NOT EXISTS (
+             SELECT 1
+             FROM lcm_embedding_meta AS m
+diff --git a/tests/test_embedding_backfill.py b/tests/test_embedding_backfill.py
+index 673dbdd..97ad58a 100644
+--- a/tests/test_embedding_backfill.py
++++ b/tests/test_embedding_backfill.py
+@@ -151,6 +151,93 @@ def _inflight_rows(engine) -> list[tuple[str, str]]:
+         conn.close()
+ 
+ 
++@pytest.mark.parametrize("retry_uncertain", [False, True])
++def test_discovery_skips_null_and_python_whitespace(retry_uncertain):
++    conn = sqlite3.connect(":memory:")
++    conn.row_factory = sqlite3.Row
++    try:
++        conn.executescript("""
++            CREATE TABLE summary_nodes (
++                node_id INTEGER, summary TEXT, depth INTEGER,
++                latest_at REAL, created_at REAL
++            );
++            CREATE TABLE lcm_embedding_meta (
++                embedded_id TEXT, embedded_kind TEXT, identity_hash TEXT
++            );
++            CREATE TABLE lcm_embedding_backfill_inflight (
++                embedded_id TEXT, identity_hash TEXT, state TEXT, updated_at REAL
++            );
++        """)
++        texts = [None, "", " ", "\t\n\r", "\v\f", "\u0085\u00a0\u2003\u2028\u3000", " real "]
++        conn.executemany(
++            "INSERT INTO summary_nodes VALUES (?, ?, 0, ?, ?)",
++            [(index, text, -index, -index) for index, text in enumerate(texts)],
++        )
++        if retry_uncertain:
++            conn.executemany(
++                "INSERT INTO lcm_embedding_backfill_inflight VALUES (?, 'identity', 'uncertain', ?)",
++                [(str(index), index) for index in range(len(texts))],
++            )
++        discover = (
++            command_mod._embedding_authorized_uncertain_rows
++            if retry_uncertain else command_mod._embedding_pending_rows
++        )
++        pending, rows = discover(conn, "identity", 1)
++        assert pending == 1
++        assert [(row["node_id"], row["summary"]) for row in rows] == [(6, " real ")]
++    finally:
++        conn.close()
++
++
++@pytest.mark.parametrize("retry_uncertain", [False, True])
++def test_backfill_skips_blank_summaries_and_preserves_markers(
++    monkeypatch, tmp_path, retry_uncertain
++):
++    engine = _engine(tmp_path)
++    blanks = ["", " ", "\t\n\r", "\v\f", "\u0085\u00a0\u2003\u2028\u3000"]
++    node_ids = _seed(engine, len(blanks) + 2)
++    # Newer blank rows must not consume the limit ahead of the real summaries.
++    with sqlite3.connect(engine._store.db_path) as conn:
++        conn.executemany(
++            "UPDATE summary_nodes SET summary = ? WHERE node_id = ?",
++            list(zip(blanks, node_ids[2:])),
++        )
++    if retry_uncertain:
++        _mark_uncertain(engine, node_ids[2:] + node_ids[:2])
++    with sqlite3.connect(engine._store.db_path) as conn:
++        markers_before = (
++            conn.execute("SELECT * FROM lcm_embedding_backfill_inflight WHERE embedded_id NOT IN (?, ?)",
++                         tuple(str(node_id) for node_id in node_ids[:2])).fetchall()
++            if retry_uncertain else []
++        )
++    provider = FakeProvider()
++    monkeypatch.setattr(command_mod, "resolve_provider", lambda _config, **_kw: provider)
++    before = engine._store.db_path.read_bytes()
++    preview = handle_lcm_command("embed backfill --limit 2", engine)
++    assert f"pending: {0 if retry_uncertain else 2}" in preview
++    assert f"selected: {0 if retry_uncertain else 2}" in preview
++    assert provider.calls == []
++    assert engine._store.db_path.read_bytes() == before
++
++    suffix = " --retry-uncertain" if retry_uncertain else ""
++    result = handle_lcm_command(f"embed backfill --apply --limit 2{suffix}", engine)
++    assert "pending: 2" in result
++    assert "selected: 2" in result
++    assert "embedded: 2" in result
++    assert "remaining: 0" in result
++    expected = ["summary-0", "summary-1"] if retry_uncertain else ["summary-1", "summary-0"]
++    assert provider.calls == [expected]
++    assert _meta_ids(engine) == [str(node_id) for node_id in node_ids[:2]]
++    with sqlite3.connect(engine._store.db_path) as conn:
++        assert conn.execute(
++            "SELECT summary FROM summary_nodes WHERE depth = 0 ORDER BY node_id"
++        ).fetchall() == [("summary-0",), ("summary-1",)] + [(text,) for text in blanks]
++        assert conn.execute(
++            "SELECT * FROM lcm_embedding_backfill_inflight WHERE embedded_id NOT IN (?, ?)",
++            tuple(str(node_id) for node_id in node_ids[:2]),
++        ).fetchall() == markers_before
++
++
+ def test_dry_run_reports_counts_tokens_and_cost_without_calls_or_writes(
+     monkeypatch, tmp_path
+ ):

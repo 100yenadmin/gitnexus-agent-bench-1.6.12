@@ -1,0 +1,327 @@
+diff --git a/tests/test_query_coercion.py b/tests/test_query_coercion.py
+new file mode 100644
+index 0000000..b067444
+--- /dev/null
++++ b/tests/test_query_coercion.py
+@@ -0,0 +1,243 @@
++"""Tests for safe query coercion in lcm_grep, lcm_recall, and lcm_expand_query.
++
++Verifies that None, numeric, and empty query values are handled safely without
++AttributeError crashes and that numeric queries are properly converted to strings.
++"""
++from __future__ import annotations
++
++import json
++from types import SimpleNamespace
++
++import pytest
++
++import hermes_lcm.tools as lcm_tools
++from hermes_lcm.config import LCMConfig
++from hermes_lcm.dag import SummaryDAG
++from hermes_lcm.store import MessageStore
++
++
++@pytest.fixture
++def engine(tmp_path):
++    config = LCMConfig(
++        database_path=str(tmp_path / "test.db"),
++        embeddings_enabled=False,
++        embedding_query_timeout_s=2.0,
++    )
++    store = MessageStore(config.database_path, ingest_protection_config=config)
++    dag = SummaryDAG(config.database_path)
++    eng = SimpleNamespace(
++        _config=config,
++        _store=store,
++        _dag=dag,
++        current_session_id="session-test",
++    )
++    try:
++        yield eng
++    finally:
++        dag.close()
++        store.close()
++
++
++class TestLcmGrepQueryCoercion:
++    """Test lcm_grep handles null/numeric/empty queries safely."""
++
++    def test_lcm_grep_null_query_returns_error(self, engine):
++        """Null query should return error, not crash."""
++        result = json.loads(
++            lcm_tools.lcm_grep(
++                {"query": None, "mode": "full_text"},
++                engine=engine,
++            )
++        )
++        assert "error" in result
++        assert result["error"] == "No query provided"
++
++    def test_lcm_grep_numeric_zero_query_searches_as_string(self, engine):
++        """Numeric 0 should be converted to string '0' and searched."""
++        # Add a message with "0" in it
++        store = engine._store
++        store.append(
++            session_id="session-test",
++            msg={"role": "user", "content": "The number is 0"},
++        )
++
++        result = json.loads(
++            lcm_tools.lcm_grep(
++                {"query": 0, "mode": "full_text"},
++                engine=engine,
++            )
++        )
++        # Should not crash and should return results
++        assert "results" in result
++
++    def test_lcm_grep_numeric_float_query_searches_as_string(self, engine):
++        """Numeric 0.0 should be converted to string '0.0' and searched."""
++        result = json.loads(
++            lcm_tools.lcm_grep(
++                {"query": 0.0, "mode": "full_text"},
++                engine=engine,
++            )
++        )
++        # Should not crash with AttributeError
++        assert isinstance(result, dict)
++
++    def test_lcm_grep_empty_string_query_returns_error(self, engine):
++        """Empty string query should return error."""
++        result = json.loads(
++            lcm_tools.lcm_grep(
++                {"query": "", "mode": "full_text"},
++                engine=engine,
++            )
++        )
++        assert "error" in result
++        assert result["error"] == "No query provided"
++
++    def test_lcm_grep_whitespace_only_query_returns_error(self, engine):
++        """Whitespace-only query should return error."""
++        result = json.loads(
++            lcm_tools.lcm_grep(
++                {"query": "   \t\n  ", "mode": "full_text"},
++                engine=engine,
++            )
++        )
++        assert "error" in result
++        assert result["error"] == "No query provided"
++
++    def test_lcm_grep_semantic_null_query_returns_error(self, engine):
++        """Null query in semantic mode should return error, not crash."""
++        result = json.loads(
++            lcm_tools.lcm_grep(
++                {"query": None, "mode": "semantic"},
++                engine=engine,
++            )
++        )
++        # Either error from our check or from embedding provider check
++        assert isinstance(result, dict)
++
++    def test_lcm_grep_semantic_numeric_query_searches(self, engine):
++        """Numeric query in semantic mode should convert to string."""
++        result = json.loads(
++            lcm_tools.lcm_grep(
++                {"query": 42, "mode": "semantic"},
++                engine=engine,
++            )
++        )
++        # Should not crash with AttributeError, may error for other reasons
++        assert isinstance(result, dict)
++
++    def test_lcm_grep_hybrid_null_query_returns_error(self, engine):
++        """Null query in hybrid mode should return error."""
++        result = json.loads(
++            lcm_tools.lcm_grep(
++                {"query": None, "mode": "hybrid"},
++                engine=engine,
++            )
++        )
++        assert isinstance(result, dict)
++
++
++class TestLcmRecallQueryCoercion:
++    """Test lcm_recall handles null/numeric/empty queries safely."""
++
++    def test_lcm_recall_null_query_returns_error(self, engine):
++        """Null query should return error, not crash."""
++        result = json.loads(
++            lcm_tools.lcm_recall(
++                {"query": None},
++                engine=engine,
++            )
++        )
++        assert "error" in result
++        assert result["error"] == "No query provided"
++
++    def test_lcm_recall_numeric_zero_query_searches_as_string(self, engine):
++        """Numeric 0 should be converted to string '0' and searched."""
++        result = json.loads(
++            lcm_tools.lcm_recall(
++                {"query": 0},
++                engine=engine,
++            )
++        )
++        # Should not crash, may have zero results
++        assert isinstance(result, dict)
++
++    def test_lcm_recall_numeric_float_query_searches(self, engine):
++        """Numeric float should be converted to string."""
++        result = json.loads(
++            lcm_tools.lcm_recall(
++                {"query": 3.14},
++                engine=engine,
++            )
++        )
++        assert isinstance(result, dict)
++
++    def test_lcm_recall_empty_string_query_returns_error(self, engine):
++        """Empty string query should return error."""
++        result = json.loads(
++            lcm_tools.lcm_recall(
++                {"query": ""},
++                engine=engine,
++            )
++        )
++        assert "error" in result
++        assert result["error"] == "No query provided"
++
++    def test_lcm_recall_whitespace_only_query_returns_error(self, engine):
++        """Whitespace-only query should return error."""
++        result = json.loads(
++            lcm_tools.lcm_recall(
++                {"query": "  \n\t  "},
++                engine=engine,
++            )
++        )
++        assert "error" in result
++        assert result["error"] == "No query provided"
++
++
++class TestLcmExpandQueryCoercion:
++    """Test lcm_expand_query handles numeric queries safely."""
++
++    def test_lcm_expand_query_numeric_zero_with_node_ids(self, engine):
++        """Numeric query with node_ids should not crash."""
++        # Since we don't have real node_ids, this should return an error about no matches
++        result = json.loads(
++            lcm_tools.lcm_expand_query(
++                {
++                    "prompt": "Test prompt",
++                    "query": 0,
++                    "node_ids": [],
++                },
++                engine=engine,
++            )
++        )
++        # Should not crash with AttributeError
++        assert isinstance(result, dict)
++
++    def test_lcm_expand_query_numeric_float(self, engine):
++        """Numeric float query should convert to string."""
++        result = json.loads(
++            lcm_tools.lcm_expand_query(
++                {
++                    "prompt": "Test prompt",
++                    "query": 2.71,
++                    "node_ids": [],
++                },
++                engine=engine,
++            )
++        )
++        assert isinstance(result, dict)
++
++    def test_lcm_expand_query_null_with_node_ids_should_not_error_on_query(self, engine):
++        """Null query with node_ids should only error if node_ids invalid."""
++        result = json.loads(
++            lcm_tools.lcm_expand_query(
++                {
++                    "prompt": "Test prompt",
++                    "query": None,
++                    "node_ids": [],
++                },
++                engine=engine,
++            )
++        )
++        # Should error about needing query or node_ids, not about query being None
++        assert isinstance(result, dict)
+diff --git a/tools.py b/tools.py
+index 766445e..69b60b4 100644
+--- a/tools.py
++++ b/tools.py
+@@ -255,6 +255,21 @@ def _parse_strict_int(value: Any, name: str) -> tuple[int | None, str | None]:
+         return None, f"{name} must be an integer"
+ 
+ 
++def _parse_query(value: Any) -> tuple[str | None, str | None]:
++    """Safely coerce a query parameter to a string, stripping whitespace.
++
++    Returns (query_string, error). If query is None, empty, or contains only
++    whitespace, returns (None, "No query provided").
++    """
++    if value is None:
++        return None, "No query provided"
++    # Convert to string, handling numeric types and other types
++    query = str(value).strip()
++    if not query:
++        return None, "No query provided"
++    return query, None
++
++
+ _LCM_GREP_VALID_SCOPES = frozenset({"current", "all", "session"})
+ _LCM_GREP_VALID_CONTENT_SCOPES = frozenset({"history", "externalized", "both"})
+ _LCM_GREP_HARD_LIMIT_CAP = 200
+@@ -2367,9 +2382,9 @@ def _lcm_grep_full_text(args: Dict[str, Any], **kwargs) -> str:
+     if engine is None:
+         return json.dumps({"error": "LCM engine not initialized"})
+ 
+-    query = args.get("query", "").strip()
+-    if not query:
+-        return json.dumps({"error": "No query provided"})
++    query, query_error = _parse_query(args.get("query"))
++    if query_error:
++        return json.dumps({"error": query_error})
+ 
+     raw_limit_arg = args.get("limit", 10)
+     parsed_limit = _parse_int_value(raw_limit_arg, 10)
+@@ -3056,9 +3071,9 @@ def _lcm_grep_semantic(
+     mode = str(args.get("mode") or "semantic").lower()
+     if time.monotonic() >= deadline:
+         return _lcm_grep_deadline_error(mode, "semantic_entry")
+-    query = str(args.get("query", "")).strip()
+-    if not query:
+-        return {"error": "No query provided"}
++    query, query_error = _parse_query(args.get("query"))
++    if query_error:
++        return {"error": query_error}
+ 
+     raw_limit_arg = args.get("limit", 10)
+     parsed_limit = _parse_int_value(raw_limit_arg, 10)
+@@ -4587,9 +4602,9 @@ def lcm_recall(args: Dict[str, Any], **kwargs) -> str:
+     if engine is None:
+         return json.dumps({"error": "LCM engine not initialized"})
+ 
+-    query = str(args.get("query", "")).strip()
+-    if not query:
+-        return json.dumps({"error": "No query provided"})
++    query, query_error = _parse_query(args.get("query"))
++    if query_error:
++        return json.dumps({"error": query_error})
+ 
+     parsed_limit = _parse_int_value(args.get("limit", _LCM_RECALL_DEFAULT_LIMIT), _LCM_RECALL_DEFAULT_LIMIT)
+     if parsed_limit <= 0:
+@@ -5532,7 +5547,11 @@ def lcm_expand_query(args: Dict[str, Any], **kwargs) -> str:
+         return json.dumps({"error": max_results_error})
+     max_results = max(1, int(max_results or 5))
+ 
+-    query = str(args.get("query") or "").strip()
++    raw_query = args.get("query")
++    if raw_query is None:
++        query = ""
++    else:
++        query = str(raw_query).strip()
+     raw_node_ids = args.get("node_ids") or []
+ 
+     nodes = []

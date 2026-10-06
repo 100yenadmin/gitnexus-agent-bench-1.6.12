@@ -1,0 +1,91 @@
+{
+ "platform": "Windows",
+ "summary": {
+  "filesAnalyzed": 2383,
+  "errorCount": 15426,
+  "warningCount": 77,
+  "informationCount": 0,
+  "timeInSec": 163.742
+ },
+ "added": [
+  {
+   "file": "pm/lock.py",
+   "line": 126,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "pm/lock.py",
+   "line": 188,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "pm/lock.py",
+   "line": 233,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "pm/lock.py",
+   "line": 280,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "pm/operations.py",
+   "line": 111,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "pm/operations.py",
+   "line": 314,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "pm/receipt.py",
+   "line": 310,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "pm/receipt.py",
+   "line": 311,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "pm/runtime.py",
+   "line": 165,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "pm/runtime.py",
+   "line": 166,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "scripts/bundles/desktop_prepare.py",
+   "line": 228,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "scripts/bundles/desktop_prepare.py",
+   "line": 299,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  },
+  {
+   "file": "scripts/bundles/native_build.py",
+   "line": 48,
+   "rule": "reportCallIssue",
+   "message": "Argument missing for parameter \"bench_probe\""
+  }
+ ],
+ "removed_keys": []
+}

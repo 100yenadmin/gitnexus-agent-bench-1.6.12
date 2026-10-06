@@ -1,0 +1,7 @@
+{
+ "files": [
+  "gitnexus-web/src/components/CodeReferencesPanel.tsx",
+  "gitnexus-web/src/hooks/useAppState.tsx",
+  "gitnexus-web/src/services/backend-client.ts"
+ ]
+}

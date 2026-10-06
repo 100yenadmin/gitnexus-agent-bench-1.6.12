@@ -1,0 +1,18 @@
+{
+ "schema_version": 1,
+ "verdict": "request_changes",
+ "findings": [
+  {
+   "id": "ts-ctor-param-property-gets-local-identity",
+   "severity": "medium",
+   "path": "gitnexus/src/core/ingestion/workers/parse-worker.ts",
+   "line": 2309,
+   "end_line": 2312,
+   "category": "correctness",
+   "scenario": "TypeScript class `class User { constructor(public address: Address) {} }`. The parameter property `address` is a public class member, but the widened gate now re-keys it as a function-local of the constructor: `Property:u.ts:User.constructor.address@2:14` instead of `Property:u.ts:User.address`. Its id now contains a source position, so any edit above the constructor changes the id of a class member. That churns incremental and stored references to it and breaks the documented contract that class-member ids are untouched.",
+   "evidence": "`nestedCallablePrefix` now applies to every label for which `isPositionQualifiedLocalLabel` is true, which includes Property (callable-labels.ts:47). In `qualifiedName` it takes precedence over `enclosingClassInfo`. The TS query captures `(required_parameter (accessibility_modifier) pattern: (identifier)) @definition.property` (tree-sitter-queries.ts:394-396), whose definitionNode sits inside the constructor's `method_definition`. `enclosingCallablePrefix` then finds the constructor before reaching the class_body boundary. The same function already carves this case out for ownership (`isFunctionLocalProperty` checks PARAMETER_LIST_NODE_TYPES: parameter properties are class members), but the new prefix path ignores that carve-out. I confirmed this by running the pipeline on a fresh build of the diff: nodes were [\"Property:u.ts:Address.city\", \"Property:u.ts:User.constructor.address@2:14\"], with `HAS_PROPERTY Class:u.ts:User -> Property:u.ts:User.constructor.address@2:14` and ACCESSES from `User.show#0` and from the free function `f` pointing at the position-bearing id. No existing test pins the id of a parameter property (test/integration/resolvers/typescript.test.ts passes either way).",
+   "recommendation": "Apply the nesting prefix to a Property only when it really is function-local. For example, gate it on `nodeLabel !== 'Property' || isFunctionLocalProperty`, or skip the prefix when `enclosingClassInfo` exists, so parameter properties keep `User.address`. Add an integration assertion that `constructor(public address: Address)` yields `Property:<file>:User.address`.",
+   "blocking": true
+  }
+ ]
+}

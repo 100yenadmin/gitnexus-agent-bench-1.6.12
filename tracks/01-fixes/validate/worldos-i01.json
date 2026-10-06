@@ -1,0 +1,43 @@
+{
+ "id": "worldos-i01",
+ "pr": 1275,
+ "base": "65f134197ec377b472cf2610af64c00869dfeafb",
+ "fix": "b8ac8bae7342a4bcf88a64fa099dec1aca33240d",
+ "tests": [
+  "servers/engine/tests/test_combat_greedy_terrain.py"
+ ],
+ "oracle_files": [
+  "servers/engine/tests/test_combat_greedy_terrain.py"
+ ],
+ "oracle_cmd": "uv run -q --directory servers/engine --group dev pytest -q -p no:cacheprovider tests/test_combat_greedy_terrain.py",
+ "regression_cmd": "uv run -q --directory servers/engine --group dev pytest -q -p no:cacheprovider",
+ "setup_cmd": "uv sync -q --directory servers/engine --group dev",
+ "setup_rc": 0,
+ "base_rc": 1,
+ "base_secs": 0.8,
+ "base_tail": [
+  "FAILED tests/test_combat_greedy_terrain.py::test_greedy_move_routes_around_wall",
+  "FAILED tests/test_combat_greedy_terrain.py::test_greedy_move_never_targets_unreachable_cell_behind_wall",
+  "FAILED tests/test_combat_greedy_terrain.py::test_greedy_retreat_respects_walls",
+  "FAILED tests/test_combat_greedy_terrain.py::test_greedy_move_prefers_clear_ground_over_difficult",
+  "4 failed, 2 passed in 0.05s"
+ ],
+ "base_import_err": false,
+ "fix_rc1": 0,
+ "fix_secs1": 0.4,
+ "fix_tail1": [
+  "6 passed in 0.04s"
+ ],
+ "fix_rc2": 0,
+ "fix_secs2": 0.4,
+ "fix_tail2": [
+  "6 passed in 0.04s"
+ ],
+ "reg_rc": 0,
+ "reg_secs": 86.1,
+ "reg_tail": [
+  "3357 passed in 85.22s (0:01:25)"
+ ],
+ "mismatch": [],
+ "final_status": "* (HEAD detached at 65f13419)\n  main\n  remotes/origin/HEAD -> origin/main\n  remotes/origin/main"
+}

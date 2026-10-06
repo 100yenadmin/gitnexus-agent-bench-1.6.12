@@ -1,0 +1,103 @@
+diff --git a/agent/turn_final_response.py b/agent/turn_final_response.py
+index 6ebc4050..4daffcba 100644
+--- a/agent/turn_final_response.py
++++ b/agent/turn_final_response.py
+@@ -32,6 +32,23 @@ _EPHEMERAL_SCAFFOLDING_FLAGS = (
+ )
+ 
+ 
++def _has_native_thinking(assistant_message: Any) -> bool:
++    """Signed Anthropic thinking and native replay carriers are never answers.
++
++    Detect the payload rather than the route: plugins can replay native Claude
++    turns through chat completions, with a separately generated thinking summary.
++    """
++    for detail in getattr(assistant_message, "reasoning_details", None) or []:
++        if not isinstance(detail, dict):
++            continue
++        kind = detail.get("type")
++        if isinstance(kind, str) and kind.endswith(".native_assistant"):
++            return True
++        if kind in ("thinking", "redacted_thinking") and (detail.get("signature") or detail.get("data")):
++            return True
++    return False
++
++
+ @dataclass
+ class FinalResponseVerdict:
+     """``action``: ``"break"`` (turn ends with ``final_response``), ``"continue"`` (a
+@@ -101,6 +118,9 @@ def finish_text_response(
+         finish_reason == "stop"
+         and not assistant_message.tool_calls
+         and (_content is None or (isinstance(_content, str) and not _content.strip()))
++        # Native thinking summaries belong on the bounded continuation path,
++        # even when Anthropic reports end_turn (normalized to stop).
++        and not _has_native_thinking(assistant_message)
+     ):
+         _promoted = agent._extract_reasoning(assistant_message) or None
+         if _promoted:
+diff --git a/tests/agent/test_reasoning_only_stop_persistence.py b/tests/agent/test_reasoning_only_stop_persistence.py
+index 063fcab0..f26ea811 100644
+--- a/tests/agent/test_reasoning_only_stop_persistence.py
++++ b/tests/agent/test_reasoning_only_stop_persistence.py
+@@ -10,6 +10,7 @@ sidecar, so the next request still replays the answer byte-identically.
+ 
+ from __future__ import annotations
+ 
++from types import SimpleNamespace
+ from unittest.mock import MagicMock, patch
+ 
+ import pytest
+@@ -175,3 +176,52 @@ def test_genuine_reasoning_only_answer_with_tools_still_promotes_on_first_call(l
+         ])
+         assert result["api_calls"] == 1
+         assert result["final_response"] == answer
++
++
++@pytest.mark.parametrize("block", [
++    {"type": "thinking", "thinking": "I considered the factors.", "signature": "sig-abc"},
++    {"type": "redacted_thinking", "data": "opaque-test-data"},
++])
++def test_native_anthropic_thinking_only_stop_continues_to_answer(loop_agent, block):
++    loop_agent.api_mode = "anthropic_messages"
++    loop_agent.provider = "anthropic"
++    loop_agent.model = "claude-opus-4-7"
++    loop_agent._anthropic_base_url = "https://api.anthropic.com"
++    loop_agent._is_anthropic_oauth = False
++    answer = "391 = 17 x 23."
++    responses = [
++        SimpleNamespace(content=[SimpleNamespace(**block)], stop_reason="end_turn", usage=None),
++        SimpleNamespace(content=[SimpleNamespace(type="text", text=answer)], stop_reason="end_turn", usage=None),
++    ]
++    with patch.object(loop_agent, "_interruptible_api_call", side_effect=responses):
++        result = _run(loop_agent, [], user_message="factor 391")
++
++    assert result["api_calls"] == 2
++    assert result["final_response"] == answer
++    assert result["messages"][-1]["content"] == answer
++    assert all(not m.get("api_content") for m in result["messages"])
++
++
++@pytest.mark.parametrize("details", [
++    [{"type": "thinking", "thinking": "I considered the factors.", "signature": "sig-abc"}],
++    [{"type": "redacted_thinking", "data": "opaque-test-data"}],
++    [{"type": "claude-subscription-directsdk-experimental.native_assistant", "messages": [
++        {"role": "assistant", "content": [
++            {"type": "thinking", "thinking": "I considered the factors.", "signature": "sig-abc"},
++        ]},
++    ]}],
++])
++def test_chat_completion_native_thinking_carrier_continues_to_answer(loop_agent, details):
++    from tests.agent.test_run_agent import _mock_response
++
++    answer = "391 = 17 x 23."
++    result = _run(loop_agent, [
++        _mock_response(content="", finish_reason="stop", reasoning_content="I considered the factors.",
++                       reasoning_details=details),
++        _mock_response(content=answer, finish_reason="stop"),
++    ], user_message="factor 391")
++
++    assert result["api_calls"] == 2
++    assert result["final_response"] == answer
++    assert result["messages"][-1]["content"] == answer
++    assert all(not m.get("api_content") for m in result["messages"])

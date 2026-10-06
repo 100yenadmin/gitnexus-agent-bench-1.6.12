@@ -1,0 +1,45 @@
+{
+ "id": "worldos-i02",
+ "pr": 1512,
+ "base": "6f623c9e0110f4d6b18fb4e70ad09a51f2431a83",
+ "fix": "4c09f20bd2e3228ebd451cae5fc73f91f13083b1",
+ "tests": [
+  "servers/engine/tests/test_grid_walkability_p1.py",
+  "servers/engine/tests/test_living_stage.py",
+  "servers/engine/tests/test_walk_to.py"
+ ],
+ "oracle_files": [
+  "servers/engine/tests/test_grid_walkability_p1.py",
+  "servers/engine/tests/test_living_stage.py",
+  "servers/engine/tests/test_walk_to.py"
+ ],
+ "oracle_cmd": "uv run -q --directory servers/engine --group dev pytest -q -p no:cacheprovider tests/test_grid_walkability_p1.py tests/test_living_stage.py tests/test_walk_to.py",
+ "regression_cmd": "uv run -q --directory servers/engine --group dev pytest -q -p no:cacheprovider",
+ "setup_cmd": "uv sync -q --directory servers/engine --group dev",
+ "setup_rc": 0,
+ "base_rc": 1,
+ "base_secs": 2.1,
+ "base_tail": [
+  "FAILED tests/test_living_stage.py::test_end_combat_relocates_write_back_off_a_blocked_cell",
+  "FAILED tests/test_walk_to.py::test_rest_blocked_cells_excludes_mover_even_on_impassable_terrain",
+  "2 failed, 40 passed in 1.46s"
+ ],
+ "base_import_err": false,
+ "fix_rc1": 0,
+ "fix_secs1": 2.0,
+ "fix_tail1": [
+  "42 passed in 1.44s"
+ ],
+ "fix_rc2": 0,
+ "fix_secs2": 2.0,
+ "fix_tail2": [
+  "42 passed in 1.37s"
+ ],
+ "reg_rc": 0,
+ "reg_secs": 119.6,
+ "reg_tail": [
+  "3516 passed in 118.77s (0:01:58)"
+ ],
+ "mismatch": [],
+ "final_status": "* (HEAD detached at 6f623c9e)\n  main\n  remotes/origin/HEAD -> origin/main\n  remotes/origin/main"
+}
